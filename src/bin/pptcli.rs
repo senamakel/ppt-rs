@@ -243,6 +243,8 @@ fn main() {
             no_source_url,
             timeout,
             verbose,
+            #[cfg(feature = "web2md")]
+            web2md,
         } => {
             execute_web2ppt(
                 url,
@@ -256,6 +258,8 @@ fn main() {
                 no_source_url,
                 timeout,
                 verbose,
+                #[cfg(feature = "web2md")]
+                web2md,
             );
         }
     }
@@ -274,6 +278,7 @@ fn execute_web2ppt(
     no_source_url: bool,
     timeout: u64,
     verbose: bool,
+    #[cfg(feature = "web2md")] use_web2md: bool,
 ) {
     use ppt_rs::{ConversionOptions, Web2Ppt, Web2PptConfig, WebFetcher, WebParser};
 
@@ -328,6 +333,38 @@ fn execute_web2ppt(
         }
     };
 
+    // --- web2md pipeline (HTML → Markdown → Slides) ---
+    #[cfg(feature = "web2md")]
+    if use_web2md {
+        if verbose {
+            println!("🔄 Using web2md pipeline (HTML → Markdown → Slides)");
+        }
+        match ppt_rs::html_to_pptx_via_web2md(&html, &url, config, &options) {
+            Ok(pptx_data) => {
+                if verbose {
+                    println!("✅ Conversion successful!");
+                    println!("   Size: {} bytes", pptx_data.len());
+                    println!("💾 Saving to {}...", output);
+                }
+                match std::fs::write(&output, &pptx_data) {
+                    Ok(_) => {
+                        println!("✓ Created: {} ({} bytes)", output, pptx_data.len());
+                    }
+                    Err(e) => {
+                        eprintln!("✗ Failed to save file: {}", e);
+                        std::process::exit(1);
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("✗ Conversion failed: {}", e);
+                std::process::exit(1);
+            }
+        }
+        return;
+    }
+
+    // --- Default scraper-based pipeline ---
     // Parse
     let parser = WebParser::with_config(config.clone());
     let content = match parser.parse(&html, &url) {

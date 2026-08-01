@@ -323,6 +323,11 @@ Extracts:
         /// Enable verbose logging
         #[arg(short, long)]
         verbose: bool,
+
+        /// Use the web2md pipeline (HTML→Markdown→Slides) for better content extraction
+        #[cfg(feature = "web2md")]
+        #[arg(long)]
+        web2md: bool,
     },
 }
 

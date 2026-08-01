@@ -11,6 +11,8 @@ mod parser;
 mod converter;
 #[cfg(feature = "web2ppt")]
 mod config;
+#[cfg(feature = "web2md")]
+mod web2md_bridge;
 
 #[cfg(feature = "web2ppt")]
 pub use fetcher::WebFetcher;
@@ -20,6 +22,8 @@ pub use parser::{WebParser, WebContent, ContentBlock, ContentType};
 pub use converter::{Web2Ppt, ConversionOptions, url_to_pptx, url_to_pptx_with_options, html_to_pptx, html_to_pptx_with_options};
 #[cfg(feature = "web2ppt")]
 pub use config::Web2PptConfig;
+#[cfg(feature = "web2md")]
+pub use web2md_bridge::{url_to_pptx_via_web2md, html_to_pptx_via_web2md};
 
 /// Error types for web2ppt operations
 #[derive(Debug, thiserror::Error)]

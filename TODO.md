@@ -11,6 +11,9 @@
 - [x] Lean audit: dead code removal + `escape_xml` hot-path optimization (v0.2.21)
 - [x] Complete API documentation with examples (`API_GUIDE.md` expanded)
 - [x] Structured validation CLI — severity/category/path report + `--json`
+
+- [x] **Web2MD bridge** — `web2md` feature: HTML→Markdown (via `web2md` crate)→Slides pipeline with `--web2md` CLI flag on `web2ppt`
+
 ## Proposed Capabilities
 
 Ideas ranked by impact on real-world decks, round-trip fidelity, and API completeness.

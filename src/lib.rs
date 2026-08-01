@@ -128,4 +128,7 @@ pub use web2ppt::{
     html_to_pptx, html_to_pptx_with_options, url_to_pptx, url_to_pptx_with_options,
 };
 
+#[cfg(feature = "web2md")]
+pub use web2ppt::{url_to_pptx_via_web2md, html_to_pptx_via_web2md};
+
 pub const VERSION: &str = "0.2.19";
