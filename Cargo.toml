@@ -1,6 +1,6 @@
 [package]
 name = "ppt-rs"
-version = "0.2.24"
+version = "0.2.25"
 edition = "2024"
 authors = ["Ying Kit WONG"]
 description = "Create, read, and update PowerPoint 2007+ (.pptx) files with rich formatting, bullet styles, themes, and templates."
@@ -13,20 +13,19 @@ readme = "README.md"
 [dependencies]
 zip = "0.6"
 xml-rs = "0.8"
-uuid = { version = "1.0", features = ["v4"] }
-thiserror = "1.0"
+uuid = { version = "1.24", features = ["v4"] }
+thiserror = "2.0"
 
 # CLI dependencies (optional)
-clap = { version = "4.5", features = ["derive"], optional = true }
-pulldown-cmark = { version = "0.10", optional = true }
+clap = { version = "4.6", features = ["derive"], optional = true }
+pulldown-cmark = { version = "0.13", optional = true }
 
 # Syntax highlighting (optional)
-syntect = { version = "5.2", default-features = false, features = ["parsing", "regex-fancy", "dump-load", "default-syntaxes", "default-themes"], optional = true }
+syntect = { version = "5.3", default-features = false, features = ["parsing", "regex-fancy", "dump-load", "default-syntaxes", "default-themes"], optional = true }
 
 # Network dependencies (optional)
-reqwest = { version = "0.11", features = ["blocking"], optional = true }
-scraper = { version = "0.18", optional = true }
-url = { version = "2.5", optional = true }
+reqwest = { version = "0.11", default-features = false, features = ["blocking", "default-tls"], optional = true }
+scraper = { version = "0.27", optional = true }
 
 # PDF export without LibreOffice (optional)
 pdfrs = { version = "0.1", default-features = false, optional = true }
@@ -38,13 +37,13 @@ web2md = { version = "0.1", default-features = false, optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
 serde_json = { version = "1", optional = true }
 rmcp = { version = "2.2", features = ["transport-io"], optional = true }
-tokio = { version = "1", features = ["rt-multi-thread", "macros"], optional = true }
+tokio = { version = "1.53", features = ["rt-multi-thread", "macros"], optional = true }
 
 [features]
 default = ["pdf-native"]
 cli = ["clap", "pulldown-cmark", "syntect", "pdf-native"]
 mcp = ["serde", "serde_json", "dep:rmcp", "dep:tokio"]
-web2ppt = ["reqwest", "scraper", "url"]
+web2ppt = ["reqwest", "scraper"]
 web2md = ["dep:web2md", "web2ppt", "cli"]
 pdf-native = ["dep:pdfrs"]
 

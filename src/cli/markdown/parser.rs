@@ -206,11 +206,11 @@ impl MarkdownParser {
             }
 
             // Blockquotes (speaker notes)
-            Event::Start(Tag::BlockQuote) => {
+            Event::Start(Tag::BlockQuote(_)) => {
                 self.in_blockquote = true;
                 self.blockquote_text.clear();
             }
-            Event::End(TagEnd::BlockQuote) => {
+            Event::End(TagEnd::BlockQuote(_)) => {
                 self.in_blockquote = false;
                 self.flush_blockquote();
             }

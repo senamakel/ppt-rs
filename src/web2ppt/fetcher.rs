@@ -38,12 +38,8 @@ impl WebFetcher {
 
     /// Fetch HTML content from a URL
     pub fn fetch(&self, url: &str) -> Result<String> {
-        // Validate URL
-        let parsed_url = url::Url::parse(url)
-            .map_err(|e| Web2PptError::InvalidUrl(e.to_string()))?;
-
-        // Only allow http/https
-        if parsed_url.scheme() != "http" && parsed_url.scheme() != "https" {
+        // Only allow http/https (reqwest validates the rest)
+        if !url.starts_with("http://") && !url.starts_with("https://") {
             return Err(Web2PptError::InvalidUrl(
                 "Only HTTP and HTTPS URLs are supported".to_string()
             ));
