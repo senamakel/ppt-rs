@@ -14,17 +14,19 @@ fn test_chart_generation() {
     
     // Create a simple bar chart
     let chart = ChartBuilder::new("Sales Data", ChartType::Bar)
+        .categories(vec!["Q1", "Q2", "Q3"])
         .position(1000000, 1000000)
         .size(4000000, 3000000)
         .add_series(ChartSeries::new(
-            "Series 1", 
+            "Series 1",
             vec![1.0, 2.0, 3.0]
         ))
         .add_series(ChartSeries::new(
-            "Series 2", 
+            "Series 2",
             vec![3.0, 2.0, 1.0]
         ))
-        .build();
+        .build()
+        .expect("valid chart");
         
     slide = slide.add_chart(chart);
     pres = pres.add_slide(slide);

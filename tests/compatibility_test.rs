@@ -316,12 +316,14 @@ impl CompatibilityTestSuite {
         ];
 
         let chart = ChartBuilder::new("Sales Data", ChartType::Bar)
+            .categories(vec!["A", "B", "C"])
             .add_series(ChartSeries::new("Q1", vec![10.0, 20.0, 30.0]))
             .add_series(ChartSeries::new("Q2", vec![15.0, 25.0, 35.0]))
             .add_series(ChartSeries::new("Q3", vec![20.0, 30.0, 40.0]))
             .position(1000000, 1000000)
             .size(6000000, 4000000)
-            .build();
+            .build()
+            .expect("valid chart");
 
         slides[0] = slides[0].clone().add_chart(chart);
 

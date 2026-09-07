@@ -114,7 +114,8 @@ mod tests {
         let chart = ChartBuilder::new("Test", ChartType::Bar)
             .categories(vec!["A", "B"])
             .add_series(ChartSeries::new("Data", vec![1.0, 2.0]))
-            .build();
+            .build()
+            .expect("valid chart");
 
         let part = ChartPart::from_chart(2, chart);
         assert_eq!(part.chart_number(), 2);
@@ -126,7 +127,8 @@ mod tests {
         let chart = ChartBuilder::new("Sales", ChartType::Bar)
             .categories(vec!["Q1", "Q2"])
             .add_series(ChartSeries::new("2024", vec![100.0, 150.0]))
-            .build();
+            .build()
+            .expect("valid chart");
 
         let part = ChartPart::from_chart(1, chart);
         let xml = part.to_xml().unwrap();

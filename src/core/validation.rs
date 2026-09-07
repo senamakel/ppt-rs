@@ -131,6 +131,27 @@ pub fn validate_well_formed_xml(xml: &str) -> Result<()> {
     Ok(())
 }
 
+/// Validate chart data before generation: categories and series must be
+/// non-empty, and every series must have exactly as many values as there are
+/// categories. Mismatches produce broken chart XML in PowerPoint.
+pub fn validate_chart(categories: &[String], series_names: &[&str], series_lengths: &[usize]) -> Result<()> {
+    validate_non_empty(categories, "chart categories")?;
+    validate_non_empty(series_lengths, "chart series")?;
+    let expected = categories.len();
+    for (idx, &len) in series_lengths.iter().enumerate() {
+        if len != expected {
+            let name = series_names.get(idx).copied().unwrap_or("series");
+            return Err(PptxError::InvalidValue(messages::invalid_value(
+                "chart series",
+                &format!(
+                    "'{name}' has {len} value(s) but {expected} categor(y/ies) were defined; lengths must match"
+                ),
+            )));
+        }
+    }
+    Ok(())
+}
+
 /// Check that all required part paths exist in `found`.
 pub fn check_required_parts(
     found: &HashSet<String>,
@@ -197,5 +218,33 @@ mod tests {
         let issues = check_required_parts(&found, &["a.xml", "c.xml"]);
         assert_eq!(issues.len(), 1);
         assert_eq!(issues[0].message(), "Missing required part: c.xml");
+    }
+
+    #[test]
+    fn test_validate_chart_ok() {
+        let cats = vec!["Q1".to_string(), "Q2".to_string(), "Q3".to_string()];
+        assert!(validate_chart(&cats, &["2023", "2024"], &[3, 3]).is_ok());
+    }
+
+    #[test]
+    fn test_validate_chart_empty_categories() {
+        assert!(validate_chart(&[], &["s"], &[0]).is_err());
+    }
+
+    #[test]
+    fn test_validate_chart_empty_series() {
+        let cats = vec!["Q1".to_string()];
+        assert!(validate_chart(&cats, &[], &[]).is_err());
+    }
+
+    #[test]
+    fn test_validate_chart_length_mismatch() {
+        let cats = vec!["Q1".to_string(), "Q2".to_string(), "Q3".to_string()];
+        let err = validate_chart(&cats, &["2023", "2024"], &[3, 2]);
+        assert!(err.is_err());
+        let msg = format!("{}", err.unwrap_err());
+        assert!(msg.contains("'2024'"));
+        assert!(msg.contains("2 value(s)"));
+        assert!(msg.contains("3 categor"));
     }
 }

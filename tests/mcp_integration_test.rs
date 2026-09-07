@@ -124,7 +124,7 @@ fn test_tools_list() {
 
     assert_eq!(resp["id"], 2);
     let tools = resp["result"]["tools"].as_array().unwrap();
-    assert!(tools.len() >= 8);
+    assert!(tools.len() >= 11);
 
     let names: Vec<&str> = tools.iter().map(|t| t["name"].as_str().unwrap()).collect();
     assert!(names.contains(&"create_presentation"));
@@ -135,6 +135,9 @@ fn test_tools_list() {
     assert!(names.contains(&"validate_pptx"));
     assert!(names.contains(&"create_presentation_with_tables"));
     assert!(names.contains(&"create_presentation_with_charts"));
+    assert!(names.contains(&"compress_pptx"));
+    assert!(names.contains(&"repair_pptx"));
+    assert!(names.contains(&"apply_theme"));
 
     for tool in tools {
         assert!(tool["name"].is_string());
@@ -250,12 +253,11 @@ fn test_markdown_to_pptx_missing_param() {
     }));
     let resp = recv(&mut reader);
 
-    assert_eq!(resp["error"]["code"], -32602);
+    // rmcp 2.2.0 returns missing-param as a tool-level error (isError),
+    // not a JSON-RPC -32602 error.
     assert!(
-        resp["error"]["message"]
-            .as_str()
-            .unwrap()
-            .contains("markdown")
+        resp["result"]["isError"].as_bool().unwrap_or(false),
+        "expected isError for missing param; got: {resp}"
     );
 }
 
@@ -469,7 +471,12 @@ fn test_validate_pptx_invalid_file() {
     }));
     let resp = recv(&mut reader);
 
-    assert!(resp["result"]["isError"].as_bool().unwrap_or(false));
+    // validate_pptx returns issues as a success result (the tool ran
+    // successfully, it just found problems). An invalid ZIP should produce
+    // issue text mentioning the ZIP error.
+    assert!(!resp["result"]["isError"].as_bool().unwrap_or(false));
+    let text = resp["result"]["content"][0]["text"].as_str().unwrap();
+    assert!(text.contains("issue(s)"), "expected issue text; got: {text}");
 
     cleanup(&path);
 }
@@ -697,4 +704,206 @@ fn test_ping() {
 
     assert_eq!(resp["id"], 2);
     assert!(resp["result"].is_object());
+}
+
+// ---------------------------------------------------------------------------
+// compress_pptx / repair_pptx / apply_theme
+// ---------------------------------------------------------------------------
+
+#[test]
+#[serial]
+fn test_compress_pptx() {
+    let src = tmp_path("compress_src.pptx");
+    let out = tmp_path("compress_out.pptx");
+    cleanup(&src);
+    cleanup(&out);
+
+    let (_guard, mut stdin, mut reader) = start_server();
+    handshake(&mut stdin, &mut reader);
+
+    // Create a source file first
+    send(&mut stdin, 2, "tools/call", serde_json::json!({
+        "name": "create_presentation",
+        "arguments": {
+            "title": "Compress Me",
+            "output_path": &src,
+            "slides": [{ "title": "S1", "bullets": ["a", "b"] }]
+        }
+    }));
+    let _ = recv(&mut reader);
+
+    // Compress it
+    send(&mut stdin, 3, "tools/call", serde_json::json!({
+        "name": "compress_pptx",
+        "arguments": {
+            "input_path": &src,
+            "output_path": &out,
+            "level": "medium"
+        }
+    }));
+    let resp = recv(&mut reader);
+
+    assert!(!resp["result"]["isError"].as_bool().unwrap_or(false));
+    let text = resp["result"]["content"][0]["text"].as_str().unwrap();
+    assert!(text.contains("Compressed"));
+    assert!(text.contains("reduction"));
+    assert!(std::path::Path::new(&out).exists());
+
+    cleanup(&src);
+    cleanup(&out);
+}
+
+#[test]
+#[serial]
+fn test_compress_pptx_bad_level() {
+    let (_guard, mut stdin, mut reader) = start_server();
+    handshake(&mut stdin, &mut reader);
+
+    send(&mut stdin, 2, "tools/call", serde_json::json!({
+        "name": "compress_pptx",
+        "arguments": {
+            "input_path": "/tmp/x.pptx",
+            "output_path": "/tmp/y.pptx",
+            "level": "ultra"
+        }
+    }));
+    let resp = recv(&mut reader);
+    assert!(resp["result"]["isError"].as_bool().unwrap_or(false));
+    assert!(resp["result"]["content"][0]["text"].as_str().unwrap().contains("Unsupported level"));
+}
+
+#[test]
+#[serial]
+fn test_repair_pptx() {
+    let src = tmp_path("repair_src.pptx");
+    let out = tmp_path("repair_out.pptx");
+    cleanup(&src);
+    cleanup(&out);
+
+    let (_guard, mut stdin, mut reader) = start_server();
+    handshake(&mut stdin, &mut reader);
+
+    // Create a valid source file
+    send(&mut stdin, 2, "tools/call", serde_json::json!({
+        "name": "create_presentation",
+        "arguments": {
+            "title": "Repair Me",
+            "output_path": &src,
+            "slides": [{ "title": "S1", "bullets": ["x"] }]
+        }
+    }));
+    let _ = recv(&mut reader);
+
+    // Repair it (should find no issues but still save a copy)
+    send(&mut stdin, 3, "tools/call", serde_json::json!({
+        "name": "repair_pptx",
+        "arguments": {
+            "input_path": &src,
+            "output_path": &out
+        }
+    }));
+    let resp = recv(&mut reader);
+
+    assert!(!resp["result"]["isError"].as_bool().unwrap_or(false));
+    let text = resp["result"]["content"][0]["text"].as_str().unwrap();
+    assert!(text.contains("No issues found") || text.contains("issue(s)"));
+    assert!(std::path::Path::new(&out).exists());
+
+    cleanup(&src);
+    cleanup(&out);
+}
+
+#[test]
+#[serial]
+fn test_apply_theme() {
+    let src = tmp_path("theme_src.pptx");
+    let out = tmp_path("theme_out.pptx");
+    cleanup(&src);
+    cleanup(&out);
+
+    let (_guard, mut stdin, mut reader) = start_server();
+    handshake(&mut stdin, &mut reader);
+
+    // Create a source file
+    send(&mut stdin, 2, "tools/call", serde_json::json!({
+        "name": "create_presentation",
+        "arguments": {
+            "title": "Theme Me",
+            "output_path": &src,
+            "slides": [{ "title": "S1", "bullets": ["a"] }]
+        }
+    }));
+    let _ = recv(&mut reader);
+
+    // Apply a custom theme
+    send(&mut stdin, 3, "tools/call", serde_json::json!({
+        "name": "apply_theme",
+        "arguments": {
+            "input_path": &src,
+            "output_path": &out,
+            "theme": {
+                "name": "Corporate Blue",
+                "palette": {
+                    "primary": "1F497D",
+                    "secondary": "4F81BD",
+                    "accent": "9BBB59",
+                    "background": "FFFFFF",
+                    "text": "000000",
+                    "light": "EEECE1",
+                    "dark": "1F497D"
+                },
+                "fonts": {
+                    "major": "Calibri Light",
+                    "minor": "Calibri"
+                }
+            }
+        }
+    }));
+    let resp = recv(&mut reader);
+
+    assert!(!resp["result"]["isError"].as_bool().unwrap_or(false));
+    let text = resp["result"]["content"][0]["text"].as_str().unwrap();
+    assert!(text.contains("Applied theme"));
+    assert!(std::path::Path::new(&out).exists());
+
+    cleanup(&src);
+    cleanup(&out);
+}
+
+#[test]
+#[serial]
+fn test_apply_theme_default() {
+    let src = tmp_path("theme_def_src.pptx");
+    let out = tmp_path("theme_def_out.pptx");
+    cleanup(&src);
+    cleanup(&out);
+
+    let (_guard, mut stdin, mut reader) = start_server();
+    handshake(&mut stdin, &mut reader);
+
+    send(&mut stdin, 2, "tools/call", serde_json::json!({
+        "name": "create_presentation",
+        "arguments": {
+            "title": "Default Theme",
+            "output_path": &src,
+            "slides": [{ "title": "S1", "bullets": ["a"] }]
+        }
+    }));
+    let _ = recv(&mut reader);
+
+    // Apply default Office theme (omit theme arg)
+    send(&mut stdin, 3, "tools/call", serde_json::json!({
+        "name": "apply_theme",
+        "arguments": {
+            "input_path": &src,
+            "output_path": &out
+        }
+    }));
+    let resp = recv(&mut reader);
+
+    assert!(!resp["result"]["isError"].as_bool().unwrap_or(false));
+    assert!(std::path::Path::new(&out).exists());
+
+    cleanup(&src);
+    cleanup(&out);
 }

@@ -35,7 +35,20 @@ The project has completed several major phases:
    - Chart Excel workbook embedding — `ppt/embeddings/Microsoft_Excel_SheetN.xlsx` so charts are editable
    - Handout master packaging, slide master `p:txStyles`, notes master theme parity, presentation rel ordering
 
-Future work will focus on completing partially-implemented features (digital signatures, embedded fonts) and performance optimization.
+6. **Editor, Validation CLI & Wiring** (v0.2.20) — Programmatic editing and agent loop
+   - `PresentationEditor` (`oxml/editor.rs`) — duplicate, reorder, insert slide at index, batch replace
+   - Core validation integrated into `pptcli validate`; rmcp upgraded
+   - Embedded fonts + ink annotations wired into the generator; digital signatures packaged
+
+7. **Lean Audit & Structured Validate** (v0.2.21) — Quality pass
+   - Dead code removal, `escape_xml` hot-path, `XmlWriter` cleanup
+   - `pptcli validate` structured human report + `--json`; warnings cleared
+
+8. **PDF Native & Web2MD Bridge** (v0.2.23–v0.2.24) — Platform reach
+   - Pure-Rust PDF export via `pdfrs` (`pdf-native` feature) — no LibreOffice dependency
+   - `web2md` bridge — HTML→Markdown→Slides pipeline with `--web2md` CLI flag
+
+Future work focuses on the open items in `TODO.md` (comments round-trip, video/audio embedding, section-aware export, WASM target, batch/pipeline API, MCP tool expansion) and performance optimization.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -195,10 +208,13 @@ shape.fill(red()).stroke(black(), 12700).text("Hello");
   - `html` - HTML export with CSS styling
   - `md` - Markdown export with GFM tables and frontmatter
   - `image_export` - Image export via LibreOffice (PNG, JPEG)
+  - `slide_render` - Slide rendering helpers (PDF bytes via LibreOffice path)
+  - `pdf_export` - Pure-Rust PDF export via `pdfrs` (`pdf-native` feature, no LibreOffice)
 - **Key Types**:
   - `MarkdownOptions` - Configure markdown output
   - `ImageExportOptions` / `ImageFormat` - Configure image export
-  - `export_to_markdown()`, `export_to_images()` - Direct export functions
+  - `PdfExportOptions` / `PdfOrientation` - Configure native PDF export
+  - `export_to_markdown()`, `export_to_images()`, `export_to_pdf()` - Direct export functions
 
 ### Import Layer (`import/`)
 - **Purpose**: Import from external formats
@@ -659,12 +675,13 @@ Tables in PPTX follow a specific XML structure. The critical ordering is:
 │   └── html_style.css
 ├── import/             # Import module (v0.2.2)
 │   └── mod.rs
-├── web2ppt/            # Web to PPT converter
+├── web2ppt/            # Web to PPT converter (feature-gated)
 │   ├── mod.rs
 │   ├── converter.rs
 │   ├── config.rs
 │   ├── fetcher.rs
-│   └── parser.rs
+│   ├── parser.rs
+│   └── web2md_bridge.rs  # HTML→Markdown→Slides bridge (v0.2.24, `web2md` feature)
 ├── cli/                # CLI module
 ```
 
@@ -689,7 +706,10 @@ src/cli/
         ├── state_diagram.rs
         ├── er_diagram.rs
         ├── mindmap.rs
-        └── timeline.rs
+        ├── timeline.rs
+        ├── gitgraph.rs
+        ├── journey.rs
+        └── quadrant.rs
 ```
 
 ## Completed Features
@@ -731,6 +751,13 @@ src/cli/
 - [x] Template-based generation (`PptxTemplate`, `--template`) (v0.2.19)
 - [x] Chart Excel workbook embedding for editable charts (v0.2.19)
 - [x] Handout master packaging + slide master completeness + rel ordering (v0.2.19)
+- [x] `PresentationEditor` — duplicate, reorder, insert slide at index, batch replace (v0.2.20)
+- [x] Core validation integrated into `pptcli validate` (v0.2.20)
+- [x] Embedded fonts + ink annotations wired into generator; digital signatures packaged (v0.2.20)
+- [x] Lean audit — dead code removal, `escape_xml` hot-path, `XmlWriter` cleanup (v0.2.21)
+- [x] Structured `pptcli validate` report + `--json` for CI (v0.2.21)
+- [x] Pure-Rust PDF export via `pdfrs` (`pdf-native` feature, no LibreOffice) (v0.2.23)
+- [x] `web2md` bridge — HTML→Markdown→Slides pipeline with `--web2md` CLI flag (v0.2.24)
 
 ## Image Effects System (v0.2.10)
 

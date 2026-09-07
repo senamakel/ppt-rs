@@ -1,6 +1,7 @@
 //! Chart builder for fluent API
 
-use crate::core::ElementPlacement;
+use crate::core::{validate_chart, ElementPlacement};
+use crate::exc::Result;
 use super::data::{Chart, ChartSeries};
 use super::types::ChartType;
 
@@ -49,9 +50,13 @@ impl ChartBuilder {
         self
     }
 
-    /// Build the chart
-    pub fn build(self) -> Chart {
-        Chart {
+    /// Build the chart, validating that categories and series are non-empty
+    /// and that every series has exactly as many values as there are categories.
+    pub fn build(self) -> Result<Chart> {
+        let series_names: Vec<&str> = self.series.iter().map(|s| s.name.as_str()).collect();
+        let series_lengths: Vec<usize> = self.series.iter().map(|s| s.values.len()).collect();
+        validate_chart(&self.categories, &series_names, &series_lengths)?;
+        Ok(Chart {
             title: self.title,
             chart_type: self.chart_type,
             categories: self.categories,
@@ -60,7 +65,7 @@ impl ChartBuilder {
             y: self.placement.y,
             width: self.placement.width,
             height: self.placement.height,
-        }
+        })
     }
 }
 
@@ -76,7 +81,8 @@ mod tests {
             .add_series(ChartSeries::new("2024", vec![120.0, 180.0, 220.0]))
             .position(100000, 200000)
             .size(4000000, 3000000)
-            .build();
+            .build()
+            .expect("valid chart");
 
         assert_eq!(chart.title, "Revenue");
         assert_eq!(chart.chart_type, ChartType::Bar);
@@ -84,5 +90,33 @@ mod tests {
         assert_eq!(chart.series_count(), 2);
         assert_eq!(chart.x, 100000);
         assert_eq!(chart.y, 200000);
+    }
+
+    #[test]
+    fn test_chart_builder_rejects_empty_categories() {
+        let res = ChartBuilder::new("Revenue", ChartType::Bar)
+            .add_series(ChartSeries::new("2023", vec![]))
+            .build();
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_chart_builder_rejects_no_series() {
+        let res = ChartBuilder::new("Revenue", ChartType::Bar)
+            .categories(vec!["Q1", "Q2"])
+            .build();
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_chart_builder_rejects_length_mismatch() {
+        let res = ChartBuilder::new("Revenue", ChartType::Bar)
+            .categories(vec!["Q1", "Q2", "Q3"])
+            .add_series(ChartSeries::new("2023", vec![100.0, 150.0, 200.0]))
+            .add_series(ChartSeries::new("2024", vec![120.0, 180.0]))
+            .build();
+        assert!(res.is_err());
+        let msg = format!("{}", res.unwrap_err());
+        assert!(msg.contains("'2024'"));
     }
 }

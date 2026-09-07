@@ -18,13 +18,14 @@ While other Rust crates for PPTX generation are incomplete, broken, or abandoned
 
 **MCP:** Build with `--features mcp` and run **`ppt_mcp`** — a [Model Context Protocol](https://modelcontextprotocol.io) server ([rmcp](https://crates.io/crates/rmcp)) so Cursor, Claude Desktop, and other MCP clients can create, read, export, and validate `.pptx` via stdio. See [MCP server](#mcp-server-model-context-protocol).
 
-**NEW v0.2.19**: PowerPoint zero-repair compatibility gate — multiple slide layouts, template-based generation, chart Excel workbook embedding, handout master packaging, slide master completeness, and a structured `core::package_validation` API.
+**NEW v0.2.24**: `web2md` bridge — HTML→Markdown→Slides pipeline via the `web2md` crate with a `--web2md` CLI flag on `web2ppt`. **v0.2.23**: pure-Rust PDF export via `pdfrs` (`pdf-native` feature, no LibreOffice dependency). **v0.2.19**: PowerPoint zero-repair compatibility gate — multiple slide layouts, template-based generation, chart Excel workbook embedding, handout master packaging, slide master completeness, and a structured `core::package_validation` API.
 
 ## Why ppt-rs?
 
 - 🤖 **MCP server** - Optional `ppt_mcp` binary exposes presentation workflows as MCP tools for AI assistants and IDE integrations (`--features mcp`).
 - 🚀 **Markdown to PPTX** - Write slides in Markdown, get PowerPoint files. Perfect for developers.
-- 🌐 **HTML to PPTX** - Convert HTML pages/snippets to PowerPoint with the `html2ppt` command or `Html2Ppt` API
+- 🌐 **HTML to PPTX** - Convert HTML pages/snippets to PowerPoint with the `html2ppt` command or `Html2Ppt` API; `--web2md` routes HTML→Markdown→Slides (v0.2.24)
+- 📄 **Pure-Rust PDF export** - `pdfrs`-backed PDF generation with no LibreOffice dependency (`pdf-native` feature) (v0.2.23)
 - 🎨 **Embedded themes** - Brand decks with custom colors and fonts via `PresentationTheme` (v0.2.16)
 - ⚡ **Large decks** - Lazy slide loading and optimized generation for 100+ slides (v0.2.17)
 - 🧩 **Templates & layouts** - Clone masters/theme/layouts from an existing deck (`--template`) and pick from 7 slide layouts per slide (v0.2.19)
@@ -507,16 +508,16 @@ Add to `Cargo.toml`:
 
 ```toml
 [dependencies]
-ppt-rs = "0.2.19"
+ppt-rs = "0.2.26"
 
 # Optional: MCP server types / embedding (library module `ppt_rs::mcp`)
-# ppt-rs = { version = "0.2.19", features = ["mcp"] }
+# ppt-rs = { version = "0.2.26", features = ["mcp"] }
 ```
 
 ## Examples
 
 Full walkthrough of the simplified helpers, charts, themes, export, and validation:
-**[API_GUIDE.md](API_GUIDE.md)**.
+**[API_GUIDE.md](docs/API_GUIDE.md)**.
 
 ### Tables
 
@@ -848,7 +849,7 @@ Unlike other Rust PPTX crates that:
 
 ## Technical Details
 
-- **Version**: 0.2.19
+- **Version**: 0.2.26
 - **Format**: Microsoft PowerPoint 2007+ (.pptx)
 - **Standard**: ECMA-376 Office Open XML
 - **Compatibility**: PowerPoint, LibreOffice, Google Slides, Keynote

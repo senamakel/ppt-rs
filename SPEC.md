@@ -620,6 +620,30 @@ pres.save_thumbnail("thumbnail.png", 300)?;
 - `ImageExportOptions::high_quality()` — 300 DPI PNG
 - `ImageExportOptions::web_optimized()` — 96 DPI JPEG
 
+### Export to PDF (v0.2.23, pure-Rust)
+
+Pure-Rust PDF export via `pdfrs` — no LibreOffice dependency. Enable with the `pdf-native` feature (default on).
+
+```rust
+use ppt_rs::api::Presentation;
+use ppt_rs::export::pdf_export::{PdfExportOptions, PdfOrientation};
+
+let pres = Presentation::with_title("My Presentation")
+    .add_slide(SlideContent::new("Slide 1"));
+
+// File path
+let options = PdfExportOptions::new().with_orientation(PdfOrientation::Landscape);
+pres.save_as_pdf_via_pdfrs("output.pdf", &options)?;
+
+// In-memory bytes
+let bytes = pres.to_pdf_bytes(&options)?;
+```
+
+**PDF Export Options:**
+| Option | Default | Description |
+|--------|---------|-------------|
+| `orientation` | Portrait | `PdfOrientation::Portrait` / `Landscape` |
+
 ### Compression (v0.2.12)
 
 ```rust
@@ -726,6 +750,9 @@ pptcli pdf2ppt <input.pdf> [output.pptx]             # Convert PDF
 pptcli validate <file.pptx> [--json]                 # Validate PPTX (structured issues)
 pptcli info <file.pptx>                              # Show info
 pptcli repair <input.pptx> <output.pptx>            # Repair PPTX
+pptcli export <input.pptx> [output] [--format pdf|html|png]  # Export to PDF/HTML/PNG
+pptcli merge <input1.pptx> <input2.pptx> [output.pptx]       # Merge presentations
+pptcli web2ppt <url> [-o output.pptx] [--web2md]             # Webpage→PPTX (requires --features web2ppt; --web2md requires --features web2md)
 ```
 
 ## Compatibility
@@ -766,6 +793,13 @@ match create_pptx("title", 5) {
 
 | Version | Features | Significance |
 |---------|----------|--------------|
+| 0.2.26 | Chart build-time validation (`ChartBuilder::build()` → `Result<Chart>`), MCP tool expansion (+3: `compress_pptx`, `repair_pptx`, `apply_theme` = 11 total), rmcp 2.2.0 API migration, `MEMORY.md` institutional knowledge repository | **Validation & MCP milestone** — charts fail fast on bad data; MCP covers full compress/repair/theme lifecycle |
+| 0.2.25 | Dependency updates, URL validation simplification in `web2ppt/fetcher.rs` | Maintenance — keep dependency tree current and streamline fetcher validation |
+| 0.2.24 | `web2md` bridge: HTML→Markdown→Slides pipeline via `web2md` crate, `--web2md` CLI flag, `url_to_pptx_via_web2md` / `html_to_pptx_via_web2md` | **Conversion milestone** — alternate HTML ingestion path through Markdown normalization |
+| 0.2.23 | Pure-Rust PDF export via `pdfrs` (`pdf-native` feature): `export_to_pdf` / `export_to_pdf_bytes`, `PdfExportOptions`; code-style refactor | **PDF milestone** — PDF generation with no LibreOffice dependency |
+| 0.2.22 | `API_GUIDE.md` expansion, CLI commands enhancements, examples refactor, mermaid stub removal | **Docs/API milestone** — comprehensive API reference and example modernization |
+| 0.2.21 | Lean audit: dead code removal, `escape_xml` hot-path, `XmlWriter` cleanup, `pptcli validate` structured + `--json`, warnings cleared | **Quality milestone** — leaner codebase and structured validation CLI |
+| 0.2.20 | rmcp upgrade, core validation integrated into CLI, `PresentationEditor` (duplicate/reorder/insert slides), embedded fonts + ink annotations wiring, `AGENTS.md` | **Editor milestone** — programmatic slide editing and agent development loop |
 | 0.2.19 | PowerPoint zero-repair compat gate: `core::package_validation` API, multiple slide layouts, template-based generation, chart Excel workbook embedding, handout master packaging, slide master completeness, rel ordering | **Compatibility milestone** — structured package validation + template/layouts so decks open in PowerPoint without repair |
 | 0.2.16 | Advanced theme customization: `PresentationTheme`, custom colors/fonts embedded in `theme1.xml` | **Theme milestone** — branded PPTX output with ECMA-376 color schemes and typefaces |
 | 0.2.14 | Enhanced HTML/Markdown: real images, task lists, strikethrough, extended CSS, interactive HTML export | **Content enhancement milestone** — real-world content support with images and advanced styling |

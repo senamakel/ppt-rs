@@ -76,10 +76,12 @@ fn assert_compat(bytes: &[u8], label: &str) {
 
 fn bar_chart(title: &str) -> ppt_rs::generator::Chart {
     ChartBuilder::new(title, ChartType::Bar)
+        .categories(vec!["A", "B", "C"])
         .position(1_000_000, 1_000_000)
         .size(3_000_000, 2_000_000)
         .add_series(ChartSeries::new("S1", vec![1.0, 2.0, 3.0]))
         .build()
+        .expect("valid chart")
 }
 
 // ---------------------------------------------------------------------------

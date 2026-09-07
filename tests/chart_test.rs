@@ -13,7 +13,8 @@ fn test_chart_generation() {
         .add_series(ChartSeries::new("Sales", vec![100.0, 150.0, 200.0]))
         .position(1000000, 1000000)
         .size(4000000, 3000000)
-        .build();
+        .build()
+        .expect("valid chart");
         
     slide.charts.push(chart);
     

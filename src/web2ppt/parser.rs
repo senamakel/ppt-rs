@@ -16,7 +16,7 @@
 //! - Processing well-structured HTML from trusted sources
 //! - For embedded applications
 //!
-//! See HTML_PARSERS.md for detailed comparison and migration guide.
+//! See docs/HTML_PARSERS.md for detailed comparison and migration guide.
 
 use super::{Web2PptError, Result, Web2PptConfig};
 use scraper::{Html, Selector, ElementRef};

@@ -4,49 +4,24 @@ This directory contains examples demonstrating different ways to generate PowerP
 
 ## Markdown Examples
 
-### presentation.md
-A comprehensive introduction to Rust programming language covering:
-- What is Rust and why it matters
-- Key features and benefits
-- Ownership system
-- Getting started guide
-- Common use cases
-- Resources for learning
+### markdown_features.md
+Demonstrates the enhanced Markdown-to-PowerPoint capabilities:
+- Real image handling (local + web URLs, auto-detected PNG/JPEG/GIF/WEBP/SVG)
+- Task lists (`- [x]` / `- [ ]`)
+- Strikethrough, bold, italic, inline code
+- GFM tables and fenced code blocks
 
 **Generate:**
 ```bash
-cargo run -- from-md examples/presentation.md examples/output/rust_presentation.pptx --title "Rust Programming"
+cargo run --features cli -- from-md examples/markdown_features.md examples/output/markdown_features.pptx --title "Advanced Markdown"
 ```
 
-### business.md
-A Q4 2025 business review presentation including:
-- Executive summary
-- Financial performance metrics
-- Market position analysis
-- Strategic initiatives
-- Team highlights
-- Product roadmap for 2026
-- Goals and challenges
+### enhanced_markdown_features.rs
+Rust API example exercising the same enhanced Markdown features programmatically.
 
-**Generate:**
+**Run:**
 ```bash
-cargo run -- from-md examples/business.md examples/output/business_review.pptx --title "Q4 2025 Business Review"
-```
-
-### technical.md
-A technical presentation on building scalable web applications:
-- Architecture patterns
-- Microservices approach
-- Database design
-- Performance optimization
-- Deployment strategies
-- Monitoring and observability
-- Security best practices
-- Cost optimization
-
-**Generate:**
-```bash
-cargo run -- from-md examples/technical.md examples/output/web_architecture.pptx --title "Building Scalable Web Applications"
+cargo run --features cli --example enhanced_markdown_features
 ```
 
 ## Rust Examples
@@ -76,17 +51,13 @@ cargo run --example proper_pptx
 
 ## Quick Start
 
-### Generate All Examples
-Run the provided script to generate all markdown examples:
+### Generate the Markdown Example
 
 ```bash
-bash examples/generate_from_md.sh
+cargo run --features cli -- from-md examples/markdown_features.md examples/output/markdown_features.pptx --title "Advanced Markdown"
 ```
 
-This will create:
-- `rust_presentation.pptx` - Rust programming introduction
-- `business_review.pptx` - Business performance review
-- `web_architecture.pptx` - Technical architecture guide
+This creates `examples/output/markdown_features.pptx`.
 
 ### Create Your Own
 
@@ -166,5 +137,5 @@ All generated presentations are saved to `examples/output/` and are valid Micros
 
 - [README.md](../README.md) - Main project documentation
 - [ARCHITECTURE.md](../ARCHITECTURE.md) - Architecture overview
-- [API_GUIDE.md](../API_GUIDE.md) - Simplified API reference
+- [API_GUIDE.md](../docs/API_GUIDE.md) - Simplified API reference
 - [SPEC.md](../SPEC.md) - Technical specifications

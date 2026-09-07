@@ -83,10 +83,12 @@ fn multi_slide_deck_passes_validation() {
 #[test]
 fn chart_deck_passes_validation() {
     let chart = ChartBuilder::new("Sales", ChartType::Bar)
+        .categories(vec!["A", "B", "C"])
         .position(1_000_000, 1_000_000)
         .size(3_000_000, 2_000_000)
         .add_series(ChartSeries::new("Q1", vec![1.0, 2.0, 3.0]))
-        .build();
+        .build()
+        .expect("valid chart");
     let slide = SlideContent::new("Chart").add_chart(chart);
     assert_package_valid(
         &create_pptx_with_content("Chart", vec![slide]).unwrap(),

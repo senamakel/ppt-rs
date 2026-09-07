@@ -131,7 +131,7 @@ let html = export_to_html_with_options(&presentation, &options)?;
 **Status**: ✅ Complete
 
 **Created Documentation**:
-- `HTML_PARSERS.md` - Comprehensive parser comparison guide
+- `docs/HTML_PARSERS.md` - Comprehensive parser comparison guide
 - Clear use cases for each parser
 - Migration guide and examples
 - Updated module documentation with inline comments
@@ -194,7 +194,7 @@ let html = export_to_html_with_options(&presentation, &options)?;
    - Shows export options and configurations
 
 ### Documentation Files
-1. **`HTML_PARSERS.md`**
+1. **`docs/HTML_PARSERS.md`**
    - Complete parser comparison guide
    - Use case recommendations
    - Architecture diagrams

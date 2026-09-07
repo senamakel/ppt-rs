@@ -277,7 +277,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .categories(vec!["North", "South", "East", "West"])
         .add_series(ChartSeries::new("2023", vec![100.0, 80.0, 120.0, 90.0]))
         .add_series(ChartSeries::new("2024", vec![120.0, 95.0, 140.0, 110.0]))
-        .build();
+        .build()
+        .expect("valid bar chart");
 
     let _line_chart = ChartBuilder::new("Monthly Trend", ChartType::Line)
         .categories(vec!["Jan", "Feb", "Mar", "Apr", "May", "Jun"])
@@ -285,12 +286,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "Revenue",
             vec![10.0, 12.0, 15.0, 14.0, 18.0, 22.0],
         ))
-        .build();
+        .build()
+        .expect("valid line chart");
 
     let _pie_chart = ChartBuilder::new("Market Share", ChartType::Pie)
         .categories(vec!["Product A", "Product B", "Product C", "Others"])
         .add_series(ChartSeries::new("Share", vec![40.0, 30.0, 20.0, 10.0]))
-        .build();
+        .build()
+        .expect("valid pie chart");
 
     slides.push(
         SlideContent::new("Chart Types: Bar, Line, Pie")

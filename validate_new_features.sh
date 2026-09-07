@@ -69,7 +69,7 @@ else
     echo "❌ HTML usage example missing"
 fi
 
-if [ -f "HTML_PARSERS.md" ]; then
+if [ -f "docs/HTML_PARSERS.md" ]; then
     echo "✅ Parser documentation exists"
 else
     echo "❌ Parser documentation missing"

@@ -1,6 +1,6 @@
 # TODO - ppt-rs
 
-**Tests**: 690+ passing | **Warnings**: 0 | **Clippy**: clean (project defaults) | **Version**: 0.2.21
+**Tests**: 1180+ passing | **Warnings**: 0 | **Clippy**: clean (project defaults) | **Version**: 0.2.26
 
 ## Active
 
@@ -33,9 +33,9 @@ Make the library easier to adopt, debug, and automate.
 
 - [x] **Structured validation CLI** — `pptcli validate` reports structured issues (severity/category/path) + `--json`
 - [x] **PresentationEditor enhancements** — duplicate slide, reorder slides, insert slide at index, batch replace
-- [ ] **Chart build-time validation** — category/series length checks via `core::validation` at `ChartBuilder::build()`
+- [x] **Chart build-time validation** — category/series length checks via `core::validation` at `ChartBuilder::build()`
 - [ ] **PPTX semantic diff** — slide-level compare (title, bullets, images, charts) for review/CI
-- [ ] **MCP tool expansion** — `compress_pptx`, `repair_pptx`, `apply_theme`, `export_markdown` / `export_html`
+- [x] **MCP tool expansion** — `compress_pptx`, `repair_pptx`, `apply_theme` (export_markdown/export_html already covered by `export_pptx`)
 
 ### Conversion & Platform
 Longer-horizon capabilities that broaden deployment options.
@@ -59,7 +59,7 @@ Longer-horizon capabilities that broaden deployment options.
 - [x] Image alt text / accessibility metadata
 - [x] PresentationEditor: duplicate, reorder, insert slides
 - [ ] Benchmark suite (Criterion: generation, lazy loading, compression)
-- [ ] MCP tools: compress, repair, theme, export
+- [x] MCP tools: compress, repair, theme, export
 
 ### P2 — Future
 - [x] PDF export without LibreOffice
@@ -95,6 +95,54 @@ Longer-horizon capabilities that broaden deployment options.
 ## Completed
 
 <details>
+<summary>v0.2.26 — Chart Validation & MCP Tool Expansion</summary>
+
+- **Chart build-time validation**: `ChartBuilder::build()` now returns `Result<Chart>` and calls `core::validation::validate_chart()` — enforces non-empty categories, non-empty series, and series-length == category-count. Surfaced and fixed 6 silently-broken chart call sites in tests/examples.
+- **MCP tool expansion**: +3 tools (`compress_pptx`, `repair_pptx`, `apply_theme`) = 11 total
+- **rmcp 2.2.0 migration**: fixed pre-existing build break from v0.2.20 upgrade — `Content`→`ContentBlock`, added `server`+`macros` features, `mcp` feature now enables `cli`
+- **MEMORY.md**: scaffolded institutional knowledge repository
+
+</details>
+
+<details>
+<summary>v0.2.25 — Dependency Updates & URL Validation</summary>
+
+- **Dependency refresh**: crate updates across the dependency tree
+- **URL validation simplified**: streamlined validation in `src/web2ppt/fetcher.rs`
+- **Markdown parser**: minor cleanup in `src/cli/markdown/parser.rs`
+
+</details>
+
+<details>
+<summary>v0.2.24 — Web2MD Bridge (HTML→Markdown→Slides)</summary>
+
+- **`web2md` feature**: HTML→Markdown (via the `web2md` crate)→Slides pipeline
+- **`--web2md` CLI flag** on `web2ppt` routes HTML through the Markdown pipeline
+- **`src/web2ppt/web2md_bridge.rs`**: bridge implementation (`url_to_pptx_via_web2md`, `html_to_pptx_via_web2md`)
+- **`tests/web2md_bridge_test.rs`**: end-to-end bridge tests
+
+</details>
+
+<details>
+<summary>v0.2.23 — Pure-Rust PDF Export via pdfrs</summary>
+
+- **`pdf-native` feature**: `pdfrs`-backed PDF generation with no LibreOffice dependency
+- **API**: `export_to_pdf` / `export_to_pdf_bytes`, `PdfExportOptions`, `PdfOrientation`
+- **Code-style refactor**: `api.rs`, `core::package_validation` rules, examples cleanup
+
+</details>
+
+<details>
+<summary>v0.2.22 — API Guide Expansion & CLI/Examples Refactor</summary>
+
+- **`API_GUIDE.md`** expanded with presentation builder, charts, images, themes/templates, export/compression, editor, validation
+- **CLI commands** (`src/cli/commands.rs`, `src/bin/pptcli.rs`) enhanced
+- **Examples refactored**: `dimension_demo`, `shapes_demo`, `table_generation`, `proper_pptx`, `templates_demo`
+- **Dead code removed**: `cli/markdown/mermaid/flowchart` / `types` stubs
+
+</details>
+
+<details>
 <summary>v0.2.21 — Lean Audit, API Docs & Structured Validate</summary>
 
 - **Dead code removed**: unused image placeholder / bullet paragraph helpers, unused Mermaid gradient/transparent shape builders, unused `DiagramElements.grouped`, stub `web2ppt` CLI handler, dead example helpers
@@ -105,6 +153,17 @@ Longer-horizon capabilities that broaden deployment options.
 - **API_GUIDE.md**: Presentation builder, charts, images, themes/templates, export/compression, editor, validation
 - **`pptcli validate`**: structured human report + `--json` for CI
 - Warnings cleared (lib + shared test helpers)
+
+</details>
+
+<details>
+<summary>v0.2.20 — rmcp Upgrade, CLI Validation & Editor Enhancements</summary>
+
+- **rmcp dependency upgraded**; `mcp/mod.rs` tool wiring updated
+- **Core validation integrated into CLI** — `pptcli validate` delegates to `core::validation` / `core::package_validation`
+- **`PresentationEditor` enhancements** (`src/oxml/editor.rs`): duplicate slide, reorder slides, insert slide at index, batch replace
+- **Embedded fonts + ink annotations wiring**: `slide_content/embedded_fonts.rs`, `slide_content/ink_annotations.rs` integrated into the generator
+- **`AGENTS.md`** introduced — agent development loop
 
 </details>
 
@@ -248,6 +307,7 @@ Landed the full "Compatibility & Trust" and "Layout & Structure" proposed tracks
 - **MCP Server** (`src/mcp/mod.rs`):
   - New `ppt_mcp` binary: Model Context Protocol stdio server via `rmcp`
   - 8 MCP tools: `create_presentation`, `markdown_to_pptx`, `get_pptx_info`, `export_pptx`, `merge_pptx`, `validate_pptx`, `create_presentation_with_tables`, `create_presentation_with_charts`
+  - v0.2.26: +3 tools (`compress_pptx`, `repair_pptx`, `apply_theme`) = 11 total; rmcp 2.2.0 API migration (`Content`→`ContentBlock`, `server`+`macros` features)
   - Feature-gated behind `mcp` feature flag
   - Integration test suite (`tests/mcp_integration_test.rs`, 700+ lines)
 
@@ -295,7 +355,7 @@ Landed the full "Compatibility & Trust" and "Layout & Structure" proposed tracks
   - Configurable export options (HtmlExportOptions)
   - Enhanced CSS/JavaScript for better UX
 
-- **HTML Parser Documentation** (`HTML_PARSERS.md`):
+- **HTML Parser Documentation** (`docs/HTML_PARSERS.md`):
   - Comprehensive parser comparison guide
   - Clear use cases for each parser (basic vs web scraper)
   - Migration guide and examples

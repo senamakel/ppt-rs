@@ -6,7 +6,8 @@ use rmcp::{
     ErrorData as McpError, ServerHandler, ServiceExt,
     handler::server::wrapper::Parameters,
     model::{
-        CallToolResult, Content, Implementation, ProtocolVersion, ServerCapabilities, ServerInfo,
+        CallToolResult, ContentBlock, Implementation, ProtocolVersion, ServerCapabilities,
+        ServerInfo,
     },
     schemars,
     tool, tool_handler, tool_router,
@@ -95,6 +96,69 @@ pub struct CreateWithChartsArgs {
     pub charts: Vec<ChartSlideArg>,
 }
 
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct CompressPptxArgs {
+    pub input_path: String,
+    pub output_path: String,
+    /// Compression level: "light", "medium", or "aggressive". Defaults to "medium".
+    #[serde(default)]
+    pub level: Option<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct RepairPptxArgs {
+    pub input_path: String,
+    pub output_path: String,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct ApplyThemeArgs {
+    pub input_path: String,
+    pub output_path: String,
+    /// Theme specification. Omit to apply the default Office theme.
+    #[serde(default)]
+    pub theme: Option<ThemeSpec>,
+}
+
+#[derive(Debug, Default, Deserialize, schemars::JsonSchema)]
+pub struct ThemeSpec {
+    /// Theme name (e.g. "Corporate Blue").
+    #[serde(default)]
+    pub name: Option<String>,
+    /// Semantic palette roles as hex strings (without leading #).
+    #[serde(default)]
+    pub palette: Option<PaletteSpec>,
+    /// Heading and body typefaces.
+    #[serde(default)]
+    pub fonts: Option<FontsSpec>,
+}
+
+#[derive(Debug, Default, Deserialize, schemars::JsonSchema)]
+pub struct PaletteSpec {
+    #[serde(default)]
+    pub primary: Option<String>,
+    #[serde(default)]
+    pub secondary: Option<String>,
+    #[serde(default)]
+    pub accent: Option<String>,
+    #[serde(default)]
+    pub background: Option<String>,
+    #[serde(default)]
+    pub text: Option<String>,
+    #[serde(default)]
+    pub light: Option<String>,
+    #[serde(default)]
+    pub dark: Option<String>,
+}
+
+#[derive(Debug, Default, Deserialize, schemars::JsonSchema)]
+pub struct FontsSpec {
+    #[serde(default)]
+    pub major: Option<String>,
+    #[serde(default)]
+    pub minor: Option<String>,
+}
+
 // ---------------------------------------------------------------------------
 // MCP server
 // ---------------------------------------------------------------------------
@@ -103,11 +167,11 @@ pub struct CreateWithChartsArgs {
 pub struct PptMcp;
 
 fn tool_text(text: impl Into<String>) -> CallToolResult {
-    CallToolResult::success(vec![Content::text(text)])
+    CallToolResult::success(vec![ContentBlock::text(text)])
 }
 
 fn tool_error(text: impl Into<String>) -> CallToolResult {
-    CallToolResult::error(vec![Content::text(format!("Error: {}", text.into()))])
+    CallToolResult::error(vec![ContentBlock::text(format!("Error: {}", text.into()))])
 }
 
 #[tool_router]
@@ -186,6 +250,39 @@ impl PptMcp {
         Parameters(args): Parameters<CreateWithChartsArgs>,
     ) -> Result<CallToolResult, McpError> {
         Ok(handle_create_with_charts(args))
+    }
+
+    #[tool(
+        name = "compress_pptx",
+        description = "Compress a PowerPoint file to reduce file size by removing unused media, optimizing XML, and (optionally) stripping properties/notes. Returns original/compressed size and reduction percent."
+    )]
+    fn compress_pptx(
+        &self,
+        Parameters(args): Parameters<CompressPptxArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        Ok(handle_compress_pptx(args))
+    }
+
+    #[tool(
+        name = "repair_pptx",
+        description = "Validate and repair a PowerPoint file's structure (required parts, relationships, content types, XML well-formedness). Returns a summary of issues found and whether the file was fully repaired."
+    )]
+    fn repair_pptx(
+        &self,
+        Parameters(args): Parameters<RepairPptxArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        Ok(handle_repair_pptx(args))
+    }
+
+    #[tool(
+        name = "apply_theme",
+        description = "Apply a custom color/font theme to an existing PowerPoint file and save the result. Accepts a semantic palette (primary/secondary/accent/background/text/light/dark as hex) and major/minor fonts. Omit the theme to reset to the default Office theme."
+    )]
+    fn apply_theme(
+        &self,
+        Parameters(args): Parameters<ApplyThemeArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        Ok(handle_apply_theme(args))
     }
 }
 
@@ -495,7 +592,10 @@ fn handle_create_with_charts(args: CreateWithChartsArgs) -> CallToolResult {
             ));
         }
 
-        let chart = chart_builder.build();
+        let chart = match chart_builder.build() {
+            Ok(c) => c,
+            Err(e) => return tool_error(format!("Invalid chart data: {}", e)),
+        };
         let slide = crate::generator::SlideContent::new(slide_title).add_chart(chart);
         pres = pres.add_slide(slide);
     }
@@ -508,6 +608,173 @@ fn handle_create_with_charts(args: CreateWithChartsArgs) -> CallToolResult {
         )),
         Err(e) => tool_error(format!("Failed to save: {}", e)),
     }
+}
+
+fn handle_compress_pptx(args: CompressPptxArgs) -> CallToolResult {
+    let CompressPptxArgs {
+        input_path,
+        output_path,
+        level,
+    } = args;
+
+    let level = match level.as_deref().unwrap_or("medium") {
+        "light" => crate::opc::compress::CompressionLevel::Light,
+        "medium" => crate::opc::compress::CompressionLevel::Medium,
+        "aggressive" => crate::opc::compress::CompressionLevel::Aggressive,
+        other => {
+            return tool_error(format!(
+                "Unsupported level: '{other}'. Use light, medium, or aggressive."
+            ));
+        }
+    };
+
+    let options = crate::opc::compress::CompressionOptions::new().with_level(level);
+
+    match crate::opc::compress::compress_pptx(&input_path, &output_path, &options) {
+        Ok(result) => tool_text(format!(
+            "Compressed '{}' -> '{}': {} bytes -> {} bytes ({:.1}% reduction)",
+            input_path,
+            output_path,
+            result.original_size,
+            result.compressed_size,
+            result.reduction_percent
+        )),
+        Err(e) => tool_error(format!("Compression failed: {}", e)),
+    }
+}
+
+fn handle_repair_pptx(args: RepairPptxArgs) -> CallToolResult {
+    let RepairPptxArgs {
+        input_path,
+        output_path,
+    } = args;
+
+    let mut repair = match crate::oxml::repair::PptxRepair::open(&input_path) {
+        Ok(r) => r,
+        Err(e) => return tool_error(format!("Failed to open '{}': {}", input_path, e)),
+    };
+
+    let issues = repair.validate();
+    let issue_count = issues.len();
+
+    if issue_count == 0 {
+        // Still save so the caller gets an output file.
+        if let Err(e) = repair.save(&output_path) {
+            return tool_error(format!("No issues found, but save failed: {}", e));
+        }
+        return tool_text(format!(
+            "No issues found in '{}'. Saved a copy to '{}'.",
+            input_path, output_path
+        ));
+    }
+
+    let result = repair.repair();
+    if let Err(e) = repair.save(&output_path) {
+        return tool_error(format!("Repair completed but save failed: {}", e));
+    }
+
+    let status = if result.fully_repaired() {
+        "fully repaired"
+    } else {
+        "partially repaired (some issues remain)"
+    };
+    tool_text(format!(
+        "Found {} issue(s) in '{}'; {}: {} critical. Saved to '{}'.",
+        issue_count, input_path, status, result.critical_issues(), output_path
+    ))
+}
+
+fn handle_apply_theme(args: ApplyThemeArgs) -> CallToolResult {
+    let ApplyThemeArgs {
+        input_path,
+        output_path,
+        theme,
+    } = args;
+
+    let theme = match theme {
+        Some(spec) => build_theme(spec),
+        None => crate::generator::PresentationTheme::office(),
+    };
+
+    let pres = match crate::api::Presentation::from_path(&input_path) {
+        Ok(p) => p,
+        Err(e) => return tool_error(format!("Failed to load '{}': {}", input_path, e)),
+    };
+
+    let pres = pres.with_theme(theme);
+
+    match pres.save(&output_path) {
+        Ok(()) => tool_text(format!(
+            "Applied theme to '{}' and saved to '{}'.",
+            input_path, output_path
+        )),
+        Err(e) => tool_error(format!("Failed to save: {}", e)),
+    }
+}
+
+/// Build a `PresentationTheme` from an MCP `ThemeSpec`, falling back to Office
+/// defaults for any omitted fields.
+fn build_theme(spec: ThemeSpec) -> crate::generator::PresentationTheme {
+    use crate::generator::{PresentationTheme, ThemeColorScheme, ThemeFonts};
+
+    let name = spec.name.unwrap_or_else(|| "Custom Theme".into());
+
+    let colors = match spec.palette {
+        Some(p) => {
+            let office = ThemeColorScheme::office();
+            // Use from_palette when primary+background+text are all present;
+            // otherwise layer individual overrides on the Office defaults.
+            if p.primary.is_some() && p.background.is_some() && p.text.is_some() {
+                ThemeColorScheme::from_palette(
+                    p.primary.as_deref().unwrap(),
+                    p.secondary.as_deref().unwrap_or("4F81BD"),
+                    p.accent.as_deref().unwrap_or("9BBB59"),
+                    p.background.as_deref().unwrap(),
+                    p.text.as_deref().unwrap(),
+                    p.light.as_deref().unwrap_or("EEECE1"),
+                    p.dark.as_deref().unwrap_or("1F497D"),
+                )
+            } else {
+                let mut c = office;
+                if let Some(v) = p.primary {
+                    c = c.accent1(v);
+                }
+                if let Some(v) = p.secondary {
+                    c = c.accent2(v);
+                }
+                if let Some(v) = p.accent {
+                    c = c.accent3(v);
+                }
+                if let Some(v) = p.text {
+                    c.dk1 = v;
+                }
+                if let Some(v) = p.background {
+                    c.lt1 = v;
+                }
+                if let Some(v) = p.dark {
+                    c.dk2 = v;
+                }
+                if let Some(v) = p.light {
+                    c.lt2 = v;
+                }
+                c
+            }
+        }
+        None => ThemeColorScheme::office(),
+    };
+
+    let fonts = match spec.fonts {
+        Some(f) => {
+            let office = ThemeFonts::office();
+            ThemeFonts {
+                major: f.major.unwrap_or(office.major),
+                minor: f.minor.unwrap_or(office.minor),
+            }
+        }
+        None => ThemeFonts::office(),
+    };
+
+    PresentationTheme::new(name).colors(colors).fonts(fonts)
 }
 
 pub async fn run_server() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
