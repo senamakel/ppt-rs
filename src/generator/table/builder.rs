@@ -1,7 +1,7 @@
 //! Table and TableBuilder for constructing tables
 
-use crate::core::ElementPlacement;
 use super::row::TableRow;
+use crate::core::ElementPlacement;
 
 /// Table definition with rows and positioning
 #[derive(Clone, Debug)]
@@ -19,18 +19,21 @@ pub struct Table {
 impl Table {
     /// Create a new table with explicit rows, column widths, and position
     pub fn new(rows: Vec<TableRow>, column_widths: Vec<u32>, x: u32, y: u32) -> Self {
-        Table { rows, column_widths, x, y }
+        Table {
+            rows,
+            column_widths,
+            x,
+            y,
+        }
     }
 
     /// Create a table from raw data (2D string array)
     pub fn from_data(data: Vec<Vec<&str>>, column_widths: Vec<u32>, x: u32, y: u32) -> Self {
         use super::cell::TableCell;
-        
+
         let rows = data
             .into_iter()
-            .map(|row_data| {
-                TableRow::new(row_data.into_iter().map(TableCell::new).collect())
-            })
+            .map(|row_data| TableRow::new(row_data.into_iter().map(TableCell::new).collect()))
             .collect();
 
         Table {
@@ -97,9 +100,7 @@ impl TableBuilder {
 
     /// Add a simple row from strings
     pub fn add_simple_row(mut self, cells: Vec<&str>) -> Self {
-        let row = TableRow::new(
-            cells.into_iter().map(super::cell::TableCell::new).collect(),
-        );
+        let row = TableRow::new(cells.into_iter().map(super::cell::TableCell::new).collect());
         self.rows.push(row);
         self
     }

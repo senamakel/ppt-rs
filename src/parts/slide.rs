@@ -5,8 +5,8 @@
 use super::base::{ContentType, Part, PartType};
 use super::relationships::{RelationshipType, Relationships};
 use crate::exc::PptxError;
-use crate::generator::slide_xml::create_slide_xml_with_content;
 use crate::generator::SlideContent;
+use crate::generator::slide_xml::create_slide_xml_with_content;
 use crate::oxml::{ParsedSlide, SlideParser};
 
 /// Slide part (ppt/slides/slideN.xml)
@@ -118,7 +118,7 @@ impl Part for SlidePart {
 
         // Generate from content if available
         if let Some(ref content) = self.content {
-            let xml = create_slide_xml_with_content(self.slide_number, content, &[], None);
+            let xml = create_slide_xml_with_content(self.slide_number, content, &[], None, &[]);
             return Ok(xml);
         }
 

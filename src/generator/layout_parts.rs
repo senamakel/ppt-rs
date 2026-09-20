@@ -8,10 +8,17 @@ use crate::generator::slide_content::print_settings::PrintSettings;
 pub const STANDARD_LAYOUT_COUNT: usize = 7;
 
 #[allow(clippy::too_many_arguments)]
-fn placeholder(id: u32, name: &str, ph_type: &str, ph_idx: Option<u32>, x: u32, y: u32, cx: u32, cy: u32) -> String {
-    let idx_xml = ph_idx
-        .map(|i| format!(r#" idx="{i}""#))
-        .unwrap_or_default();
+fn placeholder(
+    id: u32,
+    name: &str,
+    ph_type: &str,
+    ph_idx: Option<u32>,
+    x: u32,
+    y: u32,
+    cx: u32,
+    cy: u32,
+) -> String {
+    let idx_xml = ph_idx.map(|i| format!(r#" idx="{i}""#)).unwrap_or_default();
     format!(
         r#"<p:sp><p:nvSpPr><p:cNvPr id="{id}" name="{name}"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr><p:nvPr><p:ph type="{ph_type}"{idx_xml}/></p:nvPr></p:nvSpPr><p:spPr><a:xfrm><a:off x="{x}" y="{y}"/><a:ext cx="{cx}" cy="{cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:endParaRPr lang="en-US"/></a:p></p:txBody></p:sp>"#
     )
@@ -89,8 +96,12 @@ pub fn create_slide_layout_xml(n: usize, _print: Option<&PrintSettings>) -> Stri
             "Title Slide",
             &format!(
                 "{}{}",
-                placeholder(2, "Title", "ctrTitle", None, 1_524_000, 1_828_800, 6_096_000, 1_828_800),
-                placeholder(3, "Subtitle", "subTitle", None, 1_524_000, 3_657_600, 6_096_000, 914_400),
+                placeholder(
+                    2, "Title", "ctrTitle", None, 1_524_000, 1_828_800, 6_096_000, 1_828_800
+                ),
+                placeholder(
+                    3, "Subtitle", "subTitle", None, 1_524_000, 3_657_600, 6_096_000, 914_400
+                ),
             ),
         ),
         2 => layout_shell(
@@ -98,8 +109,19 @@ pub fn create_slide_layout_xml(n: usize, _print: Option<&PrintSettings>) -> Stri
             "Title and Content",
             &format!(
                 "{}{}",
-                placeholder(2, "Title", "title", None, 457_200, 274_638, 8_229_600, 1_143_000),
-                placeholder(3, "Content", "body", Some(1), 457_200, 1_600_200, 8_229_600, 4_525_963),
+                placeholder(
+                    2, "Title", "title", None, 457_200, 274_638, 8_229_600, 1_143_000
+                ),
+                placeholder(
+                    3,
+                    "Content",
+                    "body",
+                    Some(1),
+                    457_200,
+                    1_600_200,
+                    8_229_600,
+                    4_525_963
+                ),
             ),
         ),
         3 => layout_shell(
@@ -107,9 +129,29 @@ pub fn create_slide_layout_xml(n: usize, _print: Option<&PrintSettings>) -> Stri
             "Two Content",
             &format!(
                 "{}{}{}",
-                placeholder(2, "Title", "title", None, 457_200, 274_638, 8_229_600, 1_143_000),
-                placeholder(3, "Content Left", "body", Some(1), 457_200, 1_600_200, 4_025_400, 4_525_963),
-                placeholder(4, "Content Right", "body", Some(2), 4_661_400, 1_600_200, 4_025_400, 4_525_963),
+                placeholder(
+                    2, "Title", "title", None, 457_200, 274_638, 8_229_600, 1_143_000
+                ),
+                placeholder(
+                    3,
+                    "Content Left",
+                    "body",
+                    Some(1),
+                    457_200,
+                    1_600_200,
+                    4_025_400,
+                    4_525_963
+                ),
+                placeholder(
+                    4,
+                    "Content Right",
+                    "body",
+                    Some(2),
+                    4_661_400,
+                    1_600_200,
+                    4_025_400,
+                    4_525_963
+                ),
             ),
         ),
         4 => layout_shell(
@@ -117,23 +159,47 @@ pub fn create_slide_layout_xml(n: usize, _print: Option<&PrintSettings>) -> Stri
             "Section Header",
             &format!(
                 "{}{}",
-                placeholder(2, "Title", "title", None, 457_200, 1_600_200, 8_229_600, 1_828_800),
-                placeholder(3, "Subtitle", "body", Some(1), 457_200, 3_657_600, 8_229_600, 1_371_600),
+                placeholder(
+                    2, "Title", "title", None, 457_200, 1_600_200, 8_229_600, 1_828_800
+                ),
+                placeholder(
+                    3,
+                    "Subtitle",
+                    "body",
+                    Some(1),
+                    457_200,
+                    3_657_600,
+                    8_229_600,
+                    1_371_600
+                ),
             ),
         ),
         5 => layout_shell("blank", "Blank", ""),
         6 => layout_shell(
             "titleOnly",
             "Title Only",
-            &placeholder(2, "Title", "title", None, 457_200, 274_638, 8_229_600, 1_143_000),
+            &placeholder(
+                2, "Title", "title", None, 457_200, 274_638, 8_229_600, 1_143_000,
+            ),
         ),
         7 => layout_shell(
             "obj",
             "Title and Big Content",
             &format!(
                 "{}{}",
-                placeholder(2, "Title", "title", None, 457_200, 274_638, 8_229_600, 800_000),
-                placeholder(3, "Content", "body", Some(1), 457_200, 1_200_000, 8_229_600, 5_000_000),
+                placeholder(
+                    2, "Title", "title", None, 457_200, 274_638, 8_229_600, 800_000
+                ),
+                placeholder(
+                    3,
+                    "Content",
+                    "body",
+                    Some(1),
+                    457_200,
+                    1_200_000,
+                    8_229_600,
+                    5_000_000
+                ),
             ),
         ),
         _ => layout_shell("blank", "Blank", ""),

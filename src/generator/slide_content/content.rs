@@ -1,17 +1,18 @@
 //! SlideContent struct for complex presentations
 
-use crate::generator::table::Table;
-use crate::generator::shapes::Shape;
-use crate::generator::images::Image;
-use crate::generator::connectors::Connector;
-use crate::generator::media::{Video, Audio};
 use crate::generator::charts::Chart;
+use crate::generator::connectors::Connector;
+use crate::generator::images::Image;
+use crate::generator::media::{Audio, Video};
+use crate::generator::shapes::Shape;
+use crate::generator::table::Table;
 
-use super::bullet::{BulletStyle, BulletPoint};
-use super::layout::SlideLayout;
+use super::bullet::{BulletPoint, BulletStyle};
 use super::code_block::CodeBlock;
-use super::transition::TransitionType;
+use super::comments::SlideComments;
 use super::ink_annotations::InkAnnotations;
+use super::layout::SlideLayout;
+use super::transition::TransitionType;
 
 /// Slide content for more complex presentations
 #[derive(Clone, Debug)]
@@ -54,6 +55,8 @@ pub struct SlideContent {
     pub code_blocks: Vec<CodeBlock>,
     /// Ink annotations on the slide
     pub ink_annotations: Option<InkAnnotations>,
+    /// Review comments on the slide (packaged as `ppt/comments/commentN.xml`)
+    pub comments: SlideComments,
 }
 
 impl SlideContent {
@@ -88,6 +91,7 @@ impl SlideContent {
             charts: Vec::new(),
             code_blocks: Vec::new(),
             ink_annotations: None,
+            comments: SlideComments::default(),
         }
     }
 
@@ -96,42 +100,49 @@ impl SlideContent {
         self.transition = transition;
         self
     }
-    
+
     /// Add a bullet point with default style
     pub fn add_bullet(mut self, text: &str) -> Self {
         self.content.push(text.to_string());
-        self.bullets.push(BulletPoint::new(text).with_style(self.bullet_style));
+        self.bullets
+            .push(BulletPoint::new(text).with_style(self.bullet_style));
         self
     }
-    
+
     /// Add a bullet point with specific style
     pub fn add_styled_bullet(mut self, text: &str, style: BulletStyle) -> Self {
         self.content.push(text.to_string());
         self.bullets.push(BulletPoint::new(text).with_style(style));
         self
     }
-    
+
     /// Add a numbered item (shorthand for add_styled_bullet with Number)
     pub fn add_numbered(mut self, text: &str) -> Self {
         self.content.push(text.to_string());
-        self.bullets.push(BulletPoint::new(text).with_style(BulletStyle::Number));
+        self.bullets
+            .push(BulletPoint::new(text).with_style(BulletStyle::Number));
         self
     }
-    
+
     /// Add a lettered item (shorthand for add_styled_bullet with LetterLower)
     pub fn add_lettered(mut self, text: &str) -> Self {
         self.content.push(text.to_string());
-        self.bullets.push(BulletPoint::new(text).with_style(BulletStyle::LetterLower));
+        self.bullets
+            .push(BulletPoint::new(text).with_style(BulletStyle::LetterLower));
         self
     }
-    
+
     /// Add a sub-bullet (indented)
     pub fn add_sub_bullet(mut self, text: &str) -> Self {
         self.content.push(format!("  {}", text));
-        self.bullets.push(BulletPoint::new(text).with_level(1).with_style(self.bullet_style));
+        self.bullets.push(
+            BulletPoint::new(text)
+                .with_level(1)
+                .with_style(self.bullet_style),
+        );
         self
     }
-    
+
     /// Set default bullet style for this slide
     pub fn with_bullet_style(mut self, style: BulletStyle) -> Self {
         self.bullet_style = style;
@@ -312,6 +323,22 @@ impl SlideContent {
         self
     }
 
+    /// Add a review comment to the slide.
+    ///
+    /// `author_id` refers to an author registered on the presentation's
+    /// comment author list (see [`crate::generator::PresentationSettings`]).
+    /// `x`/`y` are the comment anchor position in EMU.
+    pub fn add_comment(mut self, author_id: u32, text: &str, x: u32, y: u32) -> Self {
+        self.comments.add_comment(author_id, text, x, y);
+        self
+    }
+
+    /// Attach a prepared [`SlideComments`] collection to the slide
+    pub fn with_comments(mut self, comments: SlideComments) -> Self {
+        self.comments = comments;
+        self
+    }
+
     /// Check if slide has any media
     pub fn has_media(&self) -> bool {
         !self.videos.is_empty() || !self.audios.is_empty()
@@ -323,3 +350,35 @@ impl SlideContent {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_add_comment_builds_collection() {
+        let slide = SlideContent::new("S")
+            .add_comment(0, "Fix wording", 100, 200)
+            .add_comment(0, "Add source", 300, 400);
+        assert_eq!(slide.comments.len(), 2);
+        assert_eq!(slide.comments.comments()[0].text, "Fix wording");
+        assert_eq!(slide.comments.comments()[1].index, 2);
+        let xml = slide.comments.to_xml();
+        assert!(xml.contains("<p:cmLst"));
+        assert!(xml.contains("Fix wording"));
+    }
+
+    #[test]
+    fn test_with_comments_replaces_collection() {
+        let mut cs = SlideComments::new();
+        cs.add_comment(1, "Note", 0, 0);
+        let slide = SlideContent::new("S").with_comments(cs);
+        assert_eq!(slide.comments.len(), 1);
+        assert_eq!(slide.comments.comments()[0].author_id, 1);
+    }
+
+    #[test]
+    fn test_new_slide_has_empty_comments() {
+        let slide = SlideContent::new("S");
+        assert!(slide.comments.is_empty());
+    }
+}

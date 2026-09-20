@@ -3,7 +3,7 @@
 use super::cell::{CellAlign, CellVAlign, TableCell};
 use crate::core::escape_xml;
 use crate::generator::slide_content::table_merge::CellMergeState;
-use crate::generator::text::{color_to_xml, TextFormat};
+use crate::generator::text::{TextFormat, color_to_xml};
 
 impl TableCell {
     /// Convert cell formatting to the shared text format model.
@@ -63,9 +63,7 @@ pub fn run_properties_xml(cell: &TableCell) -> String {
     if color_xml.is_empty() && font_xml.is_empty() {
         format!(r#"<a:rPr lang="en-US" dirty="0"{attrs}/>"#)
     } else {
-        format!(
-            r#"<a:rPr lang="en-US" dirty="0"{attrs}>{color_xml}{font_xml}</a:rPr>"#
-        )
+        format!(r#"<a:rPr lang="en-US" dirty="0"{attrs}>{color_xml}{font_xml}</a:rPr>"#)
     }
 }
 
@@ -93,10 +91,7 @@ pub fn tc_properties_xml(cell: &TableCell) -> String {
     };
 
     if let Some(ref background) = cell.background_color {
-        format!(
-            r#"<a:tcPr{anchor}>{}</a:tcPr>"#,
-            color_to_xml(background)
-        )
+        format!(r#"<a:tcPr{anchor}>{}</a:tcPr>"#, color_to_xml(background))
     } else if anchor.is_empty() {
         "<a:tcPr/>".to_string()
     } else {
@@ -123,9 +118,7 @@ pub fn generate_cell_xml(cell: &TableCell) -> String {
     let paragraph = if cell.text.is_empty() {
         r#"<a:p><a:endParaRPr lang="en-US"/></a:p>"#.to_string()
     } else {
-        format!(
-            r#"<a:p>{paragraph_props}<a:r>{run_props}<a:t>{text}</a:t></a:r></a:p>"#
-        )
+        format!(r#"<a:p>{paragraph_props}<a:r>{run_props}<a:t>{text}</a:t></a:r></a:p>"#)
     };
 
     format!(
@@ -154,7 +147,9 @@ mod tests {
 
     #[test]
     fn test_tc_properties_background_and_valign() {
-        let cell = TableCell::new("Top").background_color("0000FF").valign_top();
+        let cell = TableCell::new("Top")
+            .background_color("0000FF")
+            .valign_top();
         let xml = tc_properties_xml(&cell);
         assert!(xml.contains("0000FF"));
         assert!(xml.contains(r#"anchor="t""#));

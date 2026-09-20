@@ -48,7 +48,12 @@ impl SectionManager {
     }
 
     /// Add a section. Returns error if it overlaps with existing sections.
-    pub fn add_section(&mut self, name: &str, first_slide: usize, slide_count: usize) -> Result<(), String> {
+    pub fn add_section(
+        &mut self,
+        name: &str,
+        first_slide: usize,
+        slide_count: usize,
+    ) -> Result<(), String> {
         let new_section = SlideSection::new(name, first_slide, slide_count);
 
         // Check for overlaps
@@ -56,8 +61,12 @@ impl SectionManager {
             if sections_overlap(existing, &new_section) {
                 return Err(format!(
                     "Section '{}' (slides {}-{}) overlaps with '{}' (slides {}-{})",
-                    name, first_slide, new_section.last_slide(),
-                    existing.name, existing.first_slide, existing.last_slide(),
+                    name,
+                    first_slide,
+                    new_section.last_slide(),
+                    existing.name,
+                    existing.first_slide,
+                    existing.last_slide(),
                 ));
             }
         }
@@ -120,9 +129,19 @@ impl SectionManager {
         if self.sections.is_empty() {
             return String::new();
         }
+        format!("<p:extLst>{} </p:extLst>", self.to_ext_xml(total_slides))
+    }
+
+    /// Generate only the inner `<p:ext uri="{521415D9-…}">…</p:ext>` element,
+    /// for insertion into an existing presentation.xml `<p:extLst>`.
+    /// Empty string when there are no sections.
+    pub fn to_ext_xml(&self, total_slides: usize) -> String {
+        if self.sections.is_empty() {
+            return String::new();
+        }
 
         let mut xml = String::from(
-            r#"<p:extLst><p:ext uri="{521415D9-36F7-43E2-AB2F-B90AF26B5E84}"><p14:sectionLst xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main">"#,
+            r#"<p:ext uri="{521415D9-36F7-43E2-AB2F-B90AF26B5E84}"><p14:sectionLst xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main">"#,
         );
 
         for section in &self.sections {
@@ -142,7 +161,7 @@ impl SectionManager {
             xml.push_str("</p14:section>");
         }
 
-        xml.push_str("</p14:sectionLst></p:ext></p:extLst>");
+        xml.push_str("</p14:sectionLst></p:ext>");
         xml
     }
 }

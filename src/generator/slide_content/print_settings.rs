@@ -388,8 +388,11 @@ mod tests {
         // Must be self-closing and end with />
         assert!(xml.ends_with("/>"));
         // Wrap in root to validate XML well-formedness
-        let wrapped = format!("<root {}/>", &xml[9..xml.len()-2]);
-        assert!(!wrapped.contains("=\"1 "), "attribute value missing closing quote");
+        let wrapped = format!("<root {}/>", &xml[9..xml.len() - 2]);
+        assert!(
+            !wrapped.contains("=\"1 "),
+            "attribute value missing closing quote"
+        );
     }
 
     #[test]

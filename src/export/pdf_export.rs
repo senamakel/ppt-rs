@@ -137,6 +137,7 @@ pub fn export_to_pdf_bytes(
             use_gfm_tables: true,
             include_images: options.include_images,
             include_slide_numbers: true,
+            group_by_sections: false,
         },
     )?;
 
@@ -220,8 +221,7 @@ mod tests {
 
     #[test]
     fn test_export_to_pdf_bytes_landscape() {
-        let pres = Presentation::with_title("Landscape")
-            .add_slide(SlideContent::new("Only"));
+        let pres = Presentation::with_title("Landscape").add_slide(SlideContent::new("Only"));
 
         let opts = PdfExportOptions::landscape();
         let bytes = export_to_pdf_bytes(&pres, &opts).unwrap();
@@ -233,11 +233,11 @@ mod tests {
         let pres = Presentation::with_title("File")
             .add_slide(SlideContent::new("Hi").add_bullet("Bullet"));
 
-        let path = std::env::temp_dir().join(format!(
-            "ppt_rs_pdf_export_{}.pdf",
-            uuid::Uuid::new_v4()
-        ));
-        let opts = PdfExportOptions::new().with_frontmatter(false).with_notes(false);
+        let path =
+            std::env::temp_dir().join(format!("ppt_rs_pdf_export_{}.pdf", uuid::Uuid::new_v4()));
+        let opts = PdfExportOptions::new()
+            .with_frontmatter(false)
+            .with_notes(false);
 
         export_to_pdf(&pres, &path, &opts).unwrap();
         let read_back = std::fs::read(&path).unwrap();

@@ -23,31 +23,27 @@
 pub mod colors;
 pub mod tables;
 
-use crate::generator::{
-    Shape, ShapeType, ShapeFill, ShapeLine,
-    ImageBuilder,
-    TableBuilder, ChartBuilder, ChartType,
-};
-use crate::elements::{Color, RgbColor};
 use crate::core::Dimension;
+use crate::elements::{Color, RgbColor};
+use crate::generator::{
+    ChartBuilder, ChartType, ImageBuilder, Shape, ShapeFill, ShapeLine, ShapeType, TableBuilder,
+};
 
 // Re-export color utilities
 pub use colors::ColorValue;
 pub use colors::{
-    red, green, blue, yellow, cyan, magenta, white, black, gray, grey,
-    light_gray, light_grey, dark_gray, dark_grey, silver,
-    orange, purple, pink, brown, navy, teal, olive, maroon, lime, aqua,
-    material_red, material_pink, material_purple, material_indigo,
-    material_blue, material_cyan, material_teal, material_green,
-    material_lime, material_amber, material_orange, material_brown,
-    material_gray, material_grey,
-    corporate_blue, corporate_green, corporate_red, corporate_orange,
+    aqua, black, blue, brown, corporate_blue, corporate_green, corporate_orange, corporate_red,
+    cyan, dark_gray, dark_grey, gray, green, grey, light_gray, light_grey, lime, magenta, maroon,
+    material_amber, material_blue, material_brown, material_cyan, material_gray, material_green,
+    material_grey, material_indigo, material_lime, material_orange, material_pink, material_purple,
+    material_red, material_teal, navy, olive, orange, pink, purple, red, silver, teal, white,
+    yellow,
 };
 
 // Re-export table utilities
 pub use tables::{
-    simple_table, table_with_widths, table_from_data, table_with_header,
-    QuickTable, cell, header_cell, highlight_cell,
+    QuickTable, cell, header_cell, highlight_cell, simple_table, table_from_data,
+    table_with_header, table_with_widths,
 };
 
 // ============================================================================
@@ -315,10 +311,10 @@ pub fn area_chart(title: &str) -> ChartBuilder {
 pub trait ShapeExt {
     /// Set the fill color (shorter alias for `with_fill`)
     fn fill(self, color: Color) -> Self;
-    
+
     /// Set the stroke/line (shorter alias for `with_line`)
     fn stroke(self, color: Color, width_pt: f64) -> Self;
-    
+
     /// Set the text (shorter alias for `with_text`)
     fn text(self, text: &str) -> Self;
 }
@@ -331,7 +327,7 @@ impl ShapeExt for Shape {
         };
         self.with_fill(ShapeFill::new(&color_str))
     }
-    
+
     fn stroke(self, color: Color, width_pt: f64) -> Self {
         let color_str = match color {
             Color::Rgb(rgb) => format!("{:02X}{:02X}{:02X}", rgb.r, rgb.g, rgb.b),
@@ -340,7 +336,7 @@ impl ShapeExt for Shape {
         let width_emu = (width_pt * 12700.0) as u32; // Convert points to EMU
         self.with_line(ShapeLine::new(&color_str, width_emu))
     }
-    
+
     fn text(self, text: &str) -> Self {
         self.with_text(text)
     }
@@ -349,7 +345,7 @@ impl ShapeExt for Shape {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::{Positioned, ElementSized};
+    use crate::core::{ElementSized, Positioned};
 
     #[test]
     fn test_rect_helper() {
@@ -381,7 +377,7 @@ mod tests {
     fn test_hex_helper() {
         let color1 = hex("4F81BD");
         let color2 = hex("#4F81BD");
-        
+
         match (color1, color2) {
             (Color::Rgb(rgb1), Color::Rgb(rgb2)) => {
                 assert_eq!(rgb1.r, 79);
@@ -400,7 +396,7 @@ mod tests {
         let shape = rect(0.5, 1.0, 2.0, 1.5)
             .fill(rgb(79, 129, 189))
             .text("Hello");
-        
+
         assert!(shape.text.is_some());
         assert_eq!(shape.text.unwrap(), "Hello");
     }

@@ -12,7 +12,7 @@
 //! - Table styles
 
 use super::base::{ContentType, Part, PartType};
-use crate::core::{escape_xml, ToXml};
+use crate::core::{ToXml, escape_xml};
 use crate::exc::PptxError;
 
 /// Horizontal alignment

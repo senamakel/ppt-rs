@@ -1,21 +1,24 @@
 //! Additional content rendering (shapes, images, code blocks, connectors)
 
+use crate::generator::media::MediaRelIds;
 use crate::generator::shapes_xml::generate_shape_xml;
 use crate::generator::slide_content::SlideContent;
 
-/// Render additional content elements (shapes, images, code blocks, connectors, charts, ink)
+/// Render additional content elements (shapes, images, code blocks, connectors, charts, ink, media)
 pub fn render_additional_content(
     xml: &mut String,
     content: &SlideContent,
     chart_rids: &[String],
     ink_rel_id: Option<&str>,
+    media_rids: &[MediaRelIds],
 ) {
     let extra_elements = content.shapes.len()
         + content.images.len()
         + content.code_blocks.len()
         + content.connectors.len()
         + content.charts.len().min(chart_rids.len())
-        + ink_rel_id.map_or(0, |_| 1);
+        + ink_rel_id.map_or(0, |_| 1)
+        + media_rids.len();
     if extra_elements > 0 {
         xml.reserve(extra_elements * 512);
     }
@@ -78,13 +81,42 @@ pub fn render_additional_content(
 
     // Render ink annotation reference
     if let Some(rel_id) = ink_rel_id
-        && content.ink_annotations.is_some() {
-            xml.push('\n');
-            xml.push_str(&format!(
+        && content.ink_annotations.is_some()
+    {
+        xml.push('\n');
+        xml.push_str(&format!(
                 r#"<mc:AlternateContent xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"><mc:Choice Requires="p14"><p:contentPart xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:id="{}"/></mc:Choice></mc:AlternateContent>"#,
                 rel_id
             ));
+    }
+
+    // Render video/audio elements (media_rids order: videos first, then audios)
+    let media_start_id = 150
+        + content.shapes.len()
+        + content.images.len()
+        + content.code_blocks.len()
+        + content.connectors.len();
+    let (mut video_idx, mut audio_idx) = (0usize, 0usize);
+    for (i, rids) in media_rids.iter().enumerate() {
+        xml.push('\n');
+        if rids.is_video {
+            if let Some(video) = content.videos.get(video_idx) {
+                xml.push_str(&crate::generator::media::generate_video_xml(
+                    video,
+                    media_start_id + i,
+                    rids,
+                ));
+            }
+            video_idx += 1;
+        } else if let Some(audio) = content.audios.get(audio_idx) {
+            xml.push_str(&crate::generator::media::generate_audio_xml(
+                audio,
+                media_start_id + i,
+                rids,
+            ));
+            audio_idx += 1;
         }
+    }
 }
 
 /// Generate code block XML with syntax highlighting
@@ -100,7 +132,8 @@ fn generate_code_block(
     #[cfg(not(feature = "syntect"))]
     let highlighted_xml = {
         // Fallback to basic XML without syntax highlighting
-        let escaped_code = code_block.code
+        let escaped_code = code_block
+            .code
             .replace('&', "&amp;")
             .replace('<', "&lt;")
             .replace('>', "&gt;");

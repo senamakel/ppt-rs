@@ -4,16 +4,13 @@
 
 #[cfg(feature = "web2ppt")]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    use ppt_rs::{
-        html_to_pptx, html_to_pptx_with_options,
-        Web2PptConfig, ConversionOptions,
-    };
+    use ppt_rs::{ConversionOptions, Web2PptConfig, html_to_pptx, html_to_pptx_with_options};
 
     println!("=== Web2PPT Demo ===\n");
 
     // Example 1: Convert HTML string to PPTX
     println!("📄 Example 1: HTML to PPTX");
-    
+
     let html = r#"
         <!DOCTYPE html>
         <html>
@@ -70,7 +67,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Example 2: With custom options
     println!("📄 Example 2: Custom options");
-    
+
     let config = Web2PptConfig::new()
         .max_slides(5)
         .max_bullets(4)
@@ -87,7 +84,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Example 3: Technical documentation style
     println!("📄 Example 3: Technical documentation");
-    
+
     let tech_html = r#"
         <!DOCTYPE html>
         <html>

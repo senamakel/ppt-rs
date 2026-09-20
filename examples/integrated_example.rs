@@ -3,7 +3,7 @@
 //! Run with: cargo run --example integrated_example
 
 use ppt_rs::pptx;
-use ppt_rs::{create_pptx_with_content, SlideContent};
+use ppt_rs::{SlideContent, create_pptx_with_content};
 use std::fs;
 
 fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {

@@ -13,8 +13,9 @@ fn generate_field_guid(slide_num: usize) -> String {
 pub fn create_notes_xml(slide_num: usize, notes_text: &str) -> String {
     let escaped_notes = escape_xml(notes_text);
     let field_guid = generate_field_guid(slide_num);
-    
-    format!(r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+
+    format!(
+        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <p:notes xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
 <p:cSld>
 <p:spTree>
@@ -93,16 +94,19 @@ pub fn create_notes_xml(slide_num: usize, notes_text: &str) -> String {
 <p:clrMapOvr>
 <a:masterClrMapping/>
 </p:clrMapOvr>
-</p:notes>"#)
+</p:notes>"#
+    )
 }
 
 /// Generate notes slide relationship XML
 pub fn create_notes_rels_xml(slide_num: usize) -> String {
-    format!(r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+    format!(
+        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
 <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="../slides/slide{slide_num}.xml"/>
 <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesMaster" Target="../notesMasters/notesMaster1.xml"/>
-</Relationships>"#)
+</Relationships>"#
+    )
 }
 
 /// Generate notes master XML

@@ -1,22 +1,15 @@
-use ppt_rs::generator::{SlideContent, Table, TableRow, TableCell, create_pptx_with_content};
+use ppt_rs::generator::{SlideContent, Table, TableCell, TableRow, create_pptx_with_content};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let slides = vec![
         // Slide 1: Title
-        SlideContent::new("Table Examples")
-            .add_bullet("Demonstrating table rendering in PPTX"),
-
+        SlideContent::new("Table Examples").add_bullet("Demonstrating table rendering in PPTX"),
         // Slide 2: Simple 2x3 table
-        SlideContent::new("Employee Data")
-            .table(create_employee_table()),
-
+        SlideContent::new("Employee Data").table(create_employee_table()),
         // Slide 3: Styled table with colors
-        SlideContent::new("Sales Summary")
-            .table(create_sales_table()),
-
+        SlideContent::new("Sales Summary").table(create_sales_table()),
         // Slide 4: Data table
-        SlideContent::new("Quarterly Results")
-            .table(create_quarterly_table()),
+        SlideContent::new("Quarterly Results").table(create_quarterly_table()),
     ];
 
     let pptx_data = create_pptx_with_content("Table Demo", slides)?;
@@ -29,7 +22,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn create_employee_table() -> Table {
     let header_cells = vec![
         TableCell::new("Name").bold().background_color("4F81BD"),
-        TableCell::new("Department").bold().background_color("4F81BD"),
+        TableCell::new("Department")
+            .bold()
+            .background_color("4F81BD"),
         TableCell::new("Status").bold().background_color("4F81BD"),
     ];
     let header_row = TableRow::new(header_cells);

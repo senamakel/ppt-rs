@@ -10,12 +10,9 @@
 //!
 //! Run with: cargo run --example dimension_demo
 
-use ppt_rs::generator::{
-    create_pptx_with_content, SlideContent, SlideLayout,
-    Shape, ShapeType,
-};
-use ppt_rs::core::{Dimension, FlexPosition, FlexSize, SLIDE_WIDTH_EMU, SLIDE_HEIGHT_EMU};
-use ppt_rs::prelude::{shapes, hex, ShapeExt};
+use ppt_rs::core::{Dimension, FlexPosition, FlexSize, SLIDE_HEIGHT_EMU, SLIDE_WIDTH_EMU};
+use ppt_rs::generator::{Shape, ShapeType, SlideContent, SlideLayout, create_pptx_with_content};
+use ppt_rs::prelude::{ShapeExt, hex, shapes};
 use std::fs;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -33,7 +30,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .layout(SlideLayout::CenteredTitle)
             .title_size(44)
             .title_bold(true)
-            .title_color("1F497D")
+            .title_color("1F497D"),
     );
 
     // =========================================================================
@@ -42,53 +39,88 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("📏 Slide 2: All Unit Types");
 
     // Each shape is 1 inch wide, positioned using a different unit type
-    let emu_shape = Shape::from_dimensions(ShapeType::Rectangle,
-        Dimension::Emu(457200), Dimension::Inches(1.5),
-        Dimension::Emu(1371600), Dimension::Inches(0.8),
-    ).fill(hex("1565C0")).text("EMU");
+    let emu_shape = Shape::from_dimensions(
+        ShapeType::Rectangle,
+        Dimension::Emu(457200),
+        Dimension::Inches(1.5),
+        Dimension::Emu(1371600),
+        Dimension::Inches(0.8),
+    )
+    .fill(hex("1565C0"))
+    .text("EMU");
 
-    let inch_shape = Shape::from_dimensions(ShapeType::Rectangle,
-        Dimension::Inches(2.0), Dimension::Inches(1.5),
-        Dimension::Inches(1.5), Dimension::Inches(0.8),
-    ).fill(hex("2E7D32")).text("Inches");
+    let inch_shape = Shape::from_dimensions(
+        ShapeType::Rectangle,
+        Dimension::Inches(2.0),
+        Dimension::Inches(1.5),
+        Dimension::Inches(1.5),
+        Dimension::Inches(0.8),
+    )
+    .fill(hex("2E7D32"))
+    .text("Inches");
 
-    let cm_shape = Shape::from_dimensions(ShapeType::Rectangle,
-        Dimension::Cm(9.0), Dimension::Inches(1.5),
-        Dimension::Cm(3.81), Dimension::Inches(0.8),
-    ).fill(hex("C62828")).text("Cm");
+    let cm_shape = Shape::from_dimensions(
+        ShapeType::Rectangle,
+        Dimension::Cm(9.0),
+        Dimension::Inches(1.5),
+        Dimension::Cm(3.81),
+        Dimension::Inches(0.8),
+    )
+    .fill(hex("C62828"))
+    .text("Cm");
 
-    let pt_shape = Shape::from_dimensions(ShapeType::Rectangle,
-        Dimension::Pt(324.0), Dimension::Inches(1.5),
-        Dimension::Pt(108.0), Dimension::Inches(0.8),
-    ).fill(hex("7B1FA2")).text("Pt");
+    let pt_shape = Shape::from_dimensions(
+        ShapeType::Rectangle,
+        Dimension::Pt(324.0),
+        Dimension::Inches(1.5),
+        Dimension::Pt(108.0),
+        Dimension::Inches(0.8),
+    )
+    .fill(hex("7B1FA2"))
+    .text("Pt");
 
-    let ratio_shape = Shape::from_dimensions(ShapeType::Rectangle,
-        Dimension::Ratio(0.52), Dimension::Inches(1.5),
-        Dimension::Ratio(0.15), Dimension::Inches(0.8),
-    ).fill(hex("EF6C00")).text("Ratio");
+    let ratio_shape = Shape::from_dimensions(
+        ShapeType::Rectangle,
+        Dimension::Ratio(0.52),
+        Dimension::Inches(1.5),
+        Dimension::Ratio(0.15),
+        Dimension::Inches(0.8),
+    )
+    .fill(hex("EF6C00"))
+    .text("Ratio");
 
-    let pct_shape = Shape::from_dimensions(ShapeType::Rectangle,
-        Dimension::percent(69.0), Dimension::Inches(1.5),
-        Dimension::percent(15.0), Dimension::Inches(0.8),
-    ).fill(hex("00838F")).text("Percent");
+    let pct_shape = Shape::from_dimensions(
+        ShapeType::Rectangle,
+        Dimension::percent(69.0),
+        Dimension::Inches(1.5),
+        Dimension::percent(15.0),
+        Dimension::Inches(0.8),
+    )
+    .fill(hex("00838F"))
+    .text("Percent");
 
     // Labels row
-    let label = Shape::from_dimensions(ShapeType::Rectangle,
-        Dimension::Inches(0.5), Dimension::Inches(0.8),
-        Dimension::Inches(9.0), Dimension::Inches(0.5),
-    ).text("Each shape below uses a different unit type for X position:");
+    let label = Shape::from_dimensions(
+        ShapeType::Rectangle,
+        Dimension::Inches(0.5),
+        Dimension::Inches(0.8),
+        Dimension::Inches(9.0),
+        Dimension::Inches(0.5),
+    )
+    .text("Each shape below uses a different unit type for X position:");
 
     slides.push(
         SlideContent::new("All Dimension Unit Types")
             .layout(SlideLayout::TitleOnly)
-            .title_color("1F497D").title_bold(true)
+            .title_color("1F497D")
+            .title_bold(true)
             .add_shape(label)
             .add_shape(emu_shape)
             .add_shape(inch_shape)
             .add_shape(cm_shape)
             .add_shape(pt_shape)
             .add_shape(ratio_shape)
-            .add_shape(pct_shape)
+            .add_shape(pct_shape),
     );
 
     // =========================================================================
@@ -96,36 +128,46 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // =========================================================================
     println!("📐 Slide 3: Ratio-Based Grid (auto-adapts to slide size)");
 
-    let margin = 0.03;  // 3% margin
-    let gap = 0.02;     // 2% gap
+    let margin = 0.03; // 3% margin
+    let gap = 0.02; // 2% gap
     let cell_w = (1.0 - 2.0 * margin - 2.0 * gap) / 3.0;
-    let cell_h = (0.7 - 2.0 * gap) / 3.0;  // 70% of slide height for grid
+    let cell_h = (0.7 - 2.0 * gap) / 3.0; // 70% of slide height for grid
     let y_start = 0.22; // below title
 
     let colors = [
-        "1565C0", "2E7D32", "C62828",
-        "7B1FA2", "EF6C00", "00838F",
-        "AD1457", "4E342E", "37474F",
+        "1565C0", "2E7D32", "C62828", "7B1FA2", "EF6C00", "00838F", "AD1457", "4E342E", "37474F",
     ];
     let labels = [
-        "Top-Left", "Top-Center", "Top-Right",
-        "Mid-Left", "Mid-Center", "Mid-Right",
-        "Bot-Left", "Bot-Center", "Bot-Right",
+        "Top-Left",
+        "Top-Center",
+        "Top-Right",
+        "Mid-Left",
+        "Mid-Center",
+        "Mid-Right",
+        "Bot-Left",
+        "Bot-Center",
+        "Bot-Right",
     ];
 
     let mut grid_slide = SlideContent::new("Ratio-Based 3x3 Grid Layout")
         .layout(SlideLayout::TitleOnly)
-        .title_color("1F497D").title_bold(true);
+        .title_color("1F497D")
+        .title_bold(true);
 
     for row in 0..3 {
         for col in 0..3 {
             let idx = row * 3 + col;
             let x = margin + col as f64 * (cell_w + gap);
             let y = y_start + row as f64 * (cell_h + gap);
-            let shape = Shape::from_dimensions(ShapeType::RoundedRectangle,
-                Dimension::Ratio(x), Dimension::Ratio(y),
-                Dimension::Ratio(cell_w), Dimension::Ratio(cell_h),
-            ).fill(hex(colors[idx])).text(labels[idx]);
+            let shape = Shape::from_dimensions(
+                ShapeType::RoundedRectangle,
+                Dimension::Ratio(x),
+                Dimension::Ratio(y),
+                Dimension::Ratio(cell_w),
+                Dimension::Ratio(cell_h),
+            )
+            .fill(hex(colors[idx]))
+            .text(labels[idx]);
             grid_slide = grid_slide.add_shape(shape);
         }
     }
@@ -138,37 +180,58 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🔀 Slide 4: Mixed-Unit Positioning");
 
     // Title area: inches for position, ratio for width
-    let title_box = Shape::from_dimensions(ShapeType::RoundedRectangle,
-        Dimension::Inches(0.5), Dimension::Inches(1.5),
-        Dimension::Ratio(0.9), Dimension::Cm(2.0),
-    ).fill(hex("1F497D")).text("Inches X + Ratio Width + Cm Height");
+    let title_box = Shape::from_dimensions(
+        ShapeType::RoundedRectangle,
+        Dimension::Inches(0.5),
+        Dimension::Inches(1.5),
+        Dimension::Ratio(0.9),
+        Dimension::Cm(2.0),
+    )
+    .fill(hex("1F497D"))
+    .text("Inches X + Ratio Width + Cm Height");
 
     // Content area: cm for position, pt for size
-    let content_box = Shape::from_dimensions(ShapeType::Rectangle,
-        Dimension::Cm(2.0), Dimension::Cm(6.0),
-        Dimension::Pt(432.0), Dimension::Pt(108.0),  // 6in x 1.5in
-    ).fill(hex("2E7D32")).text("Cm position + Pt size");
+    let content_box = Shape::from_dimensions(
+        ShapeType::Rectangle,
+        Dimension::Cm(2.0),
+        Dimension::Cm(6.0),
+        Dimension::Pt(432.0),
+        Dimension::Pt(108.0), // 6in x 1.5in
+    )
+    .fill(hex("2E7D32"))
+    .text("Cm position + Pt size");
 
     // Footer area: percent for everything
-    let footer_box = Shape::from_dimensions(ShapeType::Rectangle,
-        Dimension::percent(5.0), Dimension::percent(75.0),
-        Dimension::percent(90.0), Dimension::percent(10.0),
-    ).fill(hex("C62828")).text("100% percent-based");
+    let footer_box = Shape::from_dimensions(
+        ShapeType::Rectangle,
+        Dimension::percent(5.0),
+        Dimension::percent(75.0),
+        Dimension::percent(90.0),
+        Dimension::percent(10.0),
+    )
+    .fill(hex("C62828"))
+    .text("100% percent-based");
 
     // Sidebar: EMU for position, inches for size
-    let sidebar = Shape::from_dimensions(ShapeType::Rectangle,
-        Dimension::Emu(8000000), Dimension::Inches(1.5),
-        Dimension::Inches(1.0), Dimension::Ratio(0.6),
-    ).fill(hex("7B1FA2")).text("EMU + Inches + Ratio");
+    let sidebar = Shape::from_dimensions(
+        ShapeType::Rectangle,
+        Dimension::Emu(8000000),
+        Dimension::Inches(1.5),
+        Dimension::Inches(1.0),
+        Dimension::Ratio(0.6),
+    )
+    .fill(hex("7B1FA2"))
+    .text("EMU + Inches + Ratio");
 
     slides.push(
         SlideContent::new("Mixed-Unit Positioning")
             .layout(SlideLayout::TitleOnly)
-            .title_color("1F497D").title_bold(true)
+            .title_color("1F497D")
+            .title_bold(true)
             .add_shape(title_box)
             .add_shape(content_box)
             .add_shape(footer_box)
-            .add_shape(sidebar)
+            .add_shape(sidebar),
     );
 
     // =========================================================================
@@ -200,10 +263,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     slides.push(
         SlideContent::new("Fluent .at() and .with_dimensions() Chaining")
             .layout(SlideLayout::TitleOnly)
-            .title_color("1F497D").title_bold(true)
+            .title_color("1F497D")
+            .title_bold(true)
             .add_shape(shape1)
             .add_shape(shape2)
-            .add_shape(shape3)
+            .add_shape(shape3),
     );
 
     // =========================================================================
@@ -212,14 +276,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🧰 Slide 6: Prelude Shape Builders");
 
     // shapes::dim() — generic Dimension-based builder
-    let dim_shape = shapes::dim(ShapeType::Diamond,
-        Dimension::percent(5.0), Dimension::percent(25.0),
-        Dimension::percent(25.0), Dimension::percent(35.0),
-    ).fill(hex("7B1FA2")).text("shapes::dim()");
+    let dim_shape = shapes::dim(
+        ShapeType::Diamond,
+        Dimension::percent(5.0),
+        Dimension::percent(25.0),
+        Dimension::percent(25.0),
+        Dimension::percent(35.0),
+    )
+    .fill(hex("7B1FA2"))
+    .text("shapes::dim()");
 
     // shapes::rect_ratio() — ratio-based rectangle
     let ratio_rect = shapes::rect_ratio(0.35, 0.25, 0.28, 0.35)
-        .fill(hex("EF6C00")).text("shapes::rect_ratio()");
+        .fill(hex("EF6C00"))
+        .text("shapes::rect_ratio()");
 
     // shapes::text_box_ratio() — ratio-based text box
     let ratio_text = shapes::text_box_ratio(0.68, 0.25, 0.28, 0.35, "shapes::text_box_ratio()")
@@ -227,16 +297,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Traditional shapes::rect() still works (inches)
     let inch_rect = shapes::rect(1.0, 5.0, 3.0, 1.0)
-        .fill(hex("A5A5A5")).text("shapes::rect() (inches)");
+        .fill(hex("A5A5A5"))
+        .text("shapes::rect() (inches)");
 
     slides.push(
         SlideContent::new("Prelude Shape Builders")
             .layout(SlideLayout::TitleOnly)
-            .title_color("1F497D").title_bold(true)
+            .title_color("1F497D")
+            .title_bold(true)
             .add_shape(dim_shape)
             .add_shape(ratio_rect)
             .add_shape(ratio_text)
-            .add_shape(inch_rect)
+            .add_shape(inch_rect),
     );
 
     // =========================================================================
@@ -274,10 +346,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     slides.push(
         SlideContent::new("FlexPosition & FlexSize — Reusable Layouts")
             .layout(SlideLayout::TitleOnly)
-            .title_color("1F497D").title_bold(true)
+            .title_color("1F497D")
+            .title_bold(true)
             .add_shape(header)
             .add_shape(body)
-            .add_shape(sidebar_shape)
+            .add_shape(sidebar_shape),
     );
 
     // =========================================================================
@@ -296,24 +369,34 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut dashboard = SlideContent::new("KPI Dashboard — Dimension API")
         .layout(SlideLayout::TitleOnly)
-        .title_color("1F497D").title_bold(true);
+        .title_color("1F497D")
+        .title_bold(true);
 
     for i in 0..4 {
         let x_pct = 3.0 + i as f64 * 24.5;
-        let card = Shape::from_dimensions(ShapeType::RoundedRectangle,
-            Dimension::percent(x_pct), Dimension::percent(22.0),
-            Dimension::percent(22.0), Dimension::percent(30.0),
-        ).fill(hex(kpi_colors[i])).text(kpi_labels[i]);
+        let card = Shape::from_dimensions(
+            ShapeType::RoundedRectangle,
+            Dimension::percent(x_pct),
+            Dimension::percent(22.0),
+            Dimension::percent(22.0),
+            Dimension::percent(30.0),
+        )
+        .fill(hex(kpi_colors[i]))
+        .text(kpi_labels[i]);
         dashboard = dashboard.add_shape(card);
     }
 
     // Bottom chart placeholder
-    let chart_area = Shape::from_dimensions(ShapeType::Rectangle,
-        Dimension::percent(3.0), Dimension::percent(58.0),
-        Dimension::percent(94.0), Dimension::percent(35.0),
-    ).fill(hex("ECEFF1"))
-     .stroke(hex("B0BEC5"), 1.0)
-     .text("Chart Area (94% x 35%)");
+    let chart_area = Shape::from_dimensions(
+        ShapeType::Rectangle,
+        Dimension::percent(3.0),
+        Dimension::percent(58.0),
+        Dimension::percent(94.0),
+        Dimension::percent(35.0),
+    )
+    .fill(hex("ECEFF1"))
+    .stroke(hex("B0BEC5"), 1.0)
+    .text("Chart Area (94% x 35%)");
     dashboard = dashboard.add_shape(chart_area);
 
     slides.push(dashboard);
@@ -326,16 +409,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     slides.push(
         SlideContent::new("Dimension Unit Reference")
             .layout(SlideLayout::TitleAndContent)
-            .title_color("1F497D").title_bold(true)
+            .title_color("1F497D")
+            .title_bold(true)
             .add_bullet(&format!("1 inch = {} EMU = Dimension::Inches(1.0)", 914400))
             .add_bullet(&format!("1 cm   = {} EMU = Dimension::Cm(1.0)", 360000))
             .add_bullet(&format!("1 pt   = {} EMU = Dimension::Pt(1.0)", 12700))
-            .add_bullet(&format!("Slide width  = {} EMU = 10 inches", SLIDE_WIDTH_EMU))
-            .add_bullet(&format!("Slide height = {} EMU = 7.5 inches", SLIDE_HEIGHT_EMU))
+            .add_bullet(&format!(
+                "Slide width  = {} EMU = 10 inches",
+                SLIDE_WIDTH_EMU
+            ))
+            .add_bullet(&format!(
+                "Slide height = {} EMU = 7.5 inches",
+                SLIDE_HEIGHT_EMU
+            ))
             .add_bullet("Ratio(0.1) on X = 10% of slide width = 1 inch")
             .add_bullet("Ratio(0.5) on Y = 50% of slide height = 3.75 inches")
             .add_bullet("percent(50.0) = Ratio(0.5)")
-            .content_size(22)
+            .content_size(22),
     );
 
     // =========================================================================
@@ -350,8 +440,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("║                 Dimension API Demo Complete                   ║");
     println!("╠══════════════════════════════════════════════════════════════╣");
     println!("║  Output: examples/output/dimension_demo.pptx                 ║");
-    println!("║  Slides: {}                                                   ║", num_slides);
-    println!("║  Size:   {} KB                                               ║", pptx_data.len() / 1024);
+    println!(
+        "║  Slides: {}                                                   ║",
+        num_slides
+    );
+    println!(
+        "║  Size:   {} KB                                               ║",
+        pptx_data.len() / 1024
+    );
     println!("╠══════════════════════════════════════════════════════════════╣");
     println!("║  Showcased:                                                  ║");
     println!("║    ✓ All 6 unit types: EMU, Inches, Cm, Pt, Ratio, Percent   ║");

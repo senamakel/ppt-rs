@@ -3,7 +3,7 @@
 use std::time::{Duration, Instant};
 
 use super::slide_content::SlideContent;
-use super::{create_pptx_lazy_to_writer, create_pptx_with_content, LazySlideSource};
+use super::{LazySlideSource, create_pptx_lazy_to_writer, create_pptx_with_content};
 use std::io::Cursor;
 
 /// Metrics collected while generating a presentation.

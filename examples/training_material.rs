@@ -8,7 +8,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Generating Rust training material...\n");
 
     let output_file = "examples/output/rust_training.pptx";
-    
+
     // Create output directory
     fs::create_dir_all("examples/output")?;
 
@@ -18,41 +18,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         modules: vec![
             Module {
                 name: "Getting Started".to_string(),
-                topics: vec![
-                    "Installation",
-                    "Hello World",
-                    "Cargo",
-                ],
+                topics: vec!["Installation", "Hello World", "Cargo"],
             },
             Module {
                 name: "Ownership & Borrowing".to_string(),
-                topics: vec![
-                    "Ownership Rules",
-                    "References",
-                    "Lifetimes",
-                ],
+                topics: vec!["Ownership Rules", "References", "Lifetimes"],
             },
             Module {
                 name: "Error Handling".to_string(),
-                topics: vec![
-                    "Result Type",
-                    "Option Type",
-                    "? Operator",
-                ],
+                topics: vec!["Result Type", "Option Type", "? Operator"],
             },
             Module {
                 name: "Advanced Topics".to_string(),
-                topics: vec![
-                    "Traits",
-                    "Generics",
-                    "Macros",
-                ],
+                topics: vec!["Traits", "Generics", "Macros"],
             },
         ],
     };
 
     let presentation = course.generate_presentation();
-    
+
     // Write to file
     fs::write(output_file, presentation)?;
 
@@ -90,8 +74,14 @@ impl TrainingCourse {
 
         // Slide 1: Title
         xml.push_str(&format!("    <slide number=\"{}\">\n", slide_num));
-        xml.push_str(&format!("      <title>{}</title>\n", escape_xml(&self.title)));
-        xml.push_str(&format!("      <content>Duration: {} hours</content>\n", self.duration_hours));
+        xml.push_str(&format!(
+            "      <title>{}</title>\n",
+            escape_xml(&self.title)
+        ));
+        xml.push_str(&format!(
+            "      <content>Duration: {} hours</content>\n",
+            self.duration_hours
+        ));
         xml.push_str("    </slide>\n");
         slide_num += 1;
 
@@ -105,7 +95,10 @@ impl TrainingCourse {
             }
             agenda.push_str(&format!("{}. {}", i + 1, module.name));
         }
-        xml.push_str(&format!("      <content>{}</content>\n", escape_xml(&agenda)));
+        xml.push_str(&format!(
+            "      <content>{}</content>\n",
+            escape_xml(&agenda)
+        ));
         xml.push_str("    </slide>\n");
         slide_num += 1;
 
@@ -113,21 +106,30 @@ impl TrainingCourse {
         for module in &self.modules {
             // Module intro slide
             xml.push_str(&format!("    <slide number=\"{}\">\n", slide_num));
-            xml.push_str(&format!("      <title>{}</title>\n", escape_xml(&module.name)));
+            xml.push_str(&format!(
+                "      <title>{}</title>\n",
+                escape_xml(&module.name)
+            ));
             xml.push_str("      <content>Module Overview</content>\n");
             xml.push_str("    </slide>\n");
             slide_num += 1;
 
             // Module content slide
             xml.push_str(&format!("    <slide number=\"{}\">\n", slide_num));
-            xml.push_str(&format!("      <title>{} - Topics</title>\n", escape_xml(&module.name)));
+            xml.push_str(&format!(
+                "      <title>{} - Topics</title>\n",
+                escape_xml(&module.name)
+            ));
             let topics = module
                 .topics
                 .iter()
                 .map(|t| format!("• {}", t))
                 .collect::<Vec<_>>()
                 .join("\n");
-            xml.push_str(&format!("      <content>{}</content>\n", escape_xml(&topics)));
+            xml.push_str(&format!(
+                "      <content>{}</content>\n",
+                escape_xml(&topics)
+            ));
             xml.push_str("    </slide>\n");
             slide_num += 1;
         }

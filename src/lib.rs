@@ -32,21 +32,21 @@
 //! - **oxml** - Office XML parsing and manipulation
 //! - **exc** - Error types
 
-pub mod core;
-pub mod elements;
-pub mod generator;
+pub mod api;
 #[cfg(feature = "cli")]
 pub mod cli;
+pub mod core;
+pub mod elements;
 pub mod exc;
+pub mod export;
+pub mod generator;
+pub mod helpers;
+pub mod import;
 pub mod opc;
 pub mod oxml;
 pub mod parts;
-pub mod api;
 pub mod prelude;
-pub mod helpers;
 pub mod templates;
-pub mod export;
-pub mod import;
 
 #[cfg(feature = "mcp")]
 pub mod mcp;
@@ -55,80 +55,64 @@ pub mod mcp;
 pub mod web2ppt;
 
 pub use api::Presentation;
-pub use core::{ToXml, escape_xml};
-pub use elements::{Color, RgbColor, SchemeColor, Position, Size, Transform};
-pub use exc::{messages, PptxError, Result};
-pub use generator::{
-    create_pptx, create_pptx_with_content, create_pptx_with_settings, create_pptx_with_template,
-    create_pptx_to_writer, create_pptx_with_content_to_writer, create_pptx_lazy_to_writer,
-    LazySlideSource, PptxTemplate, STANDARD_LAYOUT_COUNT,
-    SlideContent, SlideLayout,
-    TextFormat, FormattedText,
-    Table, TableRow, TableCell, TableBuilder,
-    Shape, ShapeType, ShapeFill, ShapeLine,
-    Image, ImageBuilder, ImageSource,
-    Chart, ChartType, ChartSeries, ChartBuilder,
-    BulletStyle, BulletPoint,
-    TextDirection, RtlLanguage, RtlTextProps,
-    Comment, CommentAuthor, CommentAuthorList, SlideComments,
-    SlideSection, SectionManager,
-    DigitalSignature, SignerInfo, HashAlgorithm, SignatureCommitment,
-    InkAnnotations, InkStroke, InkPen, InkPoint, PenTip,
-    SlideShowSettings, ShowType, PenColor, SlideRange,
-    PrintSettings, HandoutLayout, PrintColorMode, PrintWhat, Orientation,
-    TableMergeMap, MergeRegion, CellMergeState,
-    EmbeddedFontList, EmbeddedFont, FontStyle, FontCharset,
-    PresentationSettings,
-    PresentationTheme, ThemeColorScheme, ThemeFonts,
-    Connector, ConnectorType, ConnectorLine, ArrowType, ArrowSize, ConnectionSite, LineDash,
-    Hyperlink, HyperlinkAction,
-    GradientFill, GradientType, GradientDirection, GradientStop, PresetGradients,
-    Video, Audio, VideoFormat, AudioFormat, VideoOptions, AudioOptions,
-};
 pub use core::{
-    validate_package, validate_package_bytes, validate_powerpoint_structure,
-    CompatReport, PackageValidationIssue, PackageValidationReport,
-    REQUIRED_PACKAGE_PARTS, ValidationCategory, ValidationSeverity,
+    CompatReport, PackageValidationIssue, PackageValidationReport, REQUIRED_PACKAGE_PARTS,
+    ValidationCategory, ValidationSeverity, validate_package, validate_package_bytes,
+    validate_powerpoint_structure,
+};
+pub use core::{ToXml, escape_xml};
+pub use elements::{Color, Position, RgbColor, SchemeColor, Size, Transform};
+pub use exc::{PptxError, Result, messages};
+pub use generator::{
+    ArrowSize, ArrowType, Audio, AudioFormat, AudioOptions, BulletPoint, BulletStyle,
+    CellMergeState, Chart, ChartBuilder, ChartSeries, ChartType, Comment, CommentAuthor,
+    CommentAuthorList, ConnectionSite, Connector, ConnectorLine, ConnectorType, DigitalSignature,
+    EmbeddedFont, EmbeddedFontList, FontCharset, FontStyle, FormattedText, GradientDirection,
+    GradientFill, GradientStop, GradientType, HandoutLayout, HashAlgorithm, Hyperlink,
+    HyperlinkAction, Image, ImageBuilder, ImageSource, InkAnnotations, InkPen, InkPoint, InkStroke,
+    LazySlideSource, LineDash, MediaRelIds, MergeRegion, Orientation, PenColor, PenTip,
+    PptxTemplate, PresentationSettings, PresentationTheme, PresetGradients, PrintColorMode,
+    PrintSettings, PrintWhat, RtlLanguage, RtlTextProps, STANDARD_LAYOUT_COUNT, SectionManager,
+    Shape, ShapeFill, ShapeLine, ShapeType, ShowType, SignatureCommitment, SignerInfo,
+    SlideComments, SlideContent, SlideLayout, SlideRange, SlideSection, SlideShowSettings, Table,
+    TableBuilder, TableCell, TableMergeMap, TableRow, TextDirection, TextFormat, ThemeColorScheme,
+    ThemeFonts, Video, VideoFormat, VideoOptions, create_pptx, create_pptx_lazy_to_writer,
+    create_pptx_to_writer, create_pptx_with_content, create_pptx_with_content_to_writer,
+    create_pptx_with_settings, create_pptx_with_template,
 };
 
 // Export convenience types for new capabilities
-pub use import::html::{parse_html, parse_html_with_options, HtmlParseOptions, Html2Ppt};
-pub use export::md::{MarkdownOptions, export_to_markdown, export_to_markdown_with_options};
 pub use export::image_export::{
-    ImageExportOptions, ImageFormat,
-    export_to_images, export_slide_to_image, render_thumbnail
+    ImageExportOptions, ImageFormat, export_slide_to_image, export_to_images, render_thumbnail,
 };
+pub use export::md::{MarkdownOptions, export_to_markdown, export_to_markdown_with_options};
 pub use export::slide_render::{render_to_pdf, render_to_pdf_bytes};
+pub use import::html::{Html2Ppt, HtmlParseOptions, parse_html, parse_html_with_options};
 
 #[cfg(feature = "pdf-native")]
 pub use export::pdf_export::{
-    export_to_pdf, export_to_pdf_bytes,
-    PdfExportOptions, PdfOrientation,
+    PdfExportOptions, PdfOrientation, export_to_pdf, export_to_pdf_bytes,
 };
 pub use opc::compress::{
-    CompressionOptions, CompressionLevel, CompressionResult,
-    compress_pptx, compress_pptx_in_memory, analyze_pptx
+    CompressionLevel, CompressionOptions, CompressionResult, analyze_pptx, compress_pptx,
+    compress_pptx_in_memory,
 };
 
 pub use parts::{
-    Part, PartType, ContentType,
-    PresentationPart, SlidePart, SlideLayoutPart, LayoutType,
-    SlideMasterPart, ThemePart, NotesSlidePart,
-    ImagePart, MediaPart, MediaFormat, ChartPart,
-    TablePart, TableRowPart, TableCellPart,
-    CorePropertiesPart, AppPropertiesPart,
-    ContentTypesPart, Relationships,
+    AppPropertiesPart, ChartPart, ContentType, ContentTypesPart, CorePropertiesPart, ImagePart,
+    LayoutType, MediaFormat, MediaPart, NotesSlidePart, Part, PartType, PresentationPart,
+    Relationships, SlideLayoutPart, SlideMasterPart, SlidePart, TableCellPart, TablePart,
+    TableRowPart, ThemePart,
 };
 
 #[cfg(feature = "web2ppt")]
 pub use web2ppt::{
-    Web2Ppt, WebFetcher, WebParser, WebContent, ContentBlock,
-    ContentType as WebContentType,
-    Web2PptConfig, ConversionOptions, Web2PptError,
-    html_to_pptx, html_to_pptx_with_options, url_to_pptx, url_to_pptx_with_options,
+    ContentBlock, ContentType as WebContentType, ConversionOptions, Web2Ppt, Web2PptConfig,
+    Web2PptError, WebContent, WebFetcher, WebParser, html_to_pptx, html_to_pptx_with_options,
+    url_to_pptx, url_to_pptx_with_options,
 };
 
 #[cfg(feature = "web2md")]
-pub use web2ppt::{url_to_pptx_via_web2md, html_to_pptx_via_web2md};
+pub use web2ppt::{html_to_pptx_via_web2md, url_to_pptx_via_web2md};
 
-pub const VERSION: &str = "0.2.26";
+pub const VERSION: &str = "0.2.27";

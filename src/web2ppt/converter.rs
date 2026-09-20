@@ -1,27 +1,27 @@
 //! Converter from web content to PowerPoint
 
-use super::{Web2PptError, Result, Web2PptConfig, WebContent, ContentType};
-use crate::{create_pptx_with_content, SlideContent, SlideLayout};
+use super::{ContentType, Result, Web2PptConfig, Web2PptError, WebContent};
+use crate::{SlideContent, SlideLayout, create_pptx_with_content};
 
 /// Safely truncate text at char boundary
 fn truncate_text(text: &str, max_len: usize) -> String {
     if text.len() <= max_len {
         return text.to_string();
     }
-    
+
     // Find a safe truncation point
     let mut end = max_len;
     while end > 0 && !text.is_char_boundary(end) {
         end -= 1;
     }
-    
+
     // Try to break at word boundary
     if let Some(last_space) = text[..end].rfind(' ') {
         if last_space > max_len / 2 {
             end = last_space;
         }
     }
-    
+
     format!("{}...", &text[..end].trim_end())
 }
 
@@ -106,13 +106,16 @@ impl Web2Ppt {
     }
 
     /// Build slides from web content
-    fn build_slides(&self, content: &WebContent, options: &ConversionOptions) -> Result<Vec<SlideContent>> {
+    fn build_slides(
+        &self,
+        content: &WebContent,
+        options: &ConversionOptions,
+    ) -> Result<Vec<SlideContent>> {
         let mut slides = Vec::new();
 
         // Title slide
         let title = options.title.as_ref().unwrap_or(&content.title);
-        let mut title_slide = SlideContent::new(title)
-            .layout(SlideLayout::CenteredTitle);
+        let mut title_slide = SlideContent::new(title).layout(SlideLayout::CenteredTitle);
 
         if let Some(desc) = &content.description {
             title_slide = title_slide.add_bullet(desc);
@@ -140,7 +143,11 @@ impl Web2Ppt {
     }
 
     /// Build slides grouped by headings
-    fn build_grouped_slides(&self, content: &WebContent, slides: &mut Vec<SlideContent>) -> Result<()> {
+    fn build_grouped_slides(
+        &self,
+        content: &WebContent,
+        slides: &mut Vec<SlideContent>,
+    ) -> Result<()> {
         let groups = content.grouped_by_headings();
 
         // If no groups found, fall back to linear mode
@@ -153,8 +160,7 @@ impl Web2Ppt {
                 break;
             }
 
-            let mut slide = SlideContent::new(&heading.text)
-                .layout(SlideLayout::TitleAndContent);
+            let mut slide = SlideContent::new(&heading.text).layout(SlideLayout::TitleAndContent);
 
             let mut bullet_count = 0;
 
@@ -197,8 +203,9 @@ impl Web2Ppt {
                     }
                     ContentType::Table(rows) => {
                         if self.config.include_tables && !rows.is_empty() {
-                            let summary = format!("[Table: {} rows × {} cols]", 
-                                rows.len(), 
+                            let summary = format!(
+                                "[Table: {} rows × {} cols]",
+                                rows.len(),
                                 rows.first().map(|r| r.len()).unwrap_or(0)
                             );
                             slide = slide.add_bullet(&summary);
@@ -225,7 +232,11 @@ impl Web2Ppt {
     }
 
     /// Build slides linearly (not grouped)
-    fn build_linear_slides(&self, content: &WebContent, slides: &mut Vec<SlideContent>) -> Result<()> {
+    fn build_linear_slides(
+        &self,
+        content: &WebContent,
+        slides: &mut Vec<SlideContent>,
+    ) -> Result<()> {
         let mut current_slide: Option<SlideContent> = None;
         let mut bullet_count = 0;
 
@@ -255,21 +266,18 @@ impl Web2Ppt {
                     }
 
                     // Start new slide
-                    current_slide = Some(
-                        SlideContent::new(&block.text)
-                            .layout(SlideLayout::TitleAndContent)
-                    );
+                    current_slide =
+                        Some(SlideContent::new(&block.text).layout(SlideLayout::TitleAndContent));
                     bullet_count = 0;
                 }
                 ContentType::Paragraph => {
                     // If no current slide, create one
                     if current_slide.is_none() {
                         current_slide = Some(
-                            SlideContent::new("Overview")
-                                .layout(SlideLayout::TitleAndContent)
+                            SlideContent::new("Overview").layout(SlideLayout::TitleAndContent),
                         );
                     }
-                    
+
                     if let Some(ref mut slide) = current_slide {
                         if bullet_count < self.config.max_bullets_per_slide {
                             let text = truncate_text(&block.text, 200);
@@ -290,11 +298,10 @@ impl Web2Ppt {
                 ContentType::ListItem => {
                     if current_slide.is_none() {
                         current_slide = Some(
-                            SlideContent::new("Key Points")
-                                .layout(SlideLayout::TitleAndContent)
+                            SlideContent::new("Key Points").layout(SlideLayout::TitleAndContent),
                         );
                     }
-                    
+
                     if let Some(ref mut slide) = current_slide {
                         if bullet_count < self.config.max_bullets_per_slide {
                             let text = truncate_text(&block.text, 180);
@@ -368,7 +375,12 @@ pub fn url_to_pptx_with_options(
 
 /// Convert HTML string to PPTX bytes
 pub fn html_to_pptx(html: &str, url: &str) -> Result<Vec<u8>> {
-    html_to_pptx_with_options(html, url, Web2PptConfig::default(), ConversionOptions::default())
+    html_to_pptx_with_options(
+        html,
+        url,
+        Web2PptConfig::default(),
+        ConversionOptions::default(),
+    )
 }
 
 /// Convert HTML string to PPTX bytes with options
@@ -433,9 +445,7 @@ mod tests {
 
     #[test]
     fn test_web2ppt_config() {
-        let config = Web2PptConfig::new()
-            .max_slides(5)
-            .max_bullets(3);
+        let config = Web2PptConfig::new().max_slides(5).max_bullets(3);
 
         let converter = Web2Ppt::with_config(config);
         assert_eq!(converter.config().max_slides, 5);

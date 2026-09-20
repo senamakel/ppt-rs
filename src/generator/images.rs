@@ -2,8 +2,8 @@
 //!
 //! Handles image metadata, embedding, and XML generation
 
-use std::path::Path;
 use crate::core::{Dimension, ElementPlacement, ElementSized, Positioned};
+use std::path::Path;
 
 /// Normalize format string and derive file extension
 fn format_and_ext(format: &str) -> (String, String) {
@@ -48,7 +48,12 @@ pub struct Crop {
 impl Crop {
     /// Create a new crop configuration
     pub fn new(left: f64, top: f64, right: f64, bottom: f64) -> Self {
-        Self { left, top, right, bottom }
+        Self {
+            left,
+            top,
+            right,
+            bottom,
+        }
     }
 }
 
@@ -73,11 +78,11 @@ pub enum ImageEffect {
 #[derive(Clone, Debug)]
 pub struct Image {
     pub filename: String,
-    pub width: u32,      // in EMU
-    pub height: u32,     // in EMU
-    pub x: u32,          // Position X in EMU
-    pub y: u32,          // Position Y in EMU
-    pub format: String,  // PNG, JPG, GIF, etc.
+    pub width: u32,     // in EMU
+    pub height: u32,    // in EMU
+    pub x: u32,         // Position X in EMU
+    pub y: u32,         // Position Y in EMU
+    pub format: String, // PNG, JPG, GIF, etc.
     /// Image data source (file path, base64, or bytes)
     pub source: Option<ImageSource>,
     /// Image cropping
@@ -108,18 +113,20 @@ impl Image {
     /// Create an image from a file path, automatically detecting dimensions
     pub fn from_path<P: AsRef<Path>>(path: P) -> std::result::Result<Self, String> {
         let path = path.as_ref();
-        let filename = path.file_name().map(|s| s.to_string_lossy().to_string()).unwrap_or_else(|| "image.png".to_string());
+        let filename = path
+            .file_name()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_else(|| "image.png".to_string());
         let path_str = path.to_string_lossy().to_string();
-        
-        let data = std::fs::read(path)
-            .map_err(|e| format!("Failed to open image: {e}"))?;
+
+        let data = std::fs::read(path).map_err(|e| format!("Failed to open image: {e}"))?;
         let (w, h, format) = read_image_dimensions(&data)
             .ok_or_else(|| "Failed to detect image dimensions (unsupported format)".to_string())?;
-            
+
         // Convert pixels to EMU (assuming 96 DPI): 1 pixel = 9525 EMU
         let w_emu = w * 9525;
         let h_emu = h * 9525;
-        
+
         Ok(Image {
             filename,
             width: w_emu,
@@ -133,7 +140,7 @@ impl Image {
             alt_text: None,
         })
     }
-    
+
     /// Create an image from base64 encoded data
     ///
     /// # Example
@@ -150,9 +157,15 @@ impl Image {
     /// ```
     pub fn from_base64(data: &str, width: u32, height: u32, format: &str) -> Self {
         let (filename, fmt) = generate_image_filename(format);
-        Self::with_source(filename, width, height, fmt, ImageSource::Base64(data.to_string()))
+        Self::with_source(
+            filename,
+            width,
+            height,
+            fmt,
+            ImageSource::Base64(data.to_string()),
+        )
     }
-    
+
     /// Create an image from raw bytes
     pub fn from_bytes(data: Vec<u8>, width: u32, height: u32, format: &str) -> Self {
         let (filename, fmt) = generate_image_filename(format);
@@ -163,11 +176,23 @@ impl Image {
     #[cfg(feature = "web2ppt")]
     pub fn from_url(url: &str, width: u32, height: u32, format: &str) -> Self {
         let (filename, fmt) = generate_image_filename(format);
-        Self::with_source(filename, width, height, fmt, ImageSource::Url(url.to_string()))
+        Self::with_source(
+            filename,
+            width,
+            height,
+            fmt,
+            ImageSource::Url(url.to_string()),
+        )
     }
 
     /// Internal constructor to avoid repeating struct init
-    fn with_source(filename: String, width: u32, height: u32, format: String, source: ImageSource) -> Self {
+    fn with_source(
+        filename: String,
+        width: u32,
+        height: u32,
+        format: String,
+        source: ImageSource,
+    ) -> Self {
         Image {
             filename,
             width,
@@ -187,7 +212,7 @@ impl Image {
         self.alt_text = Some(alt.to_string());
         self
     }
-    
+
     /// Get the image data as bytes (decodes base64 if needed)
     pub fn get_bytes(&self) -> Option<Vec<u8>> {
         match &self.source {
@@ -196,9 +221,7 @@ impl Image {
                 base64_decode(data).ok()
             }
             Some(ImageSource::Bytes(data)) => Some(data.clone()),
-            Some(ImageSource::File(path)) => {
-                std::fs::read(path).ok()
-            }
+            Some(ImageSource::File(path)) => std::fs::read(path).ok(),
             #[cfg(feature = "web2ppt")]
             Some(ImageSource::Url(url)) => {
                 // Use blocking client to fetch image
@@ -207,7 +230,7 @@ impl Image {
                     .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
                     .build()
                     .ok()?;
-                    
+
                 match client.get(url).send() {
                     Ok(resp) => {
                         if resp.status().is_success() {
@@ -215,7 +238,7 @@ impl Image {
                         } else {
                             None
                         }
-                    },
+                    }
                     Err(_) => None,
                 }
             }
@@ -301,8 +324,12 @@ impl Image {
 }
 
 impl Positioned for Image {
-    fn x(&self) -> u32 { self.x }
-    fn y(&self) -> u32 { self.y }
+    fn x(&self) -> u32 {
+        self.x
+    }
+    fn y(&self) -> u32 {
+        self.y
+    }
     fn set_position(&mut self, x: u32, y: u32) {
         self.x = x;
         self.y = y;
@@ -310,8 +337,12 @@ impl Positioned for Image {
 }
 
 impl ElementSized for Image {
-    fn width(&self) -> u32 { self.width }
-    fn height(&self) -> u32 { self.height }
+    fn width(&self) -> u32 {
+        self.width
+    }
+    fn height(&self) -> u32 {
+        self.height
+    }
     fn set_size(&mut self, width: u32, height: u32) {
         self.width = width;
         self.height = height;
@@ -322,25 +353,23 @@ impl ElementSized for Image {
 fn base64_decode(input: &str) -> Result<Vec<u8>, std::io::Error> {
     // Simple base64 decoder
     const DECODE_TABLE: [i8; 128] = [
-        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 62, -1, -1, -1, 63,
-        52, 53, 54, 55, 56, 57, 58, 59, 60, 61, -1, -1, -1, -1, -1, -1,
-        -1,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14,
-        15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, -1, -1, -1, -1, -1,
-        -1, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
-        41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, -1, -1, -1, -1, -1,
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 62, -1, -1,
+        -1, 63, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, -1, -1, -1, -1, -1, -1, -1, 0, 1, 2, 3, 4,
+        5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, -1, -1, -1,
+        -1, -1, -1, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45,
+        46, 47, 48, 49, 50, 51, -1, -1, -1, -1, -1,
     ];
-    
+
     let input = input.trim().replace(['\n', '\r', ' '], "");
     let mut output = Vec::with_capacity(input.len() * 3 / 4);
     let bytes: Vec<u8> = input.bytes().collect();
-    
+
     let mut i = 0;
     while i < bytes.len() {
         let mut buf = [0u8; 4];
         let mut pad = 0;
-        
+
         for j in 0..4 {
             if i + j >= bytes.len() || bytes[i + j] == b'=' {
                 buf[j] = 0;
@@ -354,7 +383,7 @@ fn base64_decode(input: &str) -> Result<Vec<u8>, std::io::Error> {
                 ));
             }
         }
-        
+
         output.push((buf[0] << 2) | (buf[1] >> 4));
         if pad < 2 {
             output.push((buf[1] << 4) | (buf[2] >> 2));
@@ -362,10 +391,10 @@ fn base64_decode(input: &str) -> Result<Vec<u8>, std::io::Error> {
         if pad < 1 {
             output.push((buf[2] << 6) | buf[3]);
         }
-        
+
         i += 4;
     }
-    
+
     Ok(output)
 }
 
@@ -397,20 +426,20 @@ impl ImageBuilder {
             crop: None,
         }
     }
-    
+
     /// Create image from file with default size (2 inches square)
-    /// 
+    ///
     /// # Example
     /// ```
     /// use ppt_rs::generator::ImageBuilder;
-    /// 
+    ///
     /// let img = ImageBuilder::from_file("photo.jpg").build();
     /// ```
     pub fn from_file(filename: &str) -> Self {
         let defaults = ElementPlacement::image_defaults();
         Self::new(filename, defaults.width, defaults.height)
     }
-    
+
     /// Create image builder from base64 data
     pub fn from_base64(data: &str, width: u32, height: u32, format: &str) -> Self {
         let (upper, ext) = format_and_ext(format);
@@ -423,20 +452,20 @@ impl ImageBuilder {
             crop: None,
         }
     }
-    
+
     /// Create image from base64 with default size (2 inches square)
-    /// 
+    ///
     /// # Example
     /// ```
     /// use ppt_rs::generator::ImageBuilder;
-    /// 
+    ///
     /// let img = ImageBuilder::base64("iVBORw0KG...", "PNG").build();
     /// ```
     pub fn base64(data: &str, format: &str) -> Self {
         let defaults = ElementPlacement::image_defaults();
         Self::from_base64(data, defaults.width, defaults.height, format)
     }
-    
+
     /// Create image builder from bytes
     pub fn from_bytes(data: Vec<u8>, width: u32, height: u32, format: &str) -> Self {
         let (upper, ext) = format_and_ext(format);
@@ -449,13 +478,13 @@ impl ImageBuilder {
             crop: None,
         }
     }
-    
+
     /// Create image from bytes with default size (2 inches square)
-    /// 
+    ///
     /// # Example
     /// ```no_run
     /// use ppt_rs::generator::ImageBuilder;
-    /// 
+    ///
     /// let bytes = std::fs::read("photo.jpg").unwrap();
     /// let img = ImageBuilder::bytes(bytes, "JPEG").build();
     /// ```
@@ -463,19 +492,19 @@ impl ImageBuilder {
         let defaults = ElementPlacement::image_defaults();
         Self::from_bytes(data, defaults.width, defaults.height, format)
     }
-    
+
     /// Auto-detect format from bytes and create image with default size
-    /// 
+    ///
     /// # Example
     /// ```no_run
     /// use ppt_rs::generator::ImageBuilder;
-    /// 
+    ///
     /// let bytes = std::fs::read("photo.jpg").unwrap();
     /// let img = ImageBuilder::auto(bytes).build();
     /// ```
     pub fn auto(data: Vec<u8>) -> Self {
         let defaults = ElementPlacement::image_defaults();
-        
+
         // Detect format from magic bytes
         let format = if data.len() >= 4 {
             if &data[0..4] == b"\x89PNG" {
@@ -490,7 +519,7 @@ impl ImageBuilder {
         } else {
             "PNG"
         };
-        
+
         Self::from_bytes(data, defaults.width, defaults.height, format)
     }
 
@@ -499,12 +528,12 @@ impl ImageBuilder {
         self.placement.set_position(x, y);
         self
     }
-    
+
     /// Set image position at (x, y) - alias for position()
     pub fn at(self, x: u32, y: u32) -> Self {
         self.position(x, y)
     }
-    
+
     /// Set image size
     pub fn size(mut self, width: u32, height: u32) -> Self {
         self.placement.set_size(width, height);
@@ -532,43 +561,43 @@ impl ImageBuilder {
         self.placement.width = (height as f64 * ratio) as u32;
         self
     }
-    
+
     /// Add shadow effect (chainable)
     pub fn shadow(mut self) -> Self {
         self.effects.push(ImageEffect::Shadow);
         self
     }
-    
+
     /// Add reflection effect (chainable)
     pub fn reflection(mut self) -> Self {
         self.effects.push(ImageEffect::Reflection);
         self
     }
-    
+
     /// Add glow effect (chainable)
     pub fn glow(mut self) -> Self {
         self.effects.push(ImageEffect::Glow);
         self
     }
-    
+
     /// Add soft edges effect (chainable)
     pub fn soft_edges(mut self) -> Self {
         self.effects.push(ImageEffect::SoftEdges);
         self
     }
-    
+
     /// Add inner shadow effect (chainable)
     pub fn inner_shadow(mut self) -> Self {
         self.effects.push(ImageEffect::InnerShadow);
         self
     }
-    
+
     /// Add blur effect (chainable)
     pub fn blur(mut self) -> Self {
         self.effects.push(ImageEffect::Blur);
         self
     }
-    
+
     /// Add crop (chainable)
     pub fn crop(mut self, left: f64, top: f64, right: f64, bottom: f64) -> Self {
         self.crop = Some(Crop::new(left, top, right, bottom));
@@ -590,7 +619,7 @@ impl ImageBuilder {
             alt_text: None,
         }
     }
-    
+
     /// Build with crop
     pub fn build_with_crop(self, left: f64, top: f64, right: f64, bottom: f64) -> Image {
         Image {
@@ -606,7 +635,7 @@ impl ImageBuilder {
             alt_text: None,
         }
     }
-    
+
     /// Build with shadow effect
     pub fn build_with_shadow(self) -> Image {
         Image {
@@ -622,7 +651,7 @@ impl ImageBuilder {
             alt_text: None,
         }
     }
-    
+
     /// Build with reflection effect
     pub fn build_with_reflection(self) -> Image {
         Image {
@@ -638,7 +667,7 @@ impl ImageBuilder {
             alt_text: None,
         }
     }
-    
+
     /// Build with both shadow and reflection effects
     pub fn build_with_effects(self) -> Image {
         Image {
@@ -654,7 +683,7 @@ impl ImageBuilder {
             alt_text: None,
         }
     }
-    
+
     /// Build with glow effect
     pub fn build_with_glow(self) -> Image {
         Image {
@@ -670,7 +699,7 @@ impl ImageBuilder {
             alt_text: None,
         }
     }
-    
+
     /// Build with soft edges effect
     pub fn build_with_soft_edges(self) -> Image {
         Image {
@@ -686,7 +715,7 @@ impl ImageBuilder {
             alt_text: None,
         }
     }
-    
+
     /// Build with inner shadow effect
     pub fn build_with_inner_shadow(self) -> Image {
         Image {
@@ -702,7 +731,7 @@ impl ImageBuilder {
             alt_text: None,
         }
     }
-    
+
     /// Build with blur effect
     pub fn build_with_blur(self) -> Image {
         Image {
@@ -810,8 +839,7 @@ mod tests {
 
     #[test]
     fn test_image_position() {
-        let img = Image::new("test.png", 1920, 1080, "PNG")
-            .position(500000, 1000000);
+        let img = Image::new("test.png", 1920, 1080, "PNG").position(500000, 1000000);
         assert_eq!(img.x, 500000);
         assert_eq!(img.y, 1000000);
     }
@@ -825,16 +853,14 @@ mod tests {
 
     #[test]
     fn test_image_scale_to_width() {
-        let img = Image::new("test.png", 1920, 1080, "PNG")
-            .scale_to_width(960);
+        let img = Image::new("test.png", 1920, 1080, "PNG").scale_to_width(960);
         assert_eq!(img.width, 960);
         assert_eq!(img.height, 540);
     }
 
     #[test]
     fn test_image_scale_to_height() {
-        let img = Image::new("test.png", 1920, 1080, "PNG")
-            .scale_to_height(540);
+        let img = Image::new("test.png", 1920, 1080, "PNG").scale_to_height(540);
         assert_eq!(img.width, 960);
         assert_eq!(img.height, 540);
     }
@@ -880,54 +906,54 @@ mod tests {
         let img = ImageBuilder::new("photo.jpg", 1920, 1080).build();
         assert_eq!(img.format, "JPG");
     }
-    
+
     #[test]
     fn test_image_from_base64() {
         // 1x1 PNG image in base64
         let base64_png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
         let img = Image::from_base64(base64_png, 100, 100, "PNG");
-        
+
         assert!(img.filename.ends_with(".png"));
         assert_eq!(img.format, "PNG");
         assert!(matches!(img.source, Some(ImageSource::Base64(_))));
     }
-    
+
     #[test]
     fn test_image_from_bytes() {
         let data = vec![0x89, 0x50, 0x4E, 0x47]; // PNG header
         let img = Image::from_bytes(data.clone(), 100, 100, "PNG");
-        
+
         assert_eq!(img.format, "PNG");
         assert!(matches!(img.source, Some(ImageSource::Bytes(_))));
     }
-    
+
     #[test]
     fn test_base64_decode() {
         // Test simple base64 decode
         let result = base64_decode("SGVsbG8=").unwrap();
         assert_eq!(result, b"Hello");
-        
+
         // Test with padding
         let result = base64_decode("SGVsbG8gV29ybGQ=").unwrap();
         assert_eq!(result, b"Hello World");
     }
-    
+
     #[test]
     fn test_image_get_bytes_base64() {
         let base64_png = "SGVsbG8="; // "Hello" in base64
         let img = Image::from_base64(base64_png, 100, 100, "PNG");
-        
+
         let bytes = img.get_bytes().unwrap();
         assert_eq!(bytes, b"Hello");
     }
-    
+
     #[test]
     fn test_image_builder_from_base64() {
         let base64_data = "SGVsbG8=";
         let img = ImageBuilder::from_base64(base64_data, 200, 150, "JPEG")
             .position(1000, 2000)
             .build();
-        
+
         assert_eq!(img.width, 200);
         assert_eq!(img.height, 150);
         assert_eq!(img.x, 1000);
@@ -966,7 +992,8 @@ mod tests {
     #[test]
     fn test_read_bmp_dimensions() {
         let mut bmp = vec![0u8; 26];
-        bmp[0] = 0x42; bmp[1] = 0x4D; // "BM"
+        bmp[0] = 0x42;
+        bmp[1] = 0x4D; // "BM"
         bmp[18..22].copy_from_slice(&100u32.to_le_bytes()); // width=100
         bmp[22..26].copy_from_slice(&200u32.to_le_bytes()); // height=200
         let (w, h, fmt) = read_image_dimensions(&bmp).unwrap();

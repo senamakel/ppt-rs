@@ -4,7 +4,7 @@
 
 use super::slide::{ParsedSlide, SlideParser};
 use super::xmlchemy::XmlParser;
-use crate::exc::{messages, PptxError};
+use crate::exc::{PptxError, messages};
 use crate::opc::Package;
 
 /// Parsed presentation metadata
@@ -163,14 +163,15 @@ impl PresentationReader {
                     if rel_type.contains("/slide")
                         && !rel_type.contains("Layout")
                         && !rel_type.contains("Master")
-                        && let (Some(id), Some(target)) = (rel.attr("Id"), rel.attr("Target")) {
-                            let full_path = if let Some(stripped) = target.strip_prefix('/') {
-                                stripped.to_string()
-                            } else {
-                                format!("ppt/{target}")
-                            };
-                            slide_rels.push((id.to_string(), full_path));
-                        }
+                        && let (Some(id), Some(target)) = (rel.attr("Id"), rel.attr("Target"))
+                    {
+                        let full_path = if let Some(stripped) = target.strip_prefix('/') {
+                            stripped.to_string()
+                        } else {
+                            format!("ppt/{target}")
+                        };
+                        slide_rels.push((id.to_string(), full_path));
+                    }
                 }
 
                 // Sort by relationship ID to maintain slide order
@@ -206,8 +207,8 @@ impl PresentationReader {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::generator::create_pptx_with_content;
     use crate::generator::SlideContent;
+    use crate::generator::create_pptx_with_content;
     use std::fs;
 
     #[test]

@@ -13,15 +13,15 @@ use ppt_rs::generator::images::{Crop, Image, ImageEffect};
 use ppt_rs::generator::memory_profile::estimate_slide_payload;
 use ppt_rs::generator::package_xml::{
     create_content_types_xml, create_content_types_xml_with_notes_and_charts,
-    create_presentation_rels_xml, create_presentation_xml,
-    first_slide_rel_id, slide_id_value, slide_rel_id,
+    create_presentation_rels_xml, create_presentation_xml, first_slide_rel_id, slide_id_value,
+    slide_rel_id,
 };
 use ppt_rs::generator::table::{
-    generate_cell_xml, header_cell, table_from_string_rows, CellAlign, CellVAlign, IMPORT_HEADER_BG,
+    CellAlign, CellVAlign, IMPORT_HEADER_BG, generate_cell_xml, header_cell, table_from_string_rows,
 };
 use ppt_rs::generator::{
-    create_pptx_with_content, create_pptx_with_settings, generate_image_xml, PresentationSettings,
-    PresentationTheme, SlideContent, Table, TableCell, ThemeColorScheme,
+    PresentationSettings, PresentationTheme, SlideContent, Table, TableCell, ThemeColorScheme,
+    create_pptx_with_content, create_pptx_with_settings, generate_image_xml,
 };
 use ppt_rs::prelude::themes;
 use std::io::Cursor;
@@ -65,8 +65,14 @@ fn test_all_theme_presets_embed_in_pptx() {
         let pptx = create_pptx_with_settings("Preset Test", &slides, Some(settings)).unwrap();
         let xml = theme_xml_from_pptx(&pptx);
 
-        assert!(xml.contains(accent), "{name} theme should contain accent {accent}");
-        assert!(xml.contains(&format!(r#"name="{name}""#)), "{name} theme name missing");
+        assert!(
+            xml.contains(accent),
+            "{name} theme should contain accent {accent}"
+        );
+        assert!(
+            xml.contains(&format!(r#"name="{name}""#)),
+            "{name} theme name missing"
+        );
     }
 }
 
@@ -227,11 +233,7 @@ fn test_all_image_effect_variants_generate_xml() {
 
 #[test]
 fn test_effect_list_module_matches_integrated_image_xml() {
-    let effects = vec![
-        ImageEffect::Glow,
-        ImageEffect::SoftEdges,
-        ImageEffect::Blur,
-    ];
+    let effects = vec![ImageEffect::Glow, ImageEffect::SoftEdges, ImageEffect::Blur];
     let list_xml = generate_effect_list_xml(&effects);
 
     let img = Image::new("fx.png", 1000, 1000, "PNG")

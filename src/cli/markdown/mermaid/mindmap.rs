@@ -1,6 +1,6 @@
 //! Mindmap diagram parsing and rendering
 
-use super::types::{create_labeled_shape, LabelPosition};
+use super::types::{LabelPosition, create_labeled_shape};
 use crate::generator::{Shape, ShapeType};
 
 /// Generate shapes for a mindmap

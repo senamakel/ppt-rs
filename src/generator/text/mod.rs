@@ -7,16 +7,16 @@
 //! - `frame` - Container for text content
 
 mod format;
-mod run;
-mod paragraph;
 mod frame;
+mod paragraph;
 pub mod rtl;
+mod run;
 
-pub use format::{TextFormat, FormattedText, color_to_xml};
-pub use run::Run;
-pub use paragraph::Paragraph;
+pub use format::{FormattedText, TextFormat, color_to_xml};
 pub use frame::TextFrame;
-pub use rtl::{TextDirection, RtlLanguage, RtlTextProps};
+pub use paragraph::Paragraph;
+pub use rtl::{RtlLanguage, RtlTextProps, TextDirection};
+pub use run::Run;
 
 /// Text alignment options
 #[derive(Clone, Debug, Copy, PartialEq, Eq, Default)]
@@ -61,7 +61,6 @@ impl TextAnchor {
 }
 
 pub(crate) use crate::core::escape_xml;
-
 
 #[cfg(test)]
 mod tests {

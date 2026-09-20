@@ -47,7 +47,9 @@ fn send(stdin: &mut ChildStdin, id: u64, method: &str, params: serde_json::Value
 
 fn recv(reader: &mut std::io::BufReader<ChildStdout>) -> serde_json::Value {
     let mut line = String::new();
-    reader.read_line(&mut line).expect("Failed to read response");
+    reader
+        .read_line(&mut line)
+        .expect("Failed to read response");
     let trimmed = line.trim();
     assert!(
         !trimmed.is_empty(),
@@ -168,17 +170,22 @@ fn test_create_presentation() {
     let (_guard, mut stdin, mut reader) = start_server();
     handshake(&mut stdin, &mut reader);
 
-    send(&mut stdin, 2, "tools/call", serde_json::json!({
-        "name": "create_presentation",
-        "arguments": {
-            "title": "MCP Test",
-            "output_path": &path,
-            "slides": [
-                { "title": "Slide 1", "bullets": ["Hello", "World"] },
-                { "title": "Slide 2", "bullets": ["Alpha", "Beta"] },
-            ]
-        }
-    }));
+    send(
+        &mut stdin,
+        2,
+        "tools/call",
+        serde_json::json!({
+            "name": "create_presentation",
+            "arguments": {
+                "title": "MCP Test",
+                "output_path": &path,
+                "slides": [
+                    { "title": "Slide 1", "bullets": ["Hello", "World"] },
+                    { "title": "Slide 2", "bullets": ["Alpha", "Beta"] },
+                ]
+            }
+        }),
+    );
     let resp = recv(&mut reader);
 
     assert_eq!(resp["id"], 2);
@@ -197,19 +204,29 @@ fn test_create_presentation_empty_slides_error() {
     let (_guard, mut stdin, mut reader) = start_server();
     handshake(&mut stdin, &mut reader);
 
-    send(&mut stdin, 2, "tools/call", serde_json::json!({
-        "name": "create_presentation",
-        "arguments": {
-            "title": "Empty",
-            "output_path": "/tmp/never.pptx",
-            "slides": []
-        }
-    }));
+    send(
+        &mut stdin,
+        2,
+        "tools/call",
+        serde_json::json!({
+            "name": "create_presentation",
+            "arguments": {
+                "title": "Empty",
+                "output_path": "/tmp/never.pptx",
+                "slides": []
+            }
+        }),
+    );
     let resp = recv(&mut reader);
 
     assert_eq!(resp["id"], 2);
     assert!(resp["result"]["isError"].as_bool().unwrap_or(false));
-    assert!(resp["result"]["content"][0]["text"].as_str().unwrap().contains("No slides"));
+    assert!(
+        resp["result"]["content"][0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("No slides")
+    );
 }
 
 #[test]
@@ -221,19 +238,29 @@ fn test_markdown_to_pptx() {
     let (_guard, mut stdin, mut reader) = start_server();
     handshake(&mut stdin, &mut reader);
 
-    send(&mut stdin, 2, "tools/call", serde_json::json!({
-        "name": "markdown_to_pptx",
-        "arguments": {
-            "markdown": "# Intro\n- Point 1\n- Point 2\n\n# Summary\n- Done\n",
-            "output_path": &path,
-            "title": "MD Test"
-        }
-    }));
+    send(
+        &mut stdin,
+        2,
+        "tools/call",
+        serde_json::json!({
+            "name": "markdown_to_pptx",
+            "arguments": {
+                "markdown": "# Intro\n- Point 1\n- Point 2\n\n# Summary\n- Done\n",
+                "output_path": &path,
+                "title": "MD Test"
+            }
+        }),
+    );
     let resp = recv(&mut reader);
 
     assert_eq!(resp["id"], 2);
     assert!(!resp["result"]["isError"].as_bool().unwrap_or(false));
-    assert!(resp["result"]["content"][0]["text"].as_str().unwrap().contains("2 slide(s)"));
+    assert!(
+        resp["result"]["content"][0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("2 slide(s)")
+    );
     assert!(std::path::Path::new(&path).exists());
 
     cleanup(&path);
@@ -245,12 +272,17 @@ fn test_markdown_to_pptx_missing_param() {
     let (_guard, mut stdin, mut reader) = start_server();
     handshake(&mut stdin, &mut reader);
 
-    send(&mut stdin, 2, "tools/call", serde_json::json!({
-        "name": "markdown_to_pptx",
-        "arguments": {
-            "output_path": "/tmp/never.pptx"
-        }
-    }));
+    send(
+        &mut stdin,
+        2,
+        "tools/call",
+        serde_json::json!({
+            "name": "markdown_to_pptx",
+            "arguments": {
+                "output_path": "/tmp/never.pptx"
+            }
+        }),
+    );
     let resp = recv(&mut reader);
 
     // rmcp 2.2.0 returns missing-param as a tool-level error (isError),
@@ -271,24 +303,34 @@ fn test_get_pptx_info() {
     handshake(&mut stdin, &mut reader);
 
     // First create a file
-    send(&mut stdin, 2, "tools/call", serde_json::json!({
-        "name": "create_presentation",
-        "arguments": {
-            "title": "Info Test",
-            "output_path": &path,
-            "slides": [
-                { "title": "First Slide", "bullets": ["A", "B"] },
-                { "title": "Second Slide", "bullets": ["C"] },
-            ]
-        }
-    }));
+    send(
+        &mut stdin,
+        2,
+        "tools/call",
+        serde_json::json!({
+            "name": "create_presentation",
+            "arguments": {
+                "title": "Info Test",
+                "output_path": &path,
+                "slides": [
+                    { "title": "First Slide", "bullets": ["A", "B"] },
+                    { "title": "Second Slide", "bullets": ["C"] },
+                ]
+            }
+        }),
+    );
     let _ = recv(&mut reader);
 
     // Now get info
-    send(&mut stdin, 3, "tools/call", serde_json::json!({
-        "name": "get_pptx_info",
-        "arguments": { "path": &path }
-    }));
+    send(
+        &mut stdin,
+        3,
+        "tools/call",
+        serde_json::json!({
+            "name": "get_pptx_info",
+            "arguments": { "path": &path }
+        }),
+    );
     let resp = recv(&mut reader);
 
     assert_eq!(resp["id"], 3);
@@ -310,14 +352,24 @@ fn test_get_pptx_info_file_not_found() {
     let (_guard, mut stdin, mut reader) = start_server();
     handshake(&mut stdin, &mut reader);
 
-    send(&mut stdin, 2, "tools/call", serde_json::json!({
-        "name": "get_pptx_info",
-        "arguments": { "path": "/nonexistent/file.pptx" }
-    }));
+    send(
+        &mut stdin,
+        2,
+        "tools/call",
+        serde_json::json!({
+            "name": "get_pptx_info",
+            "arguments": { "path": "/nonexistent/file.pptx" }
+        }),
+    );
     let resp = recv(&mut reader);
 
     assert!(resp["result"]["isError"].as_bool().unwrap_or(false));
-    assert!(resp["result"]["content"][0]["text"].as_str().unwrap().contains("Error"));
+    assert!(
+        resp["result"]["content"][0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("Error")
+    );
 }
 
 #[test]
@@ -332,25 +384,35 @@ fn test_export_pptx_html() {
     handshake(&mut stdin, &mut reader);
 
     // Create a file first
-    send(&mut stdin, 2, "tools/call", serde_json::json!({
-        "name": "create_presentation",
-        "arguments": {
-            "title": "Export Test",
-            "output_path": &pptx_path,
-            "slides": [{ "title": "Slide 1", "bullets": ["X"] }]
-        }
-    }));
+    send(
+        &mut stdin,
+        2,
+        "tools/call",
+        serde_json::json!({
+            "name": "create_presentation",
+            "arguments": {
+                "title": "Export Test",
+                "output_path": &pptx_path,
+                "slides": [{ "title": "Slide 1", "bullets": ["X"] }]
+            }
+        }),
+    );
     let _ = recv(&mut reader);
 
     // Export to HTML
-    send(&mut stdin, 3, "tools/call", serde_json::json!({
-        "name": "export_pptx",
-        "arguments": {
-            "input_path": &pptx_path,
-            "output_path": &html_path,
-            "format": "html"
-        }
-    }));
+    send(
+        &mut stdin,
+        3,
+        "tools/call",
+        serde_json::json!({
+            "name": "export_pptx",
+            "arguments": {
+                "input_path": &pptx_path,
+                "output_path": &html_path,
+                "format": "html"
+            }
+        }),
+    );
     let resp = recv(&mut reader);
 
     assert!(!resp["result"]["isError"].as_bool().unwrap_or(false));
@@ -371,24 +433,34 @@ fn test_export_pptx_markdown() {
     let (_guard, mut stdin, mut reader) = start_server();
     handshake(&mut stdin, &mut reader);
 
-    send(&mut stdin, 2, "tools/call", serde_json::json!({
-        "name": "create_presentation",
-        "arguments": {
-            "title": "MD Export",
-            "output_path": &pptx_path,
-            "slides": [{ "title": "Slide 1", "bullets": ["Bullet 1"] }]
-        }
-    }));
+    send(
+        &mut stdin,
+        2,
+        "tools/call",
+        serde_json::json!({
+            "name": "create_presentation",
+            "arguments": {
+                "title": "MD Export",
+                "output_path": &pptx_path,
+                "slides": [{ "title": "Slide 1", "bullets": ["Bullet 1"] }]
+            }
+        }),
+    );
     let _ = recv(&mut reader);
 
-    send(&mut stdin, 3, "tools/call", serde_json::json!({
-        "name": "export_pptx",
-        "arguments": {
-            "input_path": &pptx_path,
-            "output_path": &md_path,
-            "format": "markdown"
-        }
-    }));
+    send(
+        &mut stdin,
+        3,
+        "tools/call",
+        serde_json::json!({
+            "name": "export_pptx",
+            "arguments": {
+                "input_path": &pptx_path,
+                "output_path": &md_path,
+                "format": "markdown"
+            }
+        }),
+    );
     let resp = recv(&mut reader);
 
     assert!(!resp["result"]["isError"].as_bool().unwrap_or(false));
@@ -407,18 +479,28 @@ fn test_export_pptx_unsupported_format() {
     let (_guard, mut stdin, mut reader) = start_server();
     handshake(&mut stdin, &mut reader);
 
-    send(&mut stdin, 2, "tools/call", serde_json::json!({
-        "name": "export_pptx",
-        "arguments": {
-            "input_path": "/tmp/x.pptx",
-            "output_path": "/tmp/x.docx",
-            "format": "docx"
-        }
-    }));
+    send(
+        &mut stdin,
+        2,
+        "tools/call",
+        serde_json::json!({
+            "name": "export_pptx",
+            "arguments": {
+                "input_path": "/tmp/x.pptx",
+                "output_path": "/tmp/x.docx",
+                "format": "docx"
+            }
+        }),
+    );
     let resp = recv(&mut reader);
 
     assert!(resp["result"]["isError"].as_bool().unwrap_or(false));
-    assert!(resp["result"]["content"][0]["text"].as_str().unwrap().contains("Unsupported format"));
+    assert!(
+        resp["result"]["content"][0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("Unsupported format")
+    );
 }
 
 #[test]
@@ -431,21 +513,31 @@ fn test_validate_pptx() {
     handshake(&mut stdin, &mut reader);
 
     // Create a valid file first
-    send(&mut stdin, 2, "tools/call", serde_json::json!({
-        "name": "create_presentation",
-        "arguments": {
-            "title": "Validate Test",
-            "output_path": &path,
-            "slides": [{ "title": "Slide", "bullets": ["X"] }]
-        }
-    }));
+    send(
+        &mut stdin,
+        2,
+        "tools/call",
+        serde_json::json!({
+            "name": "create_presentation",
+            "arguments": {
+                "title": "Validate Test",
+                "output_path": &path,
+                "slides": [{ "title": "Slide", "bullets": ["X"] }]
+            }
+        }),
+    );
     let _ = recv(&mut reader);
 
     // Validate it
-    send(&mut stdin, 3, "tools/call", serde_json::json!({
-        "name": "validate_pptx",
-        "arguments": { "path": &path }
-    }));
+    send(
+        &mut stdin,
+        3,
+        "tools/call",
+        serde_json::json!({
+            "name": "validate_pptx",
+            "arguments": { "path": &path }
+        }),
+    );
     let resp = recv(&mut reader);
 
     assert!(!resp["result"]["isError"].as_bool().unwrap_or(false));
@@ -465,10 +557,15 @@ fn test_validate_pptx_invalid_file() {
     let (_guard, mut stdin, mut reader) = start_server();
     handshake(&mut stdin, &mut reader);
 
-    send(&mut stdin, 2, "tools/call", serde_json::json!({
-        "name": "validate_pptx",
-        "arguments": { "path": &path }
-    }));
+    send(
+        &mut stdin,
+        2,
+        "tools/call",
+        serde_json::json!({
+            "name": "validate_pptx",
+            "arguments": { "path": &path }
+        }),
+    );
     let resp = recv(&mut reader);
 
     // validate_pptx returns issues as a success result (the tool ran
@@ -476,7 +573,10 @@ fn test_validate_pptx_invalid_file() {
     // issue text mentioning the ZIP error.
     assert!(!resp["result"]["isError"].as_bool().unwrap_or(false));
     let text = resp["result"]["content"][0]["text"].as_str().unwrap();
-    assert!(text.contains("issue(s)"), "expected issue text; got: {text}");
+    assert!(
+        text.contains("issue(s)"),
+        "expected issue text; got: {text}"
+    );
 
     cleanup(&path);
 }
@@ -495,48 +595,73 @@ fn test_merge_pptx() {
     handshake(&mut stdin, &mut reader);
 
     // Create first file
-    send(&mut stdin, 2, "tools/call", serde_json::json!({
-        "name": "create_presentation",
-        "arguments": {
-            "title": "Part A",
-            "output_path": &path_a,
-            "slides": [{ "title": "A1", "bullets": ["a1"] }]
-        }
-    }));
+    send(
+        &mut stdin,
+        2,
+        "tools/call",
+        serde_json::json!({
+            "name": "create_presentation",
+            "arguments": {
+                "title": "Part A",
+                "output_path": &path_a,
+                "slides": [{ "title": "A1", "bullets": ["a1"] }]
+            }
+        }),
+    );
     let _ = recv(&mut reader);
 
     // Create second file
-    send(&mut stdin, 3, "tools/call", serde_json::json!({
-        "name": "create_presentation",
-        "arguments": {
-            "title": "Part B",
-            "output_path": &path_b,
-            "slides": [
-                { "title": "B1", "bullets": ["b1"] },
-                { "title": "B2", "bullets": ["b2"] },
-            ]
-        }
-    }));
+    send(
+        &mut stdin,
+        3,
+        "tools/call",
+        serde_json::json!({
+            "name": "create_presentation",
+            "arguments": {
+                "title": "Part B",
+                "output_path": &path_b,
+                "slides": [
+                    { "title": "B1", "bullets": ["b1"] },
+                    { "title": "B2", "bullets": ["b2"] },
+                ]
+            }
+        }),
+    );
     let _ = recv(&mut reader);
 
     // Merge
-    send(&mut stdin, 4, "tools/call", serde_json::json!({
-        "name": "merge_pptx",
-        "arguments": {
-            "input_paths": [&path_a, &path_b],
-            "output_path": &merged
-        }
-    }));
+    send(
+        &mut stdin,
+        4,
+        "tools/call",
+        serde_json::json!({
+            "name": "merge_pptx",
+            "arguments": {
+                "input_paths": [&path_a, &path_b],
+                "output_path": &merged
+            }
+        }),
+    );
     let resp = recv(&mut reader);
 
     assert!(!resp["result"]["isError"].as_bool().unwrap_or(false));
-    assert!(resp["result"]["content"][0]["text"].as_str().unwrap().contains("3 total slides"));
+    assert!(
+        resp["result"]["content"][0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("3 total slides")
+    );
 
     // Verify merged file
-    send(&mut stdin, 5, "tools/call", serde_json::json!({
-        "name": "get_pptx_info",
-        "arguments": { "path": &merged }
-    }));
+    send(
+        &mut stdin,
+        5,
+        "tools/call",
+        serde_json::json!({
+            "name": "get_pptx_info",
+            "arguments": { "path": &merged }
+        }),
+    );
     let resp = recv(&mut reader);
     let text = resp["result"]["content"][0]["text"].as_str().unwrap();
     let info: serde_json::Value = serde_json::from_str(text).unwrap();
@@ -553,17 +678,27 @@ fn test_merge_pptx_single_file_error() {
     let (_guard, mut stdin, mut reader) = start_server();
     handshake(&mut stdin, &mut reader);
 
-    send(&mut stdin, 2, "tools/call", serde_json::json!({
-        "name": "merge_pptx",
-        "arguments": {
-            "input_paths": ["/tmp/only_one.pptx"],
-            "output_path": "/tmp/out.pptx"
-        }
-    }));
+    send(
+        &mut stdin,
+        2,
+        "tools/call",
+        serde_json::json!({
+            "name": "merge_pptx",
+            "arguments": {
+                "input_paths": ["/tmp/only_one.pptx"],
+                "output_path": "/tmp/out.pptx"
+            }
+        }),
+    );
     let resp = recv(&mut reader);
 
     assert!(resp["result"]["isError"].as_bool().unwrap_or(false));
-    assert!(resp["result"]["content"][0]["text"].as_str().unwrap().contains("At least 2"));
+    assert!(
+        resp["result"]["content"][0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("At least 2")
+    );
 }
 
 #[test]
@@ -575,38 +710,58 @@ fn test_create_presentation_with_tables() {
     let (_guard, mut stdin, mut reader) = start_server();
     handshake(&mut stdin, &mut reader);
 
-    send(&mut stdin, 2, "tools/call", serde_json::json!({
-        "name": "create_presentation_with_tables",
-        "arguments": {
-            "title": "Table Test",
-            "output_path": &path,
-            "tables": [
-                {
-                    "slide_title": "Team Directory",
-                    "rows": [
-                        ["Name", "Role", "Status"],
-                        ["Alice", "Engineer", "Active"],
-                        ["Bob", "Designer", "Active"]
-                    ]
-                }
-            ]
-        }
-    }));
+    send(
+        &mut stdin,
+        2,
+        "tools/call",
+        serde_json::json!({
+            "name": "create_presentation_with_tables",
+            "arguments": {
+                "title": "Table Test",
+                "output_path": &path,
+                "tables": [
+                    {
+                        "slide_title": "Team Directory",
+                        "rows": [
+                            ["Name", "Role", "Status"],
+                            ["Alice", "Engineer", "Active"],
+                            ["Bob", "Designer", "Active"]
+                        ]
+                    }
+                ]
+            }
+        }),
+    );
     let resp = recv(&mut reader);
 
     assert!(!resp["result"]["isError"].as_bool().unwrap_or(false));
-    assert!(resp["result"]["content"][0]["text"].as_str().unwrap().contains("1 table slide"));
+    assert!(
+        resp["result"]["content"][0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("1 table slide")
+    );
     assert!(std::path::Path::new(&path).exists());
 
     // Verify the table was created via get_pptx_info
-    send(&mut stdin, 3, "tools/call", serde_json::json!({
-        "name": "get_pptx_info",
-        "arguments": { "path": &path }
-    }));
+    send(
+        &mut stdin,
+        3,
+        "tools/call",
+        serde_json::json!({
+            "name": "get_pptx_info",
+            "arguments": { "path": &path }
+        }),
+    );
     let resp = recv(&mut reader);
     let text = resp["result"]["content"][0]["text"].as_str().unwrap();
     let info: serde_json::Value = serde_json::from_str(text).unwrap();
-    assert!(info["slides"][0]["features"].as_array().unwrap().contains(&serde_json::json!("table")));
+    assert!(
+        info["slides"][0]["features"]
+            .as_array()
+            .unwrap()
+            .contains(&serde_json::json!("table"))
+    );
 
     cleanup(&path);
 }
@@ -620,38 +775,48 @@ fn test_create_presentation_with_charts() {
     let (_guard, mut stdin, mut reader) = start_server();
     handshake(&mut stdin, &mut reader);
 
-    send(&mut stdin, 2, "tools/call", serde_json::json!({
-        "name": "create_presentation_with_charts",
-        "arguments": {
-            "title": "Chart Test",
-            "output_path": &path,
-            "charts": [
-                {
-                    "slide_title": "Sales Data",
-                    "chart_title": "Q1 Sales",
-                    "chart_type": "bar",
-                    "categories": ["Jan", "Feb", "Mar"],
-                    "series": [
-                        { "name": "2024", "values": [100.0, 150.0, 120.0] },
-                        { "name": "2025", "values": [120.0, 180.0, 150.0] }
-                    ]
-                },
-                {
-                    "slide_title": "Market Share",
-                    "chart_title": "Pie Chart",
-                    "chart_type": "pie",
-                    "categories": ["A", "B", "C"],
-                    "series": [
-                        { "name": "Share", "values": [50.0, 30.0, 20.0] }
-                    ]
-                }
-            ]
-        }
-    }));
+    send(
+        &mut stdin,
+        2,
+        "tools/call",
+        serde_json::json!({
+            "name": "create_presentation_with_charts",
+            "arguments": {
+                "title": "Chart Test",
+                "output_path": &path,
+                "charts": [
+                    {
+                        "slide_title": "Sales Data",
+                        "chart_title": "Q1 Sales",
+                        "chart_type": "bar",
+                        "categories": ["Jan", "Feb", "Mar"],
+                        "series": [
+                            { "name": "2024", "values": [100.0, 150.0, 120.0] },
+                            { "name": "2025", "values": [120.0, 180.0, 150.0] }
+                        ]
+                    },
+                    {
+                        "slide_title": "Market Share",
+                        "chart_title": "Pie Chart",
+                        "chart_type": "pie",
+                        "categories": ["A", "B", "C"],
+                        "series": [
+                            { "name": "Share", "values": [50.0, 30.0, 20.0] }
+                        ]
+                    }
+                ]
+            }
+        }),
+    );
     let resp = recv(&mut reader);
 
     assert!(!resp["result"]["isError"].as_bool().unwrap_or(false));
-    assert!(resp["result"]["content"][0]["text"].as_str().unwrap().contains("2 chart slide"));
+    assert!(
+        resp["result"]["content"][0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("2 chart slide")
+    );
     assert!(std::path::Path::new(&path).exists());
 
     cleanup(&path);
@@ -663,10 +828,15 @@ fn test_unknown_tool() {
     let (_guard, mut stdin, mut reader) = start_server();
     handshake(&mut stdin, &mut reader);
 
-    send(&mut stdin, 2, "tools/call", serde_json::json!({
-        "name": "nonexistent_tool",
-        "arguments": {}
-    }));
+    send(
+        &mut stdin,
+        2,
+        "tools/call",
+        serde_json::json!({
+            "name": "nonexistent_tool",
+            "arguments": {}
+        }),
+    );
     let resp = recv(&mut reader);
 
     assert_eq!(resp["error"]["code"], -32602);
@@ -722,25 +892,35 @@ fn test_compress_pptx() {
     handshake(&mut stdin, &mut reader);
 
     // Create a source file first
-    send(&mut stdin, 2, "tools/call", serde_json::json!({
-        "name": "create_presentation",
-        "arguments": {
-            "title": "Compress Me",
-            "output_path": &src,
-            "slides": [{ "title": "S1", "bullets": ["a", "b"] }]
-        }
-    }));
+    send(
+        &mut stdin,
+        2,
+        "tools/call",
+        serde_json::json!({
+            "name": "create_presentation",
+            "arguments": {
+                "title": "Compress Me",
+                "output_path": &src,
+                "slides": [{ "title": "S1", "bullets": ["a", "b"] }]
+            }
+        }),
+    );
     let _ = recv(&mut reader);
 
     // Compress it
-    send(&mut stdin, 3, "tools/call", serde_json::json!({
-        "name": "compress_pptx",
-        "arguments": {
-            "input_path": &src,
-            "output_path": &out,
-            "level": "medium"
-        }
-    }));
+    send(
+        &mut stdin,
+        3,
+        "tools/call",
+        serde_json::json!({
+            "name": "compress_pptx",
+            "arguments": {
+                "input_path": &src,
+                "output_path": &out,
+                "level": "medium"
+            }
+        }),
+    );
     let resp = recv(&mut reader);
 
     assert!(!resp["result"]["isError"].as_bool().unwrap_or(false));
@@ -759,17 +939,27 @@ fn test_compress_pptx_bad_level() {
     let (_guard, mut stdin, mut reader) = start_server();
     handshake(&mut stdin, &mut reader);
 
-    send(&mut stdin, 2, "tools/call", serde_json::json!({
-        "name": "compress_pptx",
-        "arguments": {
-            "input_path": "/tmp/x.pptx",
-            "output_path": "/tmp/y.pptx",
-            "level": "ultra"
-        }
-    }));
+    send(
+        &mut stdin,
+        2,
+        "tools/call",
+        serde_json::json!({
+            "name": "compress_pptx",
+            "arguments": {
+                "input_path": "/tmp/x.pptx",
+                "output_path": "/tmp/y.pptx",
+                "level": "ultra"
+            }
+        }),
+    );
     let resp = recv(&mut reader);
     assert!(resp["result"]["isError"].as_bool().unwrap_or(false));
-    assert!(resp["result"]["content"][0]["text"].as_str().unwrap().contains("Unsupported level"));
+    assert!(
+        resp["result"]["content"][0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("Unsupported level")
+    );
 }
 
 #[test]
@@ -784,24 +974,34 @@ fn test_repair_pptx() {
     handshake(&mut stdin, &mut reader);
 
     // Create a valid source file
-    send(&mut stdin, 2, "tools/call", serde_json::json!({
-        "name": "create_presentation",
-        "arguments": {
-            "title": "Repair Me",
-            "output_path": &src,
-            "slides": [{ "title": "S1", "bullets": ["x"] }]
-        }
-    }));
+    send(
+        &mut stdin,
+        2,
+        "tools/call",
+        serde_json::json!({
+            "name": "create_presentation",
+            "arguments": {
+                "title": "Repair Me",
+                "output_path": &src,
+                "slides": [{ "title": "S1", "bullets": ["x"] }]
+            }
+        }),
+    );
     let _ = recv(&mut reader);
 
     // Repair it (should find no issues but still save a copy)
-    send(&mut stdin, 3, "tools/call", serde_json::json!({
-        "name": "repair_pptx",
-        "arguments": {
-            "input_path": &src,
-            "output_path": &out
-        }
-    }));
+    send(
+        &mut stdin,
+        3,
+        "tools/call",
+        serde_json::json!({
+            "name": "repair_pptx",
+            "arguments": {
+                "input_path": &src,
+                "output_path": &out
+            }
+        }),
+    );
     let resp = recv(&mut reader);
 
     assert!(!resp["result"]["isError"].as_bool().unwrap_or(false));
@@ -825,40 +1025,50 @@ fn test_apply_theme() {
     handshake(&mut stdin, &mut reader);
 
     // Create a source file
-    send(&mut stdin, 2, "tools/call", serde_json::json!({
-        "name": "create_presentation",
-        "arguments": {
-            "title": "Theme Me",
-            "output_path": &src,
-            "slides": [{ "title": "S1", "bullets": ["a"] }]
-        }
-    }));
+    send(
+        &mut stdin,
+        2,
+        "tools/call",
+        serde_json::json!({
+            "name": "create_presentation",
+            "arguments": {
+                "title": "Theme Me",
+                "output_path": &src,
+                "slides": [{ "title": "S1", "bullets": ["a"] }]
+            }
+        }),
+    );
     let _ = recv(&mut reader);
 
     // Apply a custom theme
-    send(&mut stdin, 3, "tools/call", serde_json::json!({
-        "name": "apply_theme",
-        "arguments": {
-            "input_path": &src,
-            "output_path": &out,
-            "theme": {
-                "name": "Corporate Blue",
-                "palette": {
-                    "primary": "1F497D",
-                    "secondary": "4F81BD",
-                    "accent": "9BBB59",
-                    "background": "FFFFFF",
-                    "text": "000000",
-                    "light": "EEECE1",
-                    "dark": "1F497D"
-                },
-                "fonts": {
-                    "major": "Calibri Light",
-                    "minor": "Calibri"
+    send(
+        &mut stdin,
+        3,
+        "tools/call",
+        serde_json::json!({
+            "name": "apply_theme",
+            "arguments": {
+                "input_path": &src,
+                "output_path": &out,
+                "theme": {
+                    "name": "Corporate Blue",
+                    "palette": {
+                        "primary": "1F497D",
+                        "secondary": "4F81BD",
+                        "accent": "9BBB59",
+                        "background": "FFFFFF",
+                        "text": "000000",
+                        "light": "EEECE1",
+                        "dark": "1F497D"
+                    },
+                    "fonts": {
+                        "major": "Calibri Light",
+                        "minor": "Calibri"
+                    }
                 }
             }
-        }
-    }));
+        }),
+    );
     let resp = recv(&mut reader);
 
     assert!(!resp["result"]["isError"].as_bool().unwrap_or(false));
@@ -881,24 +1091,34 @@ fn test_apply_theme_default() {
     let (_guard, mut stdin, mut reader) = start_server();
     handshake(&mut stdin, &mut reader);
 
-    send(&mut stdin, 2, "tools/call", serde_json::json!({
-        "name": "create_presentation",
-        "arguments": {
-            "title": "Default Theme",
-            "output_path": &src,
-            "slides": [{ "title": "S1", "bullets": ["a"] }]
-        }
-    }));
+    send(
+        &mut stdin,
+        2,
+        "tools/call",
+        serde_json::json!({
+            "name": "create_presentation",
+            "arguments": {
+                "title": "Default Theme",
+                "output_path": &src,
+                "slides": [{ "title": "S1", "bullets": ["a"] }]
+            }
+        }),
+    );
     let _ = recv(&mut reader);
 
     // Apply default Office theme (omit theme arg)
-    send(&mut stdin, 3, "tools/call", serde_json::json!({
-        "name": "apply_theme",
-        "arguments": {
-            "input_path": &src,
-            "output_path": &out
-        }
-    }));
+    send(
+        &mut stdin,
+        3,
+        "tools/call",
+        serde_json::json!({
+            "name": "apply_theme",
+            "arguments": {
+                "input_path": &src,
+                "output_path": &out
+            }
+        }),
+    );
     let resp = recv(&mut reader);
 
     assert!(!resp["result"]["isError"].as_bool().unwrap_or(false));

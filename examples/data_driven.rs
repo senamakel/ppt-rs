@@ -8,7 +8,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Generating data-driven presentation...\n");
 
     let output_file = "examples/output/data_driven.pptx";
-    
+
     // Create output directory
     fs::create_dir_all("examples/output")?;
 
@@ -38,7 +38,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let presentation = company_data.generate_presentation();
-    
+
     // Write to file
     fs::write(output_file, presentation)?;
 
@@ -72,7 +72,10 @@ impl CompanyData {
         let mut xml = String::new();
         xml.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
         xml.push_str("<presentation>\n");
-        xml.push_str(&format!("  <title>{} - Company Overview</title>\n", escape_xml(&self.name)));
+        xml.push_str(&format!(
+            "  <title>{} - Company Overview</title>\n",
+            escape_xml(&self.name)
+        ));
 
         let total_slides = 4 + self.products.len();
         xml.push_str(&format!("  <slides count=\"{}\">\n", total_slides));
@@ -81,8 +84,14 @@ impl CompanyData {
 
         // Slide 1: Title
         xml.push_str(&format!("    <slide number=\"{}\">\n", slide_num));
-        xml.push_str(&format!("      <title>{}</title>\n", escape_xml(&self.name)));
-        xml.push_str(&format!("      <content>Founded: {}</content>\n", self.founded));
+        xml.push_str(&format!(
+            "      <title>{}</title>\n",
+            escape_xml(&self.name)
+        ));
+        xml.push_str(&format!(
+            "      <content>Founded: {}</content>\n",
+            self.founded
+        ));
         xml.push_str("    </slide>\n");
         slide_num += 1;
 
@@ -102,14 +111,20 @@ impl CompanyData {
         xml.push_str(&format!("    <slide number=\"{}\">\n", slide_num));
         xml.push_str("      <title>Global Presence</title>\n");
         let offices = self.offices.join(", ");
-        xml.push_str(&format!("      <content>Offices in: {}</content>\n", escape_xml(&offices)));
+        xml.push_str(&format!(
+            "      <content>Offices in: {}</content>\n",
+            escape_xml(&offices)
+        ));
         xml.push_str("    </slide>\n");
         slide_num += 1;
 
         // Product slides
         for product in &self.products {
             xml.push_str(&format!("    <slide number=\"{}\">\n", slide_num));
-            xml.push_str(&format!("      <title>{}</title>\n", escape_xml(&product.name)));
+            xml.push_str(&format!(
+                "      <title>{}</title>\n",
+                escape_xml(&product.name)
+            ));
             let revenue_str = format!("{:.0}", product.revenue);
             let users_str = format!("{}", product.users);
             xml.push_str(&format!(

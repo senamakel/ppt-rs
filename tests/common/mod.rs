@@ -4,7 +4,7 @@
 
 use std::io::Cursor;
 
-use ppt_rs::core::{validate_package_bytes, PackageValidationReport, ValidationCategory};
+use ppt_rs::core::{PackageValidationReport, ValidationCategory, validate_package_bytes};
 use zip::ZipArchive;
 
 /// Assert that PPTX bytes pass all package validation rules.
@@ -15,7 +15,8 @@ pub fn assert_package_valid(bytes: &[u8], label: &str) {
 
 /// Assert that an on-disk PPTX passes all package validation rules.
 pub fn assert_package_file_valid(path: &std::path::Path, label: &str) {
-    let bytes = std::fs::read(path).unwrap_or_else(|e| panic!("{label}: read {}: {e}", path.display()));
+    let bytes =
+        std::fs::read(path).unwrap_or_else(|e| panic!("{label}: read {}: {e}", path.display()));
     assert_package_valid(&bytes, label);
 }
 
@@ -30,7 +31,10 @@ pub fn assert_package_report_valid(report: &PackageValidationReport, label: &str
         .filter(|i| i.severity == ppt_rs::core::ValidationSeverity::Error)
         .map(|i| format!("{:?}: {}", i.category, i.message))
         .collect();
-    panic!("{label} failed package validation:\n  - {}", errors.join("\n  - "));
+    panic!(
+        "{label} failed package validation:\n  - {}",
+        errors.join("\n  - ")
+    );
 }
 
 /// List part paths in a PPTX ZIP (test debugging helper).
@@ -40,9 +44,10 @@ pub fn list_parts(bytes: &[u8]) -> Vec<String> {
     let mut names = Vec::new();
     for i in 0..archive.len() {
         if let Ok(f) = archive.by_index(i)
-            && !f.is_dir() {
-                names.push(f.name().to_string());
-            }
+            && !f.is_dir()
+        {
+            names.push(f.name().to_string());
+        }
     }
     names.sort();
     names

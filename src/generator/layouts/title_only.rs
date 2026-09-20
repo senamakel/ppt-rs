@@ -1,10 +1,8 @@
 //! Title-only slide layout
 
-use super::common::{SlideXmlBuilder, generate_text_props, ShapePosition, TextContent};
+use super::common::{ShapePosition, SlideXmlBuilder, TextContent, generate_text_props};
+use crate::generator::constants::{TITLE_FONT_SIZE, TITLE_HEIGHT, TITLE_WIDTH, TITLE_X, TITLE_Y};
 use crate::generator::slide_content::SlideContent;
-use crate::generator::constants::{
-    TITLE_X, TITLE_Y, TITLE_WIDTH, TITLE_HEIGHT, TITLE_FONT_SIZE,
-};
 
 /// Title-only slide layout generator
 pub struct TitleOnlyLayout;
@@ -42,7 +40,7 @@ mod tests {
     fn test_title_only_layout() {
         let content = SlideContent::new("Test Title");
         let xml = TitleOnlyLayout::generate(&content);
-        
+
         assert!(xml.contains("Test Title"));
         assert!(xml.contains("p:ph type=\"title\""));
     }

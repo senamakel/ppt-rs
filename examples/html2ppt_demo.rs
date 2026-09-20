@@ -55,9 +55,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     use ppt_rs::import::{Html2Ppt, HtmlParseOptions};
 
-    let options = HtmlParseOptions::new()
-        .max_slides(20)
-        .max_bullets(8);
+    let options = HtmlParseOptions::new().max_slides(20).max_bullets(8);
 
     let converter = Html2Ppt::with_options(options);
 

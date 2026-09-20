@@ -2,7 +2,7 @@
 
 use ppt_rs::api::Presentation;
 use ppt_rs::export::md::{MarkdownOptions, export_to_markdown, export_to_markdown_with_options};
-use ppt_rs::generator::{SlideContent, TableBuilder, TableCell, TableRow, CodeBlock};
+use ppt_rs::generator::{CodeBlock, SlideContent, TableBuilder, TableCell, TableRow};
 use std::fs;
 use std::path::Path;
 
@@ -10,7 +10,11 @@ use std::path::Path;
 fn test_markdown_export_api() {
     let pres = Presentation::new()
         .title("Markdown Export Test")
-        .add_slide(SlideContent::new("Slide 1").add_bullet("Item 1").add_bullet("Item 2"))
+        .add_slide(
+            SlideContent::new("Slide 1")
+                .add_bullet("Item 1")
+                .add_bullet("Item 2"),
+        )
         .add_slide(SlideContent::new("Slide 2").add_bullet("Point A"));
 
     let output_path = "test_export.md";
@@ -49,9 +53,7 @@ fn test_markdown_export_with_table() {
     slide.table = Some(table);
     slide.has_table = true;
 
-    let pres = Presentation::new()
-        .title("Table Test")
-        .add_slide(slide);
+    let pres = Presentation::new().title("Table Test").add_slide(slide);
 
     let output_path = "test_table_export.md";
     pres.save_as_markdown(output_path).unwrap();
@@ -69,11 +71,12 @@ fn test_markdown_export_with_table() {
 #[test]
 fn test_markdown_export_with_code_block() {
     let mut slide = SlideContent::new("Code Slide");
-    slide.code_blocks.push(CodeBlock::new("fn main() {\n    println!(\"Hello\");\n}", "rust"));
+    slide.code_blocks.push(CodeBlock::new(
+        "fn main() {\n    println!(\"Hello\");\n}",
+        "rust",
+    ));
 
-    let pres = Presentation::new()
-        .title("Code Test")
-        .add_slide(slide);
+    let pres = Presentation::new().title("Code Test").add_slide(slide);
 
     let output_path = "test_code_export.md";
     pres.save_as_markdown(output_path).unwrap();
@@ -100,7 +103,8 @@ fn test_markdown_export_with_options() {
         .with_images(false);
 
     let output_path = "test_options_export.md";
-    pres.save_as_markdown_with_options(output_path, &options).unwrap();
+    pres.save_as_markdown_with_options(output_path, &options)
+        .unwrap();
 
     let content = fs::read_to_string(output_path).unwrap();
 
@@ -154,8 +158,7 @@ fn test_markdown_export_multiple_slides() {
 
     for i in 1..=5 {
         pres = pres.add_slide(
-            SlideContent::new(&format!("Slide {}", i))
-                .add_bullet(&format!("Bullet {}", i))
+            SlideContent::new(&format!("Slide {}", i)).add_bullet(&format!("Bullet {}", i)),
         );
     }
 
@@ -182,9 +185,7 @@ fn test_markdown_export_with_notes() {
     let mut slide = SlideContent::new("Notes Slide");
     slide.notes = Some("This is an important note for the speaker".to_string());
 
-    let pres = Presentation::new()
-        .title("Notes Test")
-        .add_slide(slide);
+    let pres = Presentation::new().title("Notes Test").add_slide(slide);
 
     let output_path = "test_notes.md";
     pres.save_as_markdown(output_path).unwrap();

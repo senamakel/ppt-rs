@@ -4,7 +4,7 @@
 
 use super::base::{ContentType, Part, PartType};
 use crate::exc::PptxError;
-use crate::generator::charts::{generate_chart_part_xml, Chart};
+use crate::generator::charts::{Chart, generate_chart_part_xml};
 
 /// Chart part (ppt/charts/chartN.xml)
 #[derive(Debug, Clone)]

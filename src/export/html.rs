@@ -1,6 +1,6 @@
 use crate::api::Presentation;
-use crate::generator::{SlideContent, Image};
 use crate::exc::Result;
+use crate::generator::{Image, SlideContent};
 
 /// Export options for HTML output
 #[derive(Clone, Debug)]
@@ -15,6 +15,8 @@ pub struct HtmlExportOptions {
     pub export_images_as_files: bool,
     /// Image output directory (for file export)
     pub image_output_dir: Option<String>,
+    /// Label slides with their section name (when the presentation has sections)
+    pub group_by_sections: bool,
 }
 
 impl Default for HtmlExportOptions {
@@ -25,6 +27,7 @@ impl Default for HtmlExportOptions {
             syntax_highlight: true,
             export_images_as_files: false,
             image_output_dir: None,
+            group_by_sections: false,
         }
     }
 }
@@ -54,6 +57,11 @@ impl HtmlExportOptions {
         self.image_output_dir = dir.map(|d| d.to_string());
         self
     }
+
+    pub fn with_section_grouping(mut self, group: bool) -> Self {
+        self.group_by_sections = group;
+        self
+    }
 }
 
 /// Export a presentation to a single HTML file
@@ -62,7 +70,10 @@ pub fn export_to_html(presentation: &Presentation) -> Result<String> {
 }
 
 /// Export a presentation to HTML with custom options
-pub fn export_to_html_with_options(presentation: &Presentation, options: &HtmlExportOptions) -> Result<String> {
+pub fn export_to_html_with_options(
+    presentation: &Presentation,
+    options: &HtmlExportOptions,
+) -> Result<String> {
     let mut html = String::new();
 
     // Header
@@ -102,7 +113,15 @@ pub fn export_to_html_with_options(presentation: &Presentation, options: &HtmlEx
 
     // Slides
     for (i, slide) in presentation.slides().iter().enumerate() {
-        html.push_str(&render_slide_with_options(slide, i + 1, options));
+        let section = if options.group_by_sections {
+            presentation
+                .sections()
+                .section_for_slide(i)
+                .map(|s| s.name.as_str())
+        } else {
+            None
+        };
+        html.push_str(&render_slide_with_options(slide, i + 1, options, section));
     }
 
     // Navigation controls
@@ -119,10 +138,27 @@ pub fn export_to_html_with_options(presentation: &Presentation, options: &HtmlEx
     Ok(html)
 }
 
-fn render_slide_with_options(slide: &SlideContent, index: usize, options: &HtmlExportOptions) -> String {
+fn render_slide_with_options(
+    slide: &SlideContent,
+    index: usize,
+    options: &HtmlExportOptions,
+    section: Option<&str>,
+) -> String {
     let mut html = String::new();
 
-    html.push_str(&format!("<div class=\"slide\" id=\"slide-{}\" data-slide=\"{}\">\n", index, index));
+    html.push_str(&format!(
+        "<div class=\"slide\" id=\"slide-{}\" data-slide=\"{}\">\n",
+        index, index
+    ));
+
+    // Section label (opt-in; kept inside the slide div so the navigation
+    // JS data-slide indexing is unaffected)
+    if let Some(name) = section {
+        html.push_str(&format!(
+            "<div class=\"section-label\">{}</div>\n",
+            escape_html(name)
+        ));
+    }
 
     // Slide Number
     html.push_str(&format!("<div class=\"slide-number\">{}</div>\n", index));
@@ -167,9 +203,13 @@ fn render_slide_with_options(slide: &SlideContent, index: usize, options: &HtmlE
 
     // Speaker Notes
     if options.include_notes
-        && let Some(ref notes) = slide.notes {
-            html.push_str(&format!("<div class=\"speaker-notes\"><strong>Notes:</strong> {}</div>\n", escape_html(notes)));
-        }
+        && let Some(ref notes) = slide.notes
+    {
+        html.push_str(&format!(
+            "<div class=\"speaker-notes\"><strong>Notes:</strong> {}</div>\n",
+            escape_html(notes)
+        ));
+    }
 
     html.push_str("</div>\n"); // content
     html.push_str("</div>\n"); // slide
@@ -238,41 +278,41 @@ fn render_image_with_options(image: &Image, options: &HtmlExportOptions) -> Opti
 fn base64_encode(data: &[u8]) -> String {
     const ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut output = String::with_capacity(data.len() * 4 / 3 + 4);
-    
+
     let mut i = 0;
     while i < data.len() {
         let mut buf = [0u8; 3];
         let mut len = 0;
-        
+
         for j in 0..3 {
             if i + j < data.len() {
                 buf[j] = data[i + j];
                 len += 1;
             }
         }
-        
+
         let b0 = (buf[0] >> 2) & 0x3F;
         let b1 = ((buf[0] & 0x03) << 4) | ((buf[1] >> 4) & 0x0F);
         let b2 = ((buf[1] & 0x0F) << 2) | ((buf[2] >> 6) & 0x03);
         let b3 = buf[2] & 0x3F;
-        
+
         output.push(ALPHABET[b0 as usize] as char);
         output.push(ALPHABET[b1 as usize] as char);
-        
+
         if len > 1 {
             output.push(ALPHABET[b2 as usize] as char);
         } else {
             output.push('=');
         }
-        
+
         if len > 2 {
             output.push(ALPHABET[b3 as usize] as char);
         } else {
             output.push('=');
         }
-        
+
         i += 3;
     }
-    
+
     output
 }

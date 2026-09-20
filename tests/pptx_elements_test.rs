@@ -3,9 +3,7 @@
 //! Tests various PPTX components: slides, text, formatting, layouts, etc.
 //! Also generates example files demonstrating each element type
 
-use ppt_rs::generator::{
-    SlideContent, create_pptx_with_content,
-};
+use ppt_rs::generator::{SlideContent, create_pptx_with_content};
 use std::fs;
 use std::path::Path;
 
@@ -16,7 +14,7 @@ use std::path::Path;
 #[test]
 fn test_slide_with_title_only() {
     let slides = [SlideContent::new("Title Only Slide")];
-    
+
     assert_eq!(slides[0].title, "Title Only Slide");
     assert_eq!(slides[0].content.len(), 0);
     assert_eq!(slides[0].title_size, Some(44));
@@ -24,9 +22,8 @@ fn test_slide_with_title_only() {
 
 #[test]
 fn test_slide_with_single_bullet() {
-    let slide = SlideContent::new("Single Bullet")
-        .add_bullet("One point");
-    
+    let slide = SlideContent::new("Single Bullet").add_bullet("One point");
+
     assert_eq!(slide.content.len(), 1);
     assert_eq!(slide.content[0], "One point");
 }
@@ -39,7 +36,7 @@ fn test_slide_with_multiple_bullets() {
         .add_bullet("Third point")
         .add_bullet("Fourth point")
         .add_bullet("Fifth point");
-    
+
     assert_eq!(slide.content.len(), 5);
     assert_eq!(slide.content[0], "First point");
     assert_eq!(slide.content[4], "Fifth point");
@@ -48,9 +45,8 @@ fn test_slide_with_multiple_bullets() {
 #[test]
 fn test_slide_with_long_text() {
     let long_text = "This is a very long bullet point that contains multiple words and should be properly handled by the PPTX generator without any issues or truncation";
-    let slide = SlideContent::new("Long Text Slide")
-        .add_bullet(long_text);
-    
+    let slide = SlideContent::new("Long Text Slide").add_bullet(long_text);
+
     assert_eq!(slide.content[0], long_text);
     assert!(slide.content[0].len() > 100);
 }
@@ -61,7 +57,7 @@ fn test_slide_with_special_characters() {
         .add_bullet("Symbols: & < > \" '")
         .add_bullet("Numbers: 123 456 789")
         .add_bullet("Mixed: Test@123 & More!");
-    
+
     assert_eq!(slide.content.len(), 3);
     assert!(slide.content[0].contains("&"));
     assert!(slide.content[0].contains("<"));
@@ -73,7 +69,7 @@ fn test_slide_with_empty_bullets() {
         .add_bullet("")
         .add_bullet("Valid bullet")
         .add_bullet("");
-    
+
     assert_eq!(slide.content.len(), 3);
 }
 
@@ -84,7 +80,7 @@ fn test_slide_with_unicode_text() {
         .add_bullet("日本語テキスト")
         .add_bullet("中文文本")
         .add_bullet("Русский текст");
-    
+
     assert_eq!(slide.content.len(), 4);
 }
 
@@ -98,7 +94,7 @@ fn test_slide_with_small_fonts() {
         .title_size(18)
         .content_size(12)
         .add_bullet("Small content");
-    
+
     assert_eq!(slide.title_size, Some(18));
     assert_eq!(slide.content_size, Some(12));
 }
@@ -109,7 +105,7 @@ fn test_slide_with_large_fonts() {
         .title_size(72)
         .content_size(48)
         .add_bullet("Large content");
-    
+
     assert_eq!(slide.title_size, Some(72));
     assert_eq!(slide.content_size, Some(48));
 }
@@ -120,7 +116,7 @@ fn test_slide_with_extreme_font_sizes() {
         .title_size(8)
         .content_size(96)
         .add_bullet("Huge");
-    
+
     assert_eq!(slide.title_size, Some(8));
     assert_eq!(slide.content_size, Some(96));
 }
@@ -131,7 +127,7 @@ fn test_slide_with_matching_font_sizes() {
         .title_size(28)
         .content_size(28)
         .add_bullet("Same");
-    
+
     assert_eq!(slide.title_size, slide.content_size);
 }
 
@@ -145,7 +141,7 @@ fn test_slide_with_bold_title() {
         .title_bold(true)
         .content_bold(false)
         .add_bullet("Regular content");
-    
+
     assert!(slide.title_bold);
     assert!(!slide.content_bold);
 }
@@ -156,7 +152,7 @@ fn test_slide_with_bold_content() {
         .title_bold(false)
         .content_bold(true)
         .add_bullet("Bold content");
-    
+
     assert!(!slide.title_bold);
     assert!(slide.content_bold);
 }
@@ -167,7 +163,7 @@ fn test_slide_with_all_bold() {
         .title_bold(true)
         .content_bold(true)
         .add_bullet("Bold bullet");
-    
+
     assert!(slide.title_bold);
     assert!(slide.content_bold);
 }
@@ -178,7 +174,7 @@ fn test_slide_with_no_bold() {
         .title_bold(false)
         .content_bold(false)
         .add_bullet("Regular bullet");
-    
+
     assert!(!slide.title_bold);
     assert!(!slide.content_bold);
 }
@@ -195,7 +191,7 @@ fn test_slide_with_all_formatting() {
         .content_size(32)
         .content_bold(true)
         .add_bullet("Fully formatted");
-    
+
     assert_eq!(slide.title_size, Some(56));
     assert!(slide.title_bold);
     assert_eq!(slide.content_size, Some(32));
@@ -210,7 +206,7 @@ fn test_slide_with_mixed_formatting() {
         .content_size(20)
         .content_bold(true)
         .add_bullet("Mixed");
-    
+
     assert_eq!(slide.title_size, Some(48));
     assert!(!slide.title_bold);
     assert_eq!(slide.content_size, Some(20));
@@ -223,19 +219,18 @@ fn test_slide_with_mixed_formatting() {
 
 #[test]
 fn test_single_slide_presentation() {
-    let slides = [SlideContent::new("Only Slide")
-            .add_bullet("Content")];
-    
+    let slides = [SlideContent::new("Only Slide").add_bullet("Content")];
+
     assert_eq!(slides.len(), 1);
 }
 
 #[test]
 fn test_two_slide_presentation() {
-    let slides = [SlideContent::new("Slide 1")
-            .add_bullet("First"),
-        SlideContent::new("Slide 2")
-            .add_bullet("Second")];
-    
+    let slides = [
+        SlideContent::new("Slide 1").add_bullet("First"),
+        SlideContent::new("Slide 2").add_bullet("Second"),
+    ];
+
     assert_eq!(slides.len(), 2);
     assert_eq!(slides[0].title, "Slide 1");
     assert_eq!(slides[1].title, "Slide 2");
@@ -245,12 +240,10 @@ fn test_two_slide_presentation() {
 fn test_ten_slide_presentation() {
     let mut slides = Vec::new();
     for i in 1..=10 {
-        slides.push(
-            SlideContent::new(&format!("Slide {}", i))
-                .add_bullet(&format!("Content {}", i))
-        );
+        slides
+            .push(SlideContent::new(&format!("Slide {}", i)).add_bullet(&format!("Content {}", i)));
     }
-    
+
     assert_eq!(slides.len(), 10);
     assert_eq!(slides[0].title, "Slide 1");
     assert_eq!(slides[9].title, "Slide 10");
@@ -258,7 +251,8 @@ fn test_ten_slide_presentation() {
 
 #[test]
 fn test_presentation_with_varied_content() {
-    let slides = [SlideContent::new("Title Slide")
+    let slides = [
+        SlideContent::new("Title Slide")
             .title_size(60)
             .add_bullet("Subtitle"),
         SlideContent::new("Content Slide")
@@ -268,8 +262,9 @@ fn test_presentation_with_varied_content() {
         SlideContent::new("Conclusion")
             .title_bold(true)
             .content_bold(true)
-            .add_bullet("Summary")];
-    
+            .add_bullet("Summary"),
+    ];
+
     assert_eq!(slides.len(), 3);
     assert_eq!(slides[0].title_size, Some(60));
     assert_eq!(slides[1].content.len(), 3);
@@ -305,10 +300,8 @@ fn test_generate_single_bullet_slides() {
     let _ = fs::create_dir_all("target/test_output");
 
     let slides = vec![
-        SlideContent::new("Single Bullet 1")
-            .add_bullet("One point"),
-        SlideContent::new("Single Bullet 2")
-            .add_bullet("Another point"),
+        SlideContent::new("Single Bullet 1").add_bullet("One point"),
+        SlideContent::new("Single Bullet 2").add_bullet("Another point"),
     ];
 
     let result = create_pptx_with_content("Single Bullet Slides", slides);
@@ -343,7 +336,7 @@ fn test_generate_long_text_slide() {
     let _ = fs::create_dir_all("target/test_output");
 
     let long_text = "This is a very long bullet point that contains multiple words and demonstrates how the PPTX generator handles extended text content without truncation or formatting issues";
-    
+
     let slides = vec![
         SlideContent::new("Long Text Demonstration")
             .add_bullet(long_text)
@@ -511,9 +504,7 @@ fn test_generate_comprehensive_presentation() {
 fn test_generate_minimal_presentation() {
     let _ = fs::create_dir_all("target/test_output");
 
-    let slides = vec![
-        SlideContent::new("Minimal"),
-    ];
+    let slides = vec![SlideContent::new("Minimal")];
 
     let result = create_pptx_with_content("Minimal", slides);
     assert!(result.is_ok());

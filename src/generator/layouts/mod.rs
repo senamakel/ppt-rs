@@ -2,18 +2,20 @@
 //!
 //! Each layout is a separate module with atomic responsibility.
 
-mod common;
 mod blank;
-mod title_only;
 mod centered_title;
+mod common;
 mod title_content;
+mod title_only;
 mod two_column;
 
-pub use common::{SlideXmlBuilder, generate_text_props, ExtendedTextProps, generate_text_props_extended};
 pub use blank::BlankLayout;
-pub use title_only::TitleOnlyLayout;
 pub use centered_title::CenteredTitleLayout;
-pub use title_content::{TitleContentLayout, TitleBigContentLayout};
+pub use common::{
+    ExtendedTextProps, SlideXmlBuilder, generate_text_props, generate_text_props_extended,
+};
+pub use title_content::{TitleBigContentLayout, TitleContentLayout};
+pub use title_only::TitleOnlyLayout;
 pub use two_column::TwoColumnLayout;
 
 use super::slide_content::{SlideContent, SlideLayout};

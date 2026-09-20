@@ -282,9 +282,10 @@ impl SlideParser {
 
                     // Get color from solidFill/srgbClr
                     if let Some(solid_fill) = rpr.find_descendant("solidFill")
-                        && let Some(srgb) = solid_fill.find("srgbClr") {
-                            run.color = srgb.attr("val").map(|s| s.to_string());
-                        }
+                        && let Some(srgb) = solid_fill.find("srgbClr")
+                    {
+                        run.color = srgb.attr("val").map(|s| s.to_string());
+                    }
                 }
 
                 para.runs.push(run);
@@ -301,40 +302,44 @@ impl SlideParser {
     fn is_title_shape(sp: &XmlElement) -> bool {
         // Check placeholder type first
         if let Some(nv_pr) = sp.find_descendant("nvPr")
-            && let Some(ph) = nv_pr.find("ph") {
-                let ph_type = ph.attr("type").unwrap_or("");
-                if ph_type == "title" || ph_type == "ctrTitle" {
-                    return true;
-                }
+            && let Some(ph) = nv_pr.find("ph")
+        {
+            let ph_type = ph.attr("type").unwrap_or("");
+            if ph_type == "title" || ph_type == "ctrTitle" {
+                return true;
             }
+        }
         // Also check shape name for textbox-based titles
         if let Some(cnv_pr) = sp.find_descendant("cNvPr")
-            && let Some(name) = cnv_pr.attr("name") {
-                let name_lower = name.to_lowercase();
-                if name_lower == "title" || name_lower.contains("title") {
-                    return true;
-                }
+            && let Some(name) = cnv_pr.attr("name")
+        {
+            let name_lower = name.to_lowercase();
+            if name_lower == "title" || name_lower.contains("title") {
+                return true;
             }
+        }
         false
     }
 
     fn is_body_shape(sp: &XmlElement) -> bool {
         // Check placeholder type first
         if let Some(nv_pr) = sp.find_descendant("nvPr")
-            && let Some(ph) = nv_pr.find("ph") {
-                let ph_type = ph.attr("type").unwrap_or("body");
-                if ph_type == "body" || ph_type.is_empty() {
-                    return true;
-                }
+            && let Some(ph) = nv_pr.find("ph")
+        {
+            let ph_type = ph.attr("type").unwrap_or("body");
+            if ph_type == "body" || ph_type.is_empty() {
+                return true;
             }
+        }
         // Also check shape name for textbox-based content
         if let Some(cnv_pr) = sp.find_descendant("cNvPr")
-            && let Some(name) = cnv_pr.attr("name") {
-                let name_lower = name.to_lowercase();
-                if name_lower == "content" || name_lower.contains("content") {
-                    return true;
-                }
+            && let Some(name) = cnv_pr.attr("name")
+        {
+            let name_lower = name.to_lowercase();
+            if name_lower == "content" || name_lower.contains("content") {
+                return true;
             }
+        }
         false
     }
 

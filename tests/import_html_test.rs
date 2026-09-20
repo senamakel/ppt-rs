@@ -8,9 +8,9 @@
 //! - Edge cases (empty input, nested elements, special characters)
 //! - PPTX structure validation
 
-use ppt_rs::core::{check_required_parts, REQUIRED_PARTS_MINIMAL};
+use ppt_rs::core::{REQUIRED_PARTS_MINIMAL, check_required_parts};
 use ppt_rs::generator::create_pptx_with_content;
-use ppt_rs::import::{parse_html, parse_html_with_options, Html2Ppt, HtmlParseOptions};
+use ppt_rs::import::{Html2Ppt, HtmlParseOptions, parse_html, parse_html_with_options};
 use std::collections::HashSet;
 use zip::ZipArchive;
 
@@ -100,7 +100,11 @@ fn test_table_parsing() {
     let slides = parse_html(html).unwrap();
     assert!(slides[0].table.is_some(), "Should have a table");
     let table = slides[0].table.as_ref().unwrap();
-    assert_eq!(table.rows.len(), 3, "Should have 3 rows (1 header + 2 data)");
+    assert_eq!(
+        table.rows.len(),
+        3,
+        "Should have 3 rows (1 header + 2 data)"
+    );
     assert_eq!(table.rows[0].cells.len(), 2, "Should have 2 columns");
 }
 
@@ -130,7 +134,12 @@ fn test_image_placeholder() {
 fn test_image_without_alt() {
     let html = r#"<h1>Gallery</h1><img src="photo.png">"#;
     let slides = parse_html(html).unwrap();
-    assert!(slides[0].content.iter().any(|c| c.contains("[Image: photo.png]")));
+    assert!(
+        slides[0]
+            .content
+            .iter()
+            .any(|c| c.contains("[Image: photo.png]"))
+    );
 }
 
 // ============================================================================
@@ -378,7 +387,9 @@ fn test_large_html_preserves_content() {
 
 #[test]
 fn test_options_limit_slides() {
-    let html = (0..10).map(|i| format!("<h1>Slide {i}</h1>")).collect::<String>();
+    let html = (0..10)
+        .map(|i| format!("<h1>Slide {i}</h1>"))
+        .collect::<String>();
     let opts = HtmlParseOptions::new().max_slides(3);
     let slides = parse_html_with_options(&html, opts).unwrap();
     assert_eq!(slides.len(), 3);
@@ -387,7 +398,9 @@ fn test_options_limit_slides() {
 #[test]
 fn test_options_limit_bullets() {
     let html = "<h1>Title</h1>".to_string()
-        + &(0..20).map(|i| format!("<p>Bullet {i}</p>")).collect::<String>();
+        + &(0..20)
+            .map(|i| format!("<p>Bullet {i}</p>"))
+            .collect::<String>();
     let opts = HtmlParseOptions::new().max_bullets(3);
     let slides = parse_html_with_options(&html, opts).unwrap();
     assert_eq!(slides[0].content.len(), 3);
@@ -450,9 +463,7 @@ fn test_html2ppt_struct_parse() {
 fn test_html2ppt_struct_with_options() {
     let opts = HtmlParseOptions::new().max_slides(1);
     let converter = Html2Ppt::with_options(opts);
-    let slides = converter
-        .parse("<h1>A</h1><h1>B</h1><h1>C</h1>")
-        .unwrap();
+    let slides = converter.parse("<h1>A</h1><h1>B</h1><h1>C</h1>").unwrap();
     assert_eq!(slides.len(), 1);
 }
 
@@ -479,7 +490,12 @@ fn test_div_as_content_container() {
     let html = "<div><h1>In Div</h1><p>Content in div</p></div>";
     let slides = parse_html(html).unwrap();
     assert_eq!(slides[0].title, "In Div");
-    assert!(slides[0].content.iter().any(|c| c.contains("Content in div")));
+    assert!(
+        slides[0]
+            .content
+            .iter()
+            .any(|c| c.contains("Content in div"))
+    );
 }
 
 #[test]
@@ -511,7 +527,9 @@ fn test_mixed_content_order() {
 fn test_large_html_no_crash() {
     let mut html = String::from("<h1>Large</h1>");
     for i in 0..100 {
-        html.push_str(&format!("<p>Paragraph {i} with some text content to make it realistic.</p>"));
+        html.push_str(&format!(
+            "<p>Paragraph {i} with some text content to make it realistic.</p>"
+        ));
     }
     let result = parse_html(&html);
     assert!(result.is_ok());
@@ -611,7 +629,12 @@ fn test_content_before_first_h1_creates_default_title() {
     // Content before h1 creates auto-slide "Overview", then h1 creates "Real Title"
     assert_eq!(slides.len(), 2);
     // First slide: auto-titled from presentation_title fallback
-    assert!(slides[0].content.iter().any(|c| c.contains("Intro paragraph")));
+    assert!(
+        slides[0]
+            .content
+            .iter()
+            .any(|c| c.contains("Intro paragraph"))
+    );
     assert!(slides[0].content.iter().any(|c| c.contains("More intro")));
     // Second slide: explicitly titled from h1
     assert_eq!(slides[1].title, "Real Title");
@@ -633,12 +656,18 @@ fn test_empty_table_does_not_crash() {
     let html = "<h1>Title</h1><table></table><p>After empty table</p>";
     let slides = parse_html(html).unwrap();
     assert!(slides[0].table.is_none());
-    assert!(slides[0].content.iter().any(|c| c.contains("After empty table")));
+    assert!(
+        slides[0]
+            .content
+            .iter()
+            .any(|c| c.contains("After empty table"))
+    );
 }
 
 #[test]
 fn test_table_with_irregular_columns() {
-    let html = "<h1>Data</h1><table><tr><th>A</th><th>B</th><th>C</th></tr><tr><td>1</td></tr></table>";
+    let html =
+        "<h1>Data</h1><table><tr><th>A</th><th>B</th><th>C</th></tr><tr><td>1</td></tr></table>";
     let slides = parse_html(html).unwrap();
     assert!(slides[0].table.is_some());
 }
@@ -717,19 +746,35 @@ fn test_article_section_div_all_produce_bullets() {
     let html = "<h1>Title</h1><div><p>Div content</p></div><article><p>Article content</p></article><section><p>Section content</p></section><main><p>Main content</p></main>";
     let slides = parse_html(html).unwrap();
     assert!(slides[0].content.iter().any(|c| c.contains("Div content")));
-    assert!(slides[0].content.iter().any(|c| c.contains("Article content")));
-    assert!(slides[0].content.iter().any(|c| c.contains("Section content")));
+    assert!(
+        slides[0]
+            .content
+            .iter()
+            .any(|c| c.contains("Article content"))
+    );
+    assert!(
+        slides[0]
+            .content
+            .iter()
+            .any(|c| c.contains("Section content"))
+    );
     assert!(slides[0].content.iter().any(|c| c.contains("Main content")));
 }
 
 #[test]
 fn test_html_with_title_tag_fallback() {
-    let html = "<html><head><title>My Presentation</title></head><body><h1>Slide One</h1></body></html>";
+    let html =
+        "<html><head><title>My Presentation</title></head><body><h1>Slide One</h1></body></html>";
     let slides = parse_html(html).unwrap();
     assert_eq!(slides[0].title, "Slide One");
     // The <title> content should be skipped, but the first h1 is the title
     // (title tag content should never appear in slide output)
-    assert!(!slides[0].content.iter().any(|c| c.contains("My Presentation")));
+    assert!(
+        !slides[0]
+            .content
+            .iter()
+            .any(|c| c.contains("My Presentation"))
+    );
 }
 
 #[test]
@@ -756,7 +801,12 @@ fn test_self_closing_br_hr_img_in_attributes() {
     let slides = parse_html(html).unwrap();
     assert_eq!(slides.len(), 2);
     assert!(slides[0].content[0].contains("Text\n\nMore text"));
-    assert!(slides[1].content.iter().any(|c| c.contains("[Image: Test]")));
+    assert!(
+        slides[1]
+            .content
+            .iter()
+            .any(|c| c.contains("[Image: Test]"))
+    );
 }
 
 #[test]
@@ -793,270 +843,310 @@ fn test_content_with_code_entities() {
     assert!(code.contains("if x < 5 && y > 10"));
 }
 
-    #[test]
-    fn test_parse_comprehensive_fixture() {
-        let html = std::fs::read_to_string("tests/fixtures/html/comprehensive.html")
-            .expect("Should read comprehensive fixture");
-        let slides = parse_html(&html).expect("Should parse comprehensive HTML");
-        assert!(!slides.is_empty(), "Should produce slides");
-        assert_eq!(slides.len(), 11, "Should produce exactly 11 slides");
+#[test]
+fn test_parse_comprehensive_fixture() {
+    let html = std::fs::read_to_string("tests/fixtures/html/comprehensive.html")
+        .expect("Should read comprehensive fixture");
+    let slides = parse_html(&html).expect("Should parse comprehensive HTML");
+    assert!(!slides.is_empty(), "Should produce slides");
+    assert_eq!(slides.len(), 11, "Should produce exactly 11 slides");
 
-        // -----------------------------------------------------------------------
-        // Slide 0: "Welcome to html2ppt" — also tests styled <h1> (title-level CSS)
-        // -----------------------------------------------------------------------
-        let s0 = &slides[0];
-        assert_eq!(s0.title, "Welcome to html2ppt");
-        assert_eq!(s0.content.len(), 3);
-        assert_eq!(s0.content[0], "**Bold** and *italic* and **also bold** and *also italic* text.");
-        assert_eq!(s0.content[1], "Visit Example website for details.");
-        assert_eq!(s0.content[2], "Line one\nLine two\nLine three");
-        assert_eq!(s0.bullets.len(), 3);
-        // No inline CSS on these paragraphs — format should be None
-        assert!(s0.bullets[0].format.is_none());
-        assert!(s0.bullets[1].format.is_none());
-        assert!(s0.bullets[2].format.is_none());
-        // Styled <h1> — title-level properties
-        assert_eq!(s0.title_color, Some("000080".to_string())); // navy
-        assert_eq!(s0.title_size, Some(36)); // 48px → 36pt
-        assert!(s0.title_bold);
-        assert!(!s0.title_italic);
-        assert!(!s0.title_underline);
-        assert!(!s0.has_table);
-        assert!(!s0.has_image);
-        assert!(s0.code_blocks.is_empty());
-        assert!(s0.notes.is_none());
+    // -----------------------------------------------------------------------
+    // Slide 0: "Welcome to html2ppt" — also tests styled <h1> (title-level CSS)
+    // -----------------------------------------------------------------------
+    let s0 = &slides[0];
+    assert_eq!(s0.title, "Welcome to html2ppt");
+    assert_eq!(s0.content.len(), 3);
+    assert_eq!(
+        s0.content[0],
+        "**Bold** and *italic* and **also bold** and *also italic* text."
+    );
+    assert_eq!(s0.content[1], "Visit Example website for details.");
+    assert_eq!(s0.content[2], "Line one\nLine two\nLine three");
+    assert_eq!(s0.bullets.len(), 3);
+    // No inline CSS on these paragraphs — format should be None
+    assert!(s0.bullets[0].format.is_none());
+    assert!(s0.bullets[1].format.is_none());
+    assert!(s0.bullets[2].format.is_none());
+    // Styled <h1> — title-level properties
+    assert_eq!(s0.title_color, Some("000080".to_string())); // navy
+    assert_eq!(s0.title_size, Some(36)); // 48px → 36pt
+    assert!(s0.title_bold);
+    assert!(!s0.title_italic);
+    assert!(!s0.title_underline);
+    assert!(!s0.has_table);
+    assert!(!s0.has_image);
+    assert!(s0.code_blocks.is_empty());
+    assert!(s0.notes.is_none());
 
-        // -----------------------------------------------------------------------
-        // Slide 1: "Inline CSS Styles" — per-bullet inline CSS verification
-        // -----------------------------------------------------------------------
-        let s1 = &slides[1];
-        assert_eq!(s1.title, "Inline CSS Styles");
-        assert_eq!(s1.content.len(), 7);
-        assert_eq!(s1.content[0], "This text is red from inline style.");
-        assert_eq!(s1.content[1], "This text is blue and larger.");
-        assert_eq!(s1.content[2], "This paragraph has a yellow highlight.");
-        assert_eq!(s1.content[3], "Bold, italic, and purple.");
-        assert_eq!(s1.content[4], "This text is underlined.");
-        assert_eq!(s1.content[5], "This text is struck through.");
-        assert_eq!(s1.content[6], "This uses Courier New font.");
-        assert_eq!(s1.bullets.len(), 7);
-        // b[0]: color:red
-        assert!(s1.bullets[0].format.is_some());
-        let f0 = s1.bullets[0].format.as_ref().unwrap();
-        assert_eq!(f0.color, Some("FF0000".to_string()));
-        assert!(!f0.bold);
-        assert!(!f0.italic);
-        assert!(!f0.underline);
-        assert!(!f0.strikethrough);
-        assert!(f0.highlight.is_none());
-        assert!(f0.font_size.is_none());
-        // b[1]: color:blue; font-size:22px
-        let f1 = s1.bullets[1].format.as_ref().unwrap();
-        assert_eq!(f1.color, Some("0000FF".to_string()));
-        assert_eq!(f1.font_size, Some(17)); // 22px → 17pt
-        assert!(f1.highlight.is_none());
-        // b[2]: background-color:yellow → highlight
-        let f2 = s1.bullets[2].format.as_ref().unwrap();
-        assert_eq!(f2.highlight, Some("FFFF00".to_string()));
-        assert!(f2.color.is_none());
-        // b[3]: font-weight:bold; font-style:italic; color:purple
-        let f3 = s1.bullets[3].format.as_ref().unwrap();
-        assert!(f3.bold);
-        assert!(f3.italic);
-        assert_eq!(f3.color, Some("800080".to_string()));
-        // b[4]: text-decoration:underline
-        let f4 = s1.bullets[4].format.as_ref().unwrap();
-        assert!(f4.underline);
-        assert!(!f4.strikethrough);
-        // b[5]: text-decoration:line-through → strikethrough
-        let f5 = s1.bullets[5].format.as_ref().unwrap();
-        assert!(f5.strikethrough);
-        assert!(!f5.underline);
-        // b[6]: font-family:Courier New
-        let f6 = s1.bullets[6].format.as_ref().unwrap();
-        assert_eq!(f6.font_family, Some("Courier New".to_string()));
+    // -----------------------------------------------------------------------
+    // Slide 1: "Inline CSS Styles" — per-bullet inline CSS verification
+    // -----------------------------------------------------------------------
+    let s1 = &slides[1];
+    assert_eq!(s1.title, "Inline CSS Styles");
+    assert_eq!(s1.content.len(), 7);
+    assert_eq!(s1.content[0], "This text is red from inline style.");
+    assert_eq!(s1.content[1], "This text is blue and larger.");
+    assert_eq!(s1.content[2], "This paragraph has a yellow highlight.");
+    assert_eq!(s1.content[3], "Bold, italic, and purple.");
+    assert_eq!(s1.content[4], "This text is underlined.");
+    assert_eq!(s1.content[5], "This text is struck through.");
+    assert_eq!(s1.content[6], "This uses Courier New font.");
+    assert_eq!(s1.bullets.len(), 7);
+    // b[0]: color:red
+    assert!(s1.bullets[0].format.is_some());
+    let f0 = s1.bullets[0].format.as_ref().unwrap();
+    assert_eq!(f0.color, Some("FF0000".to_string()));
+    assert!(!f0.bold);
+    assert!(!f0.italic);
+    assert!(!f0.underline);
+    assert!(!f0.strikethrough);
+    assert!(f0.highlight.is_none());
+    assert!(f0.font_size.is_none());
+    // b[1]: color:blue; font-size:22px
+    let f1 = s1.bullets[1].format.as_ref().unwrap();
+    assert_eq!(f1.color, Some("0000FF".to_string()));
+    assert_eq!(f1.font_size, Some(17)); // 22px → 17pt
+    assert!(f1.highlight.is_none());
+    // b[2]: background-color:yellow → highlight
+    let f2 = s1.bullets[2].format.as_ref().unwrap();
+    assert_eq!(f2.highlight, Some("FFFF00".to_string()));
+    assert!(f2.color.is_none());
+    // b[3]: font-weight:bold; font-style:italic; color:purple
+    let f3 = s1.bullets[3].format.as_ref().unwrap();
+    assert!(f3.bold);
+    assert!(f3.italic);
+    assert_eq!(f3.color, Some("800080".to_string()));
+    // b[4]: text-decoration:underline
+    let f4 = s1.bullets[4].format.as_ref().unwrap();
+    assert!(f4.underline);
+    assert!(!f4.strikethrough);
+    // b[5]: text-decoration:line-through → strikethrough
+    let f5 = s1.bullets[5].format.as_ref().unwrap();
+    assert!(f5.strikethrough);
+    assert!(!f5.underline);
+    // b[6]: font-family:Courier New
+    let f6 = s1.bullets[6].format.as_ref().unwrap();
+    assert_eq!(f6.font_family, Some("Courier New".to_string()));
 
-        // -----------------------------------------------------------------------
-        // Slide 2: "Lists & Sections" — ul/ol, h2 sub-headings, containers
-        // -----------------------------------------------------------------------
-        let s2 = &slides[2];
-        assert_eq!(s2.title, "Lists & Sections");
-        assert_eq!(s2.content.len(), 10); // max_bullets=10; "Section content." is cut
-        assert_eq!(s2.content[0], "**Fruits**");     // h2 → bold
-        assert_eq!(s2.content[1], "Apples");
-        assert_eq!(s2.content[2], "Bananas");
-        assert_eq!(s2.content[3], "Cherries");
-        assert_eq!(s2.content[4], "**Steps**");       // h2 → bold
-        assert_eq!(s2.content[5], "First step");
-        assert_eq!(s2.content[6], "Second step");
-        assert_eq!(s2.content[7], "Third step");
-        assert_eq!(s2.content[8], "Content inside a div.");
-        assert_eq!(s2.content[9], "Article content.");
-        // No inline styles in this slide
-        for (i, b) in s2.bullets.iter().enumerate() {
-            assert!(b.format.is_none(), "Slide 2 bullet {i} should have no format");
-            assert_eq!(b.level, 0);
-        }
-
-        // -----------------------------------------------------------------------
-        // Slide 3: "Heading Levels" — h2–h6 as bold sub-headings
-        // -----------------------------------------------------------------------
-        let s3 = &slides[3];
-        assert_eq!(s3.title, "Heading Levels");
-        assert_eq!(s3.content.len(), 10); // max_bullets=10; "Content under level 6." is cut
-        assert_eq!(s3.content[0], "Sub-headings render as bold bullet points:");
-        assert_eq!(s3.content[1], "**Level 2 Heading**");
-        assert_eq!(s3.content[2], "Content under level 2.");
-        assert_eq!(s3.content[3], "**Level 3 Heading**");
-        assert_eq!(s3.content[4], "Content under level 3.");
-        assert_eq!(s3.content[5], "**Level 4 Heading**");
-        assert_eq!(s3.content[6], "Content under level 4.");
-        assert_eq!(s3.content[7], "**Level 5 Heading**");
-        assert_eq!(s3.content[8], "Content under level 5.");
-        assert_eq!(s3.content[9], "**Level 6 Heading**");
-        for b in &s3.bullets {
-            assert!(b.format.is_none());
-        }
-
-        // -----------------------------------------------------------------------
-        // Slide 4: "Data Tables" — table presence and content
-        // -----------------------------------------------------------------------
-        let s4 = &slides[4];
-        assert_eq!(s4.title, "Data Tables");
-        assert_eq!(s4.content.len(), 1);
-        assert_eq!(s4.content[0], "Financial results for Q1 through Q3.");
-        assert!(s4.has_table);
-        assert!(!s4.has_image);
-        assert!(s4.table.is_some());
-        let table = s4.table.as_ref().unwrap();
-        assert_eq!(table.rows.len(), 4);
-        assert_eq!(table.rows[0].cells.len(), 4);
-        assert_eq!(table.rows[0].cells[0].text, "Quarter");
-        assert_eq!(table.rows[0].cells[1].text, "Revenue");
-        assert_eq!(table.rows[0].cells[2].text, "Costs");
-        assert_eq!(table.rows[0].cells[3].text, "Profit");
-        assert_eq!(table.rows[1].cells[0].text, "Q1");
-        assert_eq!(table.rows[1].cells[1].text, "$100K");
-        assert_eq!(table.rows[1].cells[2].text, "$60K");
-        assert_eq!(table.rows[1].cells[3].text, "$40K");
-        assert_eq!(table.rows[2].cells[0].text, "Q2");
-        assert_eq!(table.rows[2].cells[1].text, "$120K");
-        assert_eq!(table.rows[2].cells[2].text, "$70K");
-        assert_eq!(table.rows[2].cells[3].text, "$50K");
-        assert_eq!(table.rows[3].cells[0].text, "Q3");
-        assert_eq!(table.rows[3].cells[1].text, "$150K");
-        assert_eq!(table.rows[3].cells[2].text, "$90K");
-        assert_eq!(table.rows[3].cells[3].text, "$60K");
-
-        // -----------------------------------------------------------------------
-        // Slide 5: "Code & Notes" — code block + speaker notes
-        // -----------------------------------------------------------------------
-        let s5 = &slides[5];
-        assert_eq!(s5.title, "Code & Notes");
-        assert_eq!(s5.content.len(), 1);
-        assert_eq!(s5.content[0], "Rust factorial example:");
-        assert_eq!(s5.code_blocks.len(), 1);
-        assert!(s5.code_blocks[0].code.contains("fn factorial(n: u64) -> u64"));
-        assert!(s5.code_blocks[0].code.contains("match n"));
-        assert!(s5.code_blocks[0].code.contains("n * factorial(n - 1)"));
-        assert_eq!(s5.notes, Some("Recursion is elegant but watch the call stack depth!".to_string()));
-        assert!(!s5.has_table);
-        assert!(!s5.has_image);
-
-        // -----------------------------------------------------------------------
-        // Slide 6: "Formatting Combinations" — nested bold/italic, inline code, link
-        // -----------------------------------------------------------------------
-        let s6 = &slides[6];
-        assert_eq!(s6.title, "Formatting Combinations");
-        assert_eq!(s6.content.len(), 4);
-        assert_eq!(s6.content[0], "Text with **bold**, *italic*, and ***bold italic*** combined.");
-        assert_eq!(s6.content[1], "Inline code snippets in paragraphs.");
-        assert_eq!(s6.content[2], "A link with bold text in context.");
-        assert_eq!(s6.content[3], "Green text with **bigger bold** inside.");
-        // b[3] has inline style (color:green)
-        assert!(s6.bullets[3].format.is_some());
-        assert_eq!(s6.bullets[3].format.as_ref().unwrap().color, Some("008000".to_string()));
-        // b[0-2] have no inline styles
-        assert!(s6.bullets[0].format.is_none());
-        assert!(s6.bullets[1].format.is_none());
-        assert!(s6.bullets[2].format.is_none());
-
-        // -----------------------------------------------------------------------
-        // Slide 7: "Images & Entities" — img placeholders, entity decoding
-        // -----------------------------------------------------------------------
-        let s7 = &slides[7];
-        assert_eq!(s7.title, "Images & Entities");
-        assert_eq!(s7.content.len(), 7);
-        assert_eq!(s7.content[0], "[Image: Q4 Projections]");   // img with alt
-        assert_eq!(s7.content[1], "Chart:");
-        assert_eq!(s7.content[2], "[Image: photo.jpg]");        // img without alt (uses src)
-        assert_eq!(s7.content[3], "Image without alt:");
-        assert_eq!(s7.content[4], "Entities: AT&T <html> \"quote\" 'apos' value\u{00a0}here");
-        assert_eq!(s7.content[5], "Numeric: & # $ €");
-        assert_eq!(s7.content[6], "Entity demo with inline style.");
-        // b[6] has color:darkblue and font-size:20px
-        let f7 = s7.bullets[6].format.as_ref().unwrap();
-        assert_eq!(f7.color, Some("00008B".to_string())); // darkblue
-        assert_eq!(f7.font_size, Some(15)); // 20px → 15pt
-        // Verify entity decoding details
-        assert!(s7.content[4].contains("AT&T"));
-        assert!(s7.content[4].contains("<html>"));
-        assert!(s7.content[4].contains("\"quote\""));
-        assert!(s7.content[5].contains("€"));
-
-        // -----------------------------------------------------------------------
-        // Slide 8: HR break — new slide from <hr> within Images & Entities
-        // -----------------------------------------------------------------------
-        let s8 = &slides[8];
-        assert_eq!(s8.title, "Welcome to html2ppt"); // inherits presentation_title
-        assert_eq!(s8.content.len(), 1);
-        assert_eq!(s8.content[0], "Content that appears after a horizontal rule break.");
-        assert!(s8.table.is_none());
-        assert!(s8.code_blocks.is_empty());
-        assert!(s8.notes.is_none());
-
-        // -----------------------------------------------------------------------
-        // Slide 9: "Unicode & Symbols" — multi-script, symbols
-        // -----------------------------------------------------------------------
-        let s9 = &slides[9];
-        assert_eq!(s9.title, "Unicode & Symbols");
-        assert_eq!(s9.content.len(), 2);
-        assert_eq!(s9.content[0], "Languages: 你好, 日本語, 한국어, Español, Français, Русский");
-        assert_eq!(s9.content[1], "Symbols: © 2026 ® Registered ™ Trademark € £ ¥ ₹");
-        assert!(s9.content[0].contains("你好"));
-        assert!(s9.content[0].contains("日本語"));
-        assert!(s9.content[0].contains("Español"));
-        assert!(s9.content[1].contains("©"));
-        assert!(s9.content[1].contains("€"));
-        assert!(s9.content[1].contains("¥"));
-        assert!(s9.content[1].contains("₹"));
-
-        // -----------------------------------------------------------------------
-        // Slide 10: "Style Inheritance" — parent → child CSS inheritance + override
-        // -----------------------------------------------------------------------
-        let s10 = &slides[10];
-        assert_eq!(s10.title, "Style Inheritance");
-        assert_eq!(s10.content.len(), 3);
-        assert_eq!(s10.content[0], "This paragraph inherits teal color from the parent div.");
-        assert_eq!(s10.content[1], "This one is bold and still teal from inheritance.");
-        assert_eq!(s10.content[2], "This overrides the parent color to dark orange.");
-        // b[0]: inherits color:teal from <div>
-        assert!(s10.bullets[0].format.is_some());
-        let f10_0 = s10.bullets[0].format.as_ref().unwrap();
-        assert_eq!(f10_0.color, Some("008080".to_string())); // teal
-        assert!(!f10_0.bold);
-        assert!(!f10_0.italic);
-        // b[1]: inherits teal + adds font-weight:bold
-        assert!(s10.bullets[1].format.is_some());
-        let f10_1 = s10.bullets[1].format.as_ref().unwrap();
-        assert_eq!(f10_1.color, Some("008080".to_string())); // inherited teal
-        assert!(f10_1.bold);
-        // b[2]: overrides color to darkorange
-        assert!(s10.bullets[2].format.is_some());
-        let f10_2 = s10.bullets[2].format.as_ref().unwrap();
-        assert_eq!(f10_2.color, Some("FF8C00".to_string())); // darkorange
-        assert!(!f10_2.bold);
+    // -----------------------------------------------------------------------
+    // Slide 2: "Lists & Sections" — ul/ol, h2 sub-headings, containers
+    // -----------------------------------------------------------------------
+    let s2 = &slides[2];
+    assert_eq!(s2.title, "Lists & Sections");
+    assert_eq!(s2.content.len(), 10); // max_bullets=10; "Section content." is cut
+    assert_eq!(s2.content[0], "**Fruits**"); // h2 → bold
+    assert_eq!(s2.content[1], "Apples");
+    assert_eq!(s2.content[2], "Bananas");
+    assert_eq!(s2.content[3], "Cherries");
+    assert_eq!(s2.content[4], "**Steps**"); // h2 → bold
+    assert_eq!(s2.content[5], "First step");
+    assert_eq!(s2.content[6], "Second step");
+    assert_eq!(s2.content[7], "Third step");
+    assert_eq!(s2.content[8], "Content inside a div.");
+    assert_eq!(s2.content[9], "Article content.");
+    // No inline styles in this slide
+    for (i, b) in s2.bullets.iter().enumerate() {
+        assert!(
+            b.format.is_none(),
+            "Slide 2 bullet {i} should have no format"
+        );
+        assert_eq!(b.level, 0);
     }
+
+    // -----------------------------------------------------------------------
+    // Slide 3: "Heading Levels" — h2–h6 as bold sub-headings
+    // -----------------------------------------------------------------------
+    let s3 = &slides[3];
+    assert_eq!(s3.title, "Heading Levels");
+    assert_eq!(s3.content.len(), 10); // max_bullets=10; "Content under level 6." is cut
+    assert_eq!(s3.content[0], "Sub-headings render as bold bullet points:");
+    assert_eq!(s3.content[1], "**Level 2 Heading**");
+    assert_eq!(s3.content[2], "Content under level 2.");
+    assert_eq!(s3.content[3], "**Level 3 Heading**");
+    assert_eq!(s3.content[4], "Content under level 3.");
+    assert_eq!(s3.content[5], "**Level 4 Heading**");
+    assert_eq!(s3.content[6], "Content under level 4.");
+    assert_eq!(s3.content[7], "**Level 5 Heading**");
+    assert_eq!(s3.content[8], "Content under level 5.");
+    assert_eq!(s3.content[9], "**Level 6 Heading**");
+    for b in &s3.bullets {
+        assert!(b.format.is_none());
+    }
+
+    // -----------------------------------------------------------------------
+    // Slide 4: "Data Tables" — table presence and content
+    // -----------------------------------------------------------------------
+    let s4 = &slides[4];
+    assert_eq!(s4.title, "Data Tables");
+    assert_eq!(s4.content.len(), 1);
+    assert_eq!(s4.content[0], "Financial results for Q1 through Q3.");
+    assert!(s4.has_table);
+    assert!(!s4.has_image);
+    assert!(s4.table.is_some());
+    let table = s4.table.as_ref().unwrap();
+    assert_eq!(table.rows.len(), 4);
+    assert_eq!(table.rows[0].cells.len(), 4);
+    assert_eq!(table.rows[0].cells[0].text, "Quarter");
+    assert_eq!(table.rows[0].cells[1].text, "Revenue");
+    assert_eq!(table.rows[0].cells[2].text, "Costs");
+    assert_eq!(table.rows[0].cells[3].text, "Profit");
+    assert_eq!(table.rows[1].cells[0].text, "Q1");
+    assert_eq!(table.rows[1].cells[1].text, "$100K");
+    assert_eq!(table.rows[1].cells[2].text, "$60K");
+    assert_eq!(table.rows[1].cells[3].text, "$40K");
+    assert_eq!(table.rows[2].cells[0].text, "Q2");
+    assert_eq!(table.rows[2].cells[1].text, "$120K");
+    assert_eq!(table.rows[2].cells[2].text, "$70K");
+    assert_eq!(table.rows[2].cells[3].text, "$50K");
+    assert_eq!(table.rows[3].cells[0].text, "Q3");
+    assert_eq!(table.rows[3].cells[1].text, "$150K");
+    assert_eq!(table.rows[3].cells[2].text, "$90K");
+    assert_eq!(table.rows[3].cells[3].text, "$60K");
+
+    // -----------------------------------------------------------------------
+    // Slide 5: "Code & Notes" — code block + speaker notes
+    // -----------------------------------------------------------------------
+    let s5 = &slides[5];
+    assert_eq!(s5.title, "Code & Notes");
+    assert_eq!(s5.content.len(), 1);
+    assert_eq!(s5.content[0], "Rust factorial example:");
+    assert_eq!(s5.code_blocks.len(), 1);
+    assert!(
+        s5.code_blocks[0]
+            .code
+            .contains("fn factorial(n: u64) -> u64")
+    );
+    assert!(s5.code_blocks[0].code.contains("match n"));
+    assert!(s5.code_blocks[0].code.contains("n * factorial(n - 1)"));
+    assert_eq!(
+        s5.notes,
+        Some("Recursion is elegant but watch the call stack depth!".to_string())
+    );
+    assert!(!s5.has_table);
+    assert!(!s5.has_image);
+
+    // -----------------------------------------------------------------------
+    // Slide 6: "Formatting Combinations" — nested bold/italic, inline code, link
+    // -----------------------------------------------------------------------
+    let s6 = &slides[6];
+    assert_eq!(s6.title, "Formatting Combinations");
+    assert_eq!(s6.content.len(), 4);
+    assert_eq!(
+        s6.content[0],
+        "Text with **bold**, *italic*, and ***bold italic*** combined."
+    );
+    assert_eq!(s6.content[1], "Inline code snippets in paragraphs.");
+    assert_eq!(s6.content[2], "A link with bold text in context.");
+    assert_eq!(s6.content[3], "Green text with **bigger bold** inside.");
+    // b[3] has inline style (color:green)
+    assert!(s6.bullets[3].format.is_some());
+    assert_eq!(
+        s6.bullets[3].format.as_ref().unwrap().color,
+        Some("008000".to_string())
+    );
+    // b[0-2] have no inline styles
+    assert!(s6.bullets[0].format.is_none());
+    assert!(s6.bullets[1].format.is_none());
+    assert!(s6.bullets[2].format.is_none());
+
+    // -----------------------------------------------------------------------
+    // Slide 7: "Images & Entities" — img placeholders, entity decoding
+    // -----------------------------------------------------------------------
+    let s7 = &slides[7];
+    assert_eq!(s7.title, "Images & Entities");
+    assert_eq!(s7.content.len(), 7);
+    assert_eq!(s7.content[0], "[Image: Q4 Projections]"); // img with alt
+    assert_eq!(s7.content[1], "Chart:");
+    assert_eq!(s7.content[2], "[Image: photo.jpg]"); // img without alt (uses src)
+    assert_eq!(s7.content[3], "Image without alt:");
+    assert_eq!(
+        s7.content[4],
+        "Entities: AT&T <html> \"quote\" 'apos' value\u{00a0}here"
+    );
+    assert_eq!(s7.content[5], "Numeric: & # $ €");
+    assert_eq!(s7.content[6], "Entity demo with inline style.");
+    // b[6] has color:darkblue and font-size:20px
+    let f7 = s7.bullets[6].format.as_ref().unwrap();
+    assert_eq!(f7.color, Some("00008B".to_string())); // darkblue
+    assert_eq!(f7.font_size, Some(15)); // 20px → 15pt
+    // Verify entity decoding details
+    assert!(s7.content[4].contains("AT&T"));
+    assert!(s7.content[4].contains("<html>"));
+    assert!(s7.content[4].contains("\"quote\""));
+    assert!(s7.content[5].contains("€"));
+
+    // -----------------------------------------------------------------------
+    // Slide 8: HR break — new slide from <hr> within Images & Entities
+    // -----------------------------------------------------------------------
+    let s8 = &slides[8];
+    assert_eq!(s8.title, "Welcome to html2ppt"); // inherits presentation_title
+    assert_eq!(s8.content.len(), 1);
+    assert_eq!(
+        s8.content[0],
+        "Content that appears after a horizontal rule break."
+    );
+    assert!(s8.table.is_none());
+    assert!(s8.code_blocks.is_empty());
+    assert!(s8.notes.is_none());
+
+    // -----------------------------------------------------------------------
+    // Slide 9: "Unicode & Symbols" — multi-script, symbols
+    // -----------------------------------------------------------------------
+    let s9 = &slides[9];
+    assert_eq!(s9.title, "Unicode & Symbols");
+    assert_eq!(s9.content.len(), 2);
+    assert_eq!(
+        s9.content[0],
+        "Languages: 你好, 日本語, 한국어, Español, Français, Русский"
+    );
+    assert_eq!(
+        s9.content[1],
+        "Symbols: © 2026 ® Registered ™ Trademark € £ ¥ ₹"
+    );
+    assert!(s9.content[0].contains("你好"));
+    assert!(s9.content[0].contains("日本語"));
+    assert!(s9.content[0].contains("Español"));
+    assert!(s9.content[1].contains("©"));
+    assert!(s9.content[1].contains("€"));
+    assert!(s9.content[1].contains("¥"));
+    assert!(s9.content[1].contains("₹"));
+
+    // -----------------------------------------------------------------------
+    // Slide 10: "Style Inheritance" — parent → child CSS inheritance + override
+    // -----------------------------------------------------------------------
+    let s10 = &slides[10];
+    assert_eq!(s10.title, "Style Inheritance");
+    assert_eq!(s10.content.len(), 3);
+    assert_eq!(
+        s10.content[0],
+        "This paragraph inherits teal color from the parent div."
+    );
+    assert_eq!(
+        s10.content[1],
+        "This one is bold and still teal from inheritance."
+    );
+    assert_eq!(
+        s10.content[2],
+        "This overrides the parent color to dark orange."
+    );
+    // b[0]: inherits color:teal from <div>
+    assert!(s10.bullets[0].format.is_some());
+    let f10_0 = s10.bullets[0].format.as_ref().unwrap();
+    assert_eq!(f10_0.color, Some("008080".to_string())); // teal
+    assert!(!f10_0.bold);
+    assert!(!f10_0.italic);
+    // b[1]: inherits teal + adds font-weight:bold
+    assert!(s10.bullets[1].format.is_some());
+    let f10_1 = s10.bullets[1].format.as_ref().unwrap();
+    assert_eq!(f10_1.color, Some("008080".to_string())); // inherited teal
+    assert!(f10_1.bold);
+    // b[2]: overrides color to darkorange
+    assert!(s10.bullets[2].format.is_some());
+    let f10_2 = s10.bullets[2].format.as_ref().unwrap();
+    assert_eq!(f10_2.color, Some("FF8C00".to_string())); // darkorange
+    assert!(!f10_2.bold);
+}
 
 #[test]
 fn test_generate_pptx_from_comprehensive_html() {
@@ -1068,18 +1158,18 @@ fn test_generate_pptx_from_comprehensive_html() {
 #[test]
 fn test_presentation_api_with_html_content() {
     use ppt_rs::api::Presentation;
-    
+
     let html = "<h1>API Demo</h1><p>Slide via Presentation API</p><h1>Second Slide</h1><ul><li>Item one</li><li>Item two</li></ul>";
     let slides = parse_html(html).unwrap();
-    
+
     let pres = Presentation::with_title("API Test")
         .add_slide(slides[0].clone())
         .add_slide(slides[1].clone());
-    
+
     assert_eq!(pres.slide_count(), 2);
     assert_eq!(pres.get_title(), "API Test");
     assert_eq!(pres.slides()[0].title, "API Demo");
-    
+
     // Verify it builds to valid PPTX
     let pptx = pres.build().expect("Should build PPTX");
     validate_pptx_structure(&pptx);

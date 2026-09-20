@@ -70,10 +70,16 @@ fn demonstrate_image_scaling() {
     println!("   Original: {}x{}", original.width, original.height);
 
     let scaled_width = original.clone().scale_to_width(960);
-    println!("   Scaled to width 960: {}x{}", scaled_width.width, scaled_width.height);
+    println!(
+        "   Scaled to width 960: {}x{}",
+        scaled_width.width, scaled_width.height
+    );
 
     let scaled_height = original.clone().scale_to_height(540);
-    println!("   Scaled to height 540: {}x{}", scaled_height.width, scaled_height.height);
+    println!(
+        "   Scaled to height 540: {}x{}",
+        scaled_height.width, scaled_height.height
+    );
 }
 
 fn demonstrate_image_builder() {
@@ -89,8 +95,7 @@ fn demonstrate_image_builder() {
 }
 
 fn demonstrate_image_xml_generation() {
-    let img = Image::new("photo.png", 1920000, 1080000, "PNG")
-        .position(500000, 1000000);
+    let img = Image::new("photo.png", 1920000, 1080000, "PNG").position(500000, 1000000);
 
     let xml = generate_image_xml(&img, 1, 1);
     println!("   Generated XML length: {} bytes", xml.len());

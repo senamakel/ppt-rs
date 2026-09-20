@@ -1,7 +1,7 @@
 //! Paragraph - a block of text with alignment and spacing
 
-use super::run::Run;
 use super::TextAlign;
+use super::run::Run;
 use crate::core::ToXml;
 
 /// A paragraph containing one or more runs
@@ -82,17 +82,30 @@ impl Paragraph {
     /// Generate XML for this paragraph
     pub fn to_xml(&self) -> String {
         let mut xml = String::from("<a:p>");
-        
+
         // Paragraph properties
-        let mut ppr = format!(r#"<a:pPr algn="{}" lvl="{}""#, self.align.to_xml(), self.level);
-        
-        if self.spacing_before.is_some() || self.spacing_after.is_some() || self.line_spacing.is_some() {
+        let mut ppr = format!(
+            r#"<a:pPr algn="{}" lvl="{}""#,
+            self.align.to_xml(),
+            self.level
+        );
+
+        if self.spacing_before.is_some()
+            || self.spacing_after.is_some()
+            || self.line_spacing.is_some()
+        {
             ppr.push('>');
             if let Some(before) = self.spacing_before {
-                ppr.push_str(&format!(r#"<a:spcBef><a:spcPts val="{}"/></a:spcBef>"#, before));
+                ppr.push_str(&format!(
+                    r#"<a:spcBef><a:spcPts val="{}"/></a:spcBef>"#,
+                    before
+                ));
             }
             if let Some(after) = self.spacing_after {
-                ppr.push_str(&format!(r#"<a:spcAft><a:spcPts val="{}"/></a:spcAft>"#, after));
+                ppr.push_str(&format!(
+                    r#"<a:spcAft><a:spcPts val="{}"/></a:spcAft>"#,
+                    after
+                ));
             }
             if self.bullet {
                 ppr.push_str("<a:buChar char=\"•\"/>");
@@ -103,14 +116,14 @@ impl Paragraph {
         } else {
             ppr.push_str("/>");
         }
-        
+
         xml.push_str(&ppr);
-        
+
         // Runs
         for run in &self.runs {
             xml.push_str(&run.to_xml());
         }
-        
+
         xml.push_str("</a:p>");
         xml
     }
@@ -138,9 +151,9 @@ mod tests {
             .add_run(Run::new("Bold text").bold())
             .add_run(Run::new(" normal text"))
             .align(TextAlign::Center);
-        
+
         let xml = para.to_xml();
-        
+
         assert!(xml.contains("<a:p>"));
         assert!(xml.contains("algn=\"ctr\""));
         assert!(xml.contains("Bold text"));
@@ -151,7 +164,7 @@ mod tests {
     fn test_paragraph_with_bullet() {
         let para = Paragraph::with_text("Bullet item").bullet();
         let xml = para.to_xml();
-        
+
         assert!(xml.contains("buChar"));
     }
 }

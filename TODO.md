@@ -1,6 +1,6 @@
 # TODO - ppt-rs
 
-**Tests**: 1180+ passing | **Warnings**: 0 | **Clippy**: clean (project defaults) | **Version**: 0.2.26
+**Tests**: 754 inline / 470 integration = 1224 total | **Warnings**: 0 | **Clippy**: clean (project defaults) | **Version**: 0.2.27
 
 ## Active
 
@@ -23,10 +23,10 @@ Items here graduate into **Backlog** when scoped for implementation.
 Extend what can flow in and out without losing meaning.
 
 - [x] **Speaker notes import** — MD/HTML speaker-note syntax → `notesSlides` parts on generation
-- [ ] **Comments round-trip** — wire `Comment` / `SlideComments` into package parts (XML types exist)
+- [x] **Comments round-trip** — `SlideContent::add_comment` / `Presentation::add_comment_author` → `ppt/comments/commentN.xml` + `ppt/commentAuthors.xml` parts wired into eager and lazy generation, with package-validation coverage (import-side parsing still future work)
 - [x] **Image accessibility** — alt text / description on images (`descr` / `title` on `cNvPr`)
-- [ ] **Video & audio embedding** — complete media part packaging (types exist in `parts/media.rs`; needs generator wiring)
-- [ ] **Section-aware export** — preserve `SectionManager` sections in Markdown/HTML export
+- [x] **Video & audio embedding** — `add_video`/`add_audio` wired through eager + lazy generation: `ppt/media/mediaN.*` parts, dual link/embed rels per element, poster frames (custom or built-in 1×1 placeholder), content-type Defaults, compression-safe; also fixed lazy-path content-type appends being silently skipped and `remove_unused_media` deleting media referenced only from rels
+- [x] **Section-aware export** — `Presentation::add_section` / `with_sections` → `<p14:sectionLst>` in `presentation.xml` (eager + lazy); opt-in section grouping in Markdown export (`with_section_grouping`) and section labels in HTML export. Import-side sectionLst parsing not yet implemented (CLI/MCP export of imported decks won't show sections)
 
 ### API & Tooling
 Make the library easier to adopt, debug, and automate.
@@ -41,6 +41,7 @@ Make the library easier to adopt, debug, and automate.
 Longer-horizon capabilities that broaden deployment options.
 
 - [x] **PDF export without LibreOffice** — `pdfrs`-backed pure-Rust path (`pdf-native` feature, `save_as_pdf_via_pdfrs` / `to_pdf_bytes`)
+- [x] **Image export without LibreOffice** — `export_to_images` / `save_slide_as_image` / `save_thumbnail` now render via pure-Rust `pdfrs` PDF + `pdftoppm`; fixes broken multi-slide rasterization (direct `soffice --convert-to png` only ever rasterizes slide 1)
 - [ ] **WASM target** — browser-side generation for docs sites and SaaS embeds
 - [ ] **Batch / pipeline API** — directory of MD/HTML → deck-per-file with shared theme (extends `batch_generator` example)
 
@@ -65,7 +66,6 @@ Longer-horizon capabilities that broaden deployment options.
 - [x] PDF export without LibreOffice
 - [ ] WASM build target
 - [ ] PPTX semantic diff tool
-- [ ] Section-aware Markdown/HTML export
 - [ ] REST/HTTP service wrapper (optional feature)
 
 
@@ -93,6 +93,17 @@ Longer-horizon capabilities that broaden deployment options.
 - [x] Consider builder pattern consolidation for Shape/Table/Chart builders
 
 ## Completed
+
+<details>
+<summary>v0.2.27 — Comments, Media Embedding & Section Export</summary>
+
+- **Comments round-trip**: `SlideContent::add_comment` / `Presentation::add_comment_author` → `ppt/comments/commentN.xml` + `ppt/commentAuthors.xml` (eager + lazy paths, package validation)
+- **Video & audio embedding**: `add_video`/`add_audio` wired through eager + lazy generation — `ppt/media/mediaN.*` parts, dual link/embed rels, poster frames, content-type Defaults; compression preserves rel-referenced media
+- **Section-aware export**: `Presentation::add_section` → `<p14:sectionLst>`; opt-in section grouping in Markdown export and section labels in HTML export
+- **Lazy content-types fix**: append helpers were silent no-ops when `</Types>` was pushed before them
+- **Pure-Rust image export**: PNG/JPEG via `pdfrs` PDF render + `pdftoppm` (no LibreOffice)
+
+</details>
 
 <details>
 <summary>v0.2.26 — Chart Validation & MCP Tool Expansion</summary>
@@ -283,7 +294,7 @@ Landed the full "Compatibility & Trust" and "Layout & Structure" proposed tracks
   - API: `.save_as_markdown()`, `.save_as_markdown_with_options()`
 
 - **Image Export** (`src/export/image_export.rs`):
-  - `export_to_images()` - Export slides to PNG/JPEG via LibreOffice
+  - `export_to_images()` - Export slides to PNG/JPEG (pure-Rust `pdfrs` PDF render + `pdftoppm` rasterization, no LibreOffice)
   - `ImageExportOptions` - Configure format, DPI, quality, dimensions
   - Single slide export and thumbnail generation
   - API: `.save_as_images()`, `.save_slide_as_image()`, `.save_thumbnail()`

@@ -15,15 +15,9 @@ pub fn generate_table_xml(table: &Table, shape_id: usize) -> String {
     let table_name = format!("Table {shape_id}");
 
     let mut writer = XmlWriter::with_capacity(4096);
-    writer.start_element(
-        "p:graphicFrame",
-        &[],
-    );
+    writer.start_element("p:graphicFrame", &[]);
     writer.raw("<p:nvGraphicFramePr>");
-    writer.empty_element(
-        "p:cNvPr",
-        &[("id", &shape_id_str), ("name", &table_name)],
-    );
+    writer.empty_element("p:cNvPr", &[("id", &shape_id_str), ("name", &table_name)]);
     writer.raw("<p:cNvGraphicFramePr/><p:nvPr/></p:nvGraphicFramePr>");
     writer.raw("<p:xfrm>");
     writer.empty_element("a:off", &[("x", &x), ("y", &y)]);

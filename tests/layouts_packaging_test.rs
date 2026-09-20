@@ -6,9 +6,9 @@ use std::fs;
 use std::io::{Cursor, Read};
 
 use ppt_rs::generator::{
-    create_pptx, create_pptx_with_content, create_pptx_with_settings, create_pptx_with_template,
-    PresentationSettings, PrintSettings, PptxTemplate, SlideContent, SlideLayout,
-    STANDARD_LAYOUT_COUNT,
+    PptxTemplate, PresentationSettings, PrintSettings, STANDARD_LAYOUT_COUNT, SlideContent,
+    SlideLayout, create_pptx, create_pptx_with_content, create_pptx_with_settings,
+    create_pptx_with_template,
 };
 use zip::ZipArchive;
 
@@ -26,7 +26,11 @@ fn read_part(bytes: &[u8], path: &str) -> String {
     let cursor = Cursor::new(bytes);
     let mut archive = ZipArchive::new(cursor).unwrap();
     let mut s = String::new();
-    archive.by_name(path).unwrap().read_to_string(&mut s).unwrap();
+    archive
+        .by_name(path)
+        .unwrap()
+        .read_to_string(&mut s)
+        .unwrap();
     s
 }
 
@@ -40,7 +44,10 @@ fn part_exists(bytes: &[u8], path: &str) -> bool {
 fn all_standard_layout_parts_are_packaged() {
     let bytes = create_pptx("Layouts", 1).unwrap();
     for n in 1..=STANDARD_LAYOUT_COUNT {
-        assert!(part_exists(&bytes, &format!("ppt/slideLayouts/slideLayout{n}.xml")));
+        assert!(part_exists(
+            &bytes,
+            &format!("ppt/slideLayouts/slideLayout{n}.xml")
+        ));
         assert!(part_exists(
             &bytes,
             &format!("ppt/slideLayouts/_rels/slideLayout{n}.xml.rels")
@@ -113,7 +120,8 @@ fn slide_master_footer_placeholders_when_configured() {
         .print_date(true)
         .print_page_numbers(true);
     let settings = PresentationSettings::new().print(print);
-    let bytes = create_pptx_with_settings("Footers", &[SlideContent::new("A")], Some(settings)).unwrap();
+    let bytes =
+        create_pptx_with_settings("Footers", &[SlideContent::new("A")], Some(settings)).unwrap();
 
     let master = read_part(&bytes, "ppt/slideMasters/slideMaster1.xml");
     assert!(master.contains(r#"type="ftr""#));
@@ -229,8 +237,7 @@ fn mixed_layouts_pass_powerpoint_compat_gate() {
         .footer("Internal")
         .print_page_numbers(true);
     let settings = PresentationSettings::new().print(print);
-    let bytes =
-        create_pptx_with_settings("Compat Layouts", &slides, Some(settings)).unwrap();
+    let bytes = create_pptx_with_settings("Compat Layouts", &slides, Some(settings)).unwrap();
 
     common::assert_package_valid(&bytes, "mixed layouts compat");
 }

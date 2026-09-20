@@ -1,7 +1,9 @@
 //! Integration tests for custom presentation themes
 
 use ppt_rs::api::Presentation;
-use ppt_rs::generator::{PresentationTheme, SlideContent, create_pptx_with_settings, PresentationSettings};
+use ppt_rs::generator::{
+    PresentationSettings, PresentationTheme, SlideContent, create_pptx_with_settings,
+};
 use ppt_rs::prelude::themes;
 use std::io::Cursor;
 
@@ -44,7 +46,9 @@ fn test_presentation_with_settings_theme() {
         .add_slide(SlideContent::new("Slide"))
         .with_settings(
             PresentationSettings::new().theme(
-                PresentationTheme::vibrant().major_font("Arial").minor_font("Arial"),
+                PresentationTheme::vibrant()
+                    .major_font("Arial")
+                    .minor_font("Arial"),
             ),
         );
 

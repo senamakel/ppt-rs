@@ -9,8 +9,8 @@
 //! - Title and big content slides
 
 mod common;
-mod layouts;
 mod content;
+mod layouts;
 
 use super::slide_content::{SlideContent, SlideLayout};
 
@@ -23,7 +23,7 @@ pub fn create_slide_xml(slide_num: usize, title: &str) -> String {
     } else {
         format!("Slide {slide_num}")
     };
-    
+
     format!(
         r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
@@ -80,21 +80,37 @@ pub fn create_slide_xml_with_content(
     content: &SlideContent,
     chart_rids: &[String],
     ink_rel_id: Option<&str>,
+    media_rids: &[crate::generator::media::MediaRelIds],
 ) -> String {
     let mut xml = match content.layout {
-        SlideLayout::Blank => layouts::create_blank_slide(content, chart_rids, ink_rel_id),
-        SlideLayout::TitleOnly => layouts::create_title_only_slide(content, chart_rids, ink_rel_id),
-        SlideLayout::CenteredTitle => layouts::create_centered_title_slide(content, chart_rids, ink_rel_id),
-        SlideLayout::TitleAndBigContent => layouts::create_title_and_big_content_slide(content, chart_rids, ink_rel_id),
-        SlideLayout::TwoColumn => layouts::create_two_column_slide(content, chart_rids, ink_rel_id),
-        SlideLayout::SectionHeader => layouts::create_section_header_slide(content, chart_rids, ink_rel_id),
-        SlideLayout::TitleAndContent => layouts::create_title_and_content_slide(content, chart_rids, ink_rel_id),
+        SlideLayout::Blank => {
+            layouts::create_blank_slide(content, chart_rids, ink_rel_id, media_rids)
+        }
+        SlideLayout::TitleOnly => {
+            layouts::create_title_only_slide(content, chart_rids, ink_rel_id, media_rids)
+        }
+        SlideLayout::CenteredTitle => {
+            layouts::create_centered_title_slide(content, chart_rids, ink_rel_id, media_rids)
+        }
+        SlideLayout::TitleAndBigContent => {
+            layouts::create_title_and_big_content_slide(content, chart_rids, ink_rel_id, media_rids)
+        }
+        SlideLayout::TwoColumn => {
+            layouts::create_two_column_slide(content, chart_rids, ink_rel_id, media_rids)
+        }
+        SlideLayout::SectionHeader => {
+            layouts::create_section_header_slide(content, chart_rids, ink_rel_id, media_rids)
+        }
+        SlideLayout::TitleAndContent => {
+            layouts::create_title_and_content_slide(content, chart_rids, ink_rel_id, media_rids)
+        }
     };
 
     // Inject transition if present
     let transition_xml = content.transition.to_xml();
     if !transition_xml.is_empty()
-        && let Some(pos) = xml.rfind("</p:sld>") {
+        && let Some(pos) = xml.rfind("</p:sld>")
+    {
         xml.insert_str(pos, &transition_xml);
     }
 

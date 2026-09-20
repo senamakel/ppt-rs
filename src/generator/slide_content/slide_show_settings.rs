@@ -35,9 +35,15 @@ impl PenColor {
         }
     }
 
-    pub fn red() -> Self { Self::new("FF0000") }
-    pub fn blue() -> Self { Self::new("0000FF") }
-    pub fn black() -> Self { Self::new("000000") }
+    pub fn red() -> Self {
+        Self::new("FF0000")
+    }
+    pub fn blue() -> Self {
+        Self::new("0000FF")
+    }
+    pub fn black() -> Self {
+        Self::new("000000")
+    }
 }
 
 impl Default for PenColor {
@@ -51,7 +57,10 @@ impl Default for PenColor {
 pub enum SlideRange {
     #[default]
     All,
-    Range { start: u32, end: u32 },
+    Range {
+        start: u32,
+        end: u32,
+    },
     Custom(Vec<u32>),
 }
 
@@ -282,8 +291,7 @@ mod tests {
 
     #[test]
     fn test_xml_slide_range() {
-        let s = SlideShowSettings::new()
-            .slide_range(SlideRange::Range { start: 2, end: 8 });
+        let s = SlideShowSettings::new().slide_range(SlideRange::Range { start: 2, end: 8 });
         let xml = s.to_xml();
         assert!(xml.contains(r#"st="2""#));
         assert!(xml.contains(r#"end="8""#));
@@ -291,8 +299,7 @@ mod tests {
 
     #[test]
     fn test_xml_custom_slides() {
-        let s = SlideShowSettings::new()
-            .slide_range(SlideRange::Custom(vec![256, 258, 260]));
+        let s = SlideShowSettings::new().slide_range(SlideRange::Custom(vec![256, 258, 260]));
         let xml = s.to_xml();
         assert!(xml.contains("custShow"));
         assert!(xml.contains(r#"id="256""#));

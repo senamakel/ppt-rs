@@ -115,21 +115,51 @@ impl PartType {
     /// Get the relationship type URI
     pub fn relationship_type(&self) -> &'static str {
         match self {
-            PartType::Presentation => "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument",
-            PartType::Slide => "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide",
-            PartType::SlideLayout => "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout",
-            PartType::SlideMaster => "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster",
-            PartType::Theme => "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme",
-            PartType::NotesSlide => "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide",
-            PartType::NotesMaster => "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesMaster",
-            PartType::Image => "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image",
-            PartType::Media => "http://schemas.openxmlformats.org/officeDocument/2006/relationships/media",
-            PartType::Chart => "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart",
-            PartType::Table => "http://schemas.openxmlformats.org/officeDocument/2006/relationships/table",
-            PartType::CoreProperties => "http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties",
-            PartType::ExtendedProperties => "http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties",
-            PartType::ContentTypes => "http://schemas.openxmlformats.org/package/2006/content-types",
-            PartType::Relationships => "http://schemas.openxmlformats.org/package/2006/relationships",
+            PartType::Presentation => {
+                "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"
+            }
+            PartType::Slide => {
+                "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+            }
+            PartType::SlideLayout => {
+                "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+            }
+            PartType::SlideMaster => {
+                "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+            }
+            PartType::Theme => {
+                "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"
+            }
+            PartType::NotesSlide => {
+                "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide"
+            }
+            PartType::NotesMaster => {
+                "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesMaster"
+            }
+            PartType::Image => {
+                "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
+            }
+            PartType::Media => {
+                "http://schemas.openxmlformats.org/officeDocument/2006/relationships/media"
+            }
+            PartType::Chart => {
+                "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart"
+            }
+            PartType::Table => {
+                "http://schemas.openxmlformats.org/officeDocument/2006/relationships/table"
+            }
+            PartType::CoreProperties => {
+                "http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties"
+            }
+            PartType::ExtendedProperties => {
+                "http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties"
+            }
+            PartType::ContentTypes => {
+                "http://schemas.openxmlformats.org/package/2006/content-types"
+            }
+            PartType::Relationships => {
+                "http://schemas.openxmlformats.org/package/2006/relationships"
+            }
         }
     }
 }

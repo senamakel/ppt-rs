@@ -1,10 +1,10 @@
 //! Centered title slide layout
 
-use super::common::{SlideXmlBuilder, generate_text_props, ShapePosition, TextContent};
-use crate::generator::slide_content::SlideContent;
+use super::common::{ShapePosition, SlideXmlBuilder, TextContent, generate_text_props};
 use crate::generator::constants::{
-    TITLE_X, CENTERED_TITLE_Y, TITLE_WIDTH, CENTERED_TITLE_HEIGHT, TITLE_FONT_SIZE,
+    CENTERED_TITLE_HEIGHT, CENTERED_TITLE_Y, TITLE_FONT_SIZE, TITLE_WIDTH, TITLE_X,
 };
+use crate::generator::slide_content::SlideContent;
 
 /// Centered title slide layout generator
 pub struct CenteredTitleLayout;
@@ -21,7 +21,12 @@ impl CenteredTitleLayout {
             content.title_color.as_deref(),
         );
 
-        let position = ShapePosition::new(TITLE_X, CENTERED_TITLE_Y, TITLE_WIDTH, CENTERED_TITLE_HEIGHT);
+        let position = ShapePosition::new(
+            TITLE_X,
+            CENTERED_TITLE_Y,
+            TITLE_WIDTH,
+            CENTERED_TITLE_HEIGHT,
+        );
         let text_content = TextContent::new(&content.title, &title_props);
 
         SlideXmlBuilder::new()
@@ -42,7 +47,7 @@ mod tests {
     fn test_centered_title_layout() {
         let content = SlideContent::new("Centered Title");
         let xml = CenteredTitleLayout::generate(&content);
-        
+
         assert!(xml.contains("Centered Title"));
         assert!(xml.contains("ctrTitle"));
         assert!(xml.contains("algn=\"ctr\""));

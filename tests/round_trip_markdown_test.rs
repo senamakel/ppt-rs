@@ -39,14 +39,14 @@ fn round_trip_markdown_fixture(fixture_name: &str) -> String {
     let md = std::fs::read_to_string(&md_path)
         .unwrap_or_else(|e| panic!("failed to read {md_path}: {e}"));
 
-    let slides = parse_markdown(&md)
-        .unwrap_or_else(|e| panic!("parse_markdown failed for {md_path}: {e}"));
+    let slides =
+        parse_markdown(&md).unwrap_or_else(|e| panic!("parse_markdown failed for {md_path}: {e}"));
 
     let pptx_bytes = create_pptx_with_content("Round Trip Test", slides)
         .unwrap_or_else(|e| panic!("create_pptx_with_content failed: {e}"));
 
-    let tmp_path = std::env::temp_dir()
-        .join(format!("ppt_rs_round_trip_{}.pptx", uuid::Uuid::new_v4()));
+    let tmp_path =
+        std::env::temp_dir().join(format!("ppt_rs_round_trip_{}.pptx", uuid::Uuid::new_v4()));
     std::fs::write(&tmp_path, &pptx_bytes)
         .unwrap_or_else(|e| panic!("failed to write temp pptx {}: {e}", tmp_path.display()));
 
@@ -66,7 +66,10 @@ fn assert_matches_golden(fixture_name: &str) {
     let expected = std::fs::read_to_string(&golden_path)
         .unwrap_or_else(|e| panic!("failed to read golden {golden_path}: {e}"));
 
-    assert_eq!(actual, expected, "round-trip mismatch for fixture {fixture_name}");
+    assert_eq!(
+        actual, expected,
+        "round-trip mismatch for fixture {fixture_name}"
+    );
 }
 
 #[test]
@@ -78,4 +81,3 @@ fn round_trip_basic_markdown() {
 fn round_trip_table_markdown() {
     assert_matches_golden("table");
 }
-

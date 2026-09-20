@@ -84,7 +84,9 @@ impl ChartType {
             ChartType::Pie => "c:pieChart",
             ChartType::Doughnut => "c:doughnutChart",
             ChartType::Area | ChartType::AreaStacked | ChartType::AreaStacked100 => "c:areaChart",
-            ChartType::Scatter | ChartType::ScatterLines | ChartType::ScatterSmooth => "c:scatterChart",
+            ChartType::Scatter | ChartType::ScatterLines | ChartType::ScatterSmooth => {
+                "c:scatterChart"
+            }
             ChartType::Bubble => "c:bubbleChart",
             ChartType::Radar | ChartType::RadarFilled => "c:radarChart",
             ChartType::StockHLC | ChartType::StockOHLC => "c:stockChart",
@@ -105,7 +107,9 @@ impl ChartType {
     pub fn grouping(&self) -> Option<&str> {
         match self {
             ChartType::Bar | ChartType::BarHorizontal => Some("clustered"),
-            ChartType::BarStacked | ChartType::LineStacked | ChartType::AreaStacked => Some("stacked"),
+            ChartType::BarStacked | ChartType::LineStacked | ChartType::AreaStacked => {
+                Some("stacked")
+            }
             ChartType::BarStacked100 | ChartType::AreaStacked100 => Some("percentStacked"),
             ChartType::Line | ChartType::LineMarkers | ChartType::Area => Some("standard"),
             _ => None,
@@ -114,7 +118,10 @@ impl ChartType {
 
     /// Check if chart type uses markers
     pub fn has_markers(&self) -> bool {
-        matches!(self, ChartType::LineMarkers | ChartType::Scatter | ChartType::ScatterLines)
+        matches!(
+            self,
+            ChartType::LineMarkers | ChartType::Scatter | ChartType::ScatterLines
+        )
     }
 
     /// Check if chart type uses smooth lines
@@ -188,7 +195,10 @@ mod tests {
     fn test_scatter_style() {
         assert_eq!(ChartType::Scatter.scatter_style(), Some("marker"));
         assert_eq!(ChartType::ScatterLines.scatter_style(), Some("lineMarker"));
-        assert_eq!(ChartType::ScatterSmooth.scatter_style(), Some("smoothMarker"));
+        assert_eq!(
+            ChartType::ScatterSmooth.scatter_style(),
+            Some("smoothMarker")
+        );
         assert_eq!(ChartType::Bar.scatter_style(), None);
     }
 

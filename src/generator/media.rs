@@ -361,109 +361,118 @@ impl Audio {
     }
 }
 
-/// Generate video XML for slide
-pub fn generate_video_xml(video: &Video, shape_id: usize, video_r_id: &str, _image_r_id: &str) -> String {
-    let alt_text = video.alt_text.as_deref().unwrap_or("Video");
+/// Relationship ids for one embedded media element on a slide.
+///
+/// PowerPoint requires two distinct relationships per media part: a
+/// `…/relationships/video|audio` link relationship (referenced by
+/// `a:videoFile`/`a:audioFile r:link`) and a `…/relationships/media`
+/// embed relationship (referenced by the `p14:media r:embed` extension).
+/// The poster frame is a separate image-part relationship.
+#[derive(Clone, Debug)]
+pub struct MediaRelIds {
+    /// `a:videoFile`/`a:audioFile r:link` relationship id
+    pub link_rid: String,
+    /// `p14:media r:embed` relationship id
+    pub embed_rid: String,
+    /// `a:blip r:embed` poster-frame image relationship id
+    pub poster_rid: String,
+    /// `true` for video (`a:videoFile`), `false` for audio (`a:audioFile`)
+    pub is_video: bool,
+}
 
-    format!(
-        r#"<p:pic>
-<p:nvPicPr>
-<p:cNvPr id="{}" name="Video {}" descr="{}">
-<a:hlinkClick r:id="" action="ppaction://media"/>
-</p:cNvPr>
-<p:cNvPicPr>
-<a:picLocks noChangeAspect="1"/>
-</p:cNvPicPr>
-<p:nvPr>
-<a:videoFile r:link="{}"/>
-<p:extLst>
-<p:ext uri="{{DAA4B4D4-6D71-4841-9C94-3DE7FCFB9230}}">
-<p14:media xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main" r:embed="{}"/>
-</p:ext>
-</p:extLst>
-</p:nvPr>
-</p:nvPicPr>
-<p:blipFill>
-<a:blip r:embed="{}"/>
-<a:stretch>
-<a:fillRect/>
-</a:stretch>
-</p:blipFill>
-<p:spPr>
-<a:xfrm>
-<a:off x="{}" y="{}"/>
-<a:ext cx="{}" cy="{}"/>
-</a:xfrm>
-<a:prstGeom prst="rect">
-<a:avLst/>
-</a:prstGeom>
-</p:spPr>
-</p:pic>"#,
-        shape_id, shape_id, escape_xml(alt_text),
-        video_r_id, video_r_id, video_r_id,
-        video.x, video.y, video.width, video.height
+/// Generate video XML for slide
+pub fn generate_video_xml(video: &Video, shape_id: usize, rids: &MediaRelIds) -> String {
+    generate_media_pic_xml(
+        shape_id,
+        "Video",
+        video.alt_text.as_deref().unwrap_or("Video"),
+        true,
+        rids,
+        video.x,
+        video.y,
+        video.width,
+        video.height,
     )
 }
 
 /// Generate audio XML for slide
-pub fn generate_audio_xml(audio: &Audio, shape_id: usize, audio_r_id: &str) -> String {
-    let alt_text = audio.alt_text.as_deref().unwrap_or("Audio");
+pub fn generate_audio_xml(audio: &Audio, shape_id: usize, rids: &MediaRelIds) -> String {
+    generate_media_pic_xml(
+        shape_id,
+        "Audio",
+        audio.alt_text.as_deref().unwrap_or("Audio"),
+        false,
+        rids,
+        audio.x,
+        audio.y,
+        audio.width,
+        audio.height,
+    )
+}
 
+/// Shared `<p:pic>` template for video/audio elements.
+#[allow(clippy::too_many_arguments)]
+fn generate_media_pic_xml(
+    shape_id: usize,
+    kind: &str,
+    alt_text: &str,
+    is_video: bool,
+    rids: &MediaRelIds,
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
+) -> String {
+    let file_tag = if is_video {
+        "a:videoFile"
+    } else {
+        "a:audioFile"
+    };
     format!(
         r#"<p:pic>
 <p:nvPicPr>
-<p:cNvPr id="{}" name="Audio {}" descr="{}">
+<p:cNvPr id="{shape_id}" name="{kind} {shape_id}" descr="{alt}">
 <a:hlinkClick r:id="" action="ppaction://media"/>
 </p:cNvPr>
 <p:cNvPicPr>
 <a:picLocks noChangeAspect="1"/>
 </p:cNvPicPr>
 <p:nvPr>
-<a:audioFile r:link="{}"/>
+<{file_tag} r:link="{link}"/>
 <p:extLst>
 <p:ext uri="{{DAA4B4D4-6D71-4841-9C94-3DE7FCFB9230}}">
-<p14:media xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main" r:embed="{}"/>
+<p14:media xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main" r:embed="{embed}"/>
 </p:ext>
 </p:extLst>
 </p:nvPr>
 </p:nvPicPr>
 <p:blipFill>
-<a:blip r:embed="{}"/>
+<a:blip r:embed="{poster}"/>
 <a:stretch>
 <a:fillRect/>
 </a:stretch>
 </p:blipFill>
 <p:spPr>
 <a:xfrm>
-<a:off x="{}" y="{}"/>
-<a:ext cx="{}" cy="{}"/>
+<a:off x="{x}" y="{y}"/>
+<a:ext cx="{w}" cy="{h}"/>
 </a:xfrm>
 <a:prstGeom prst="rect">
 <a:avLst/>
 </a:prstGeom>
 </p:spPr>
 </p:pic>"#,
-        shape_id, shape_id, escape_xml(alt_text),
-        audio_r_id, audio_r_id, audio_r_id,
-        audio.x, audio.y, audio.width, audio.height
-    )
-}
-
-/// Generate content type for video
-pub fn video_content_type(format: VideoFormat) -> String {
-    format!(
-        r#"<Default Extension="{}" ContentType="{}"/>"#,
-        format.extension(),
-        format.mime_type()
-    )
-}
-
-/// Generate content type for audio
-pub fn audio_content_type(format: AudioFormat) -> String {
-    format!(
-        r#"<Default Extension="{}" ContentType="{}"/>"#,
-        format.extension(),
-        format.mime_type()
+        shape_id = shape_id,
+        kind = kind,
+        alt = escape_xml(alt_text),
+        file_tag = file_tag,
+        link = rids.link_rid,
+        embed = rids.embed_rid,
+        poster = rids.poster_rid,
+        x = x,
+        y = y,
+        w = width,
+        h = height,
     )
 }
 
@@ -497,9 +506,7 @@ mod tests {
 
     #[test]
     fn test_video_options() {
-        let opts = VideoOptions::auto_play()
-            .with_loop(true)
-            .with_volume(80);
+        let opts = VideoOptions::auto_play().with_loop(true).with_volume(80);
         assert!(opts.auto_play);
         assert!(opts.loop_playback);
         assert_eq!(opts.volume, 80);
@@ -507,8 +514,7 @@ mod tests {
 
     #[test]
     fn test_audio_options() {
-        let opts = AudioOptions::auto_play()
-            .with_play_across_slides(true);
+        let opts = AudioOptions::auto_play().with_play_across_slides(true);
         assert!(opts.auto_play);
         assert!(opts.play_across_slides);
     }
@@ -541,16 +547,46 @@ mod tests {
     #[test]
     fn test_generate_video_xml() {
         let video = Video::new("video.mp4", VideoFormat::Mp4, 0, 0, 1000000, 750000);
-        let xml = generate_video_xml(&video, 1, "rId1", "rId2");
+        let rids = MediaRelIds {
+            link_rid: "rId2".to_string(),
+            embed_rid: "rId3".to_string(),
+            poster_rid: "rId4".to_string(),
+            is_video: true,
+        };
+        let xml = generate_video_xml(&video, 1, &rids);
         assert!(xml.contains("p:pic"));
-        assert!(xml.contains("videoFile"));
+        assert!(xml.contains(r#"<a:videoFile r:link="rId2"/>"#));
+        assert!(xml.contains(r#"r:embed="rId3""#));
+        assert!(xml.contains(r#"<a:blip r:embed="rId4"/>"#));
     }
 
     #[test]
     fn test_generate_audio_xml() {
         let audio = Audio::new("audio.mp3", AudioFormat::Mp3, 0, 0, 500000, 500000);
-        let xml = generate_audio_xml(&audio, 1, "rId1");
+        let rids = MediaRelIds {
+            link_rid: "rId2".to_string(),
+            embed_rid: "rId3".to_string(),
+            poster_rid: "rId4".to_string(),
+            is_video: false,
+        };
+        let xml = generate_audio_xml(&audio, 1, &rids);
         assert!(xml.contains("p:pic"));
-        assert!(xml.contains("audioFile"));
+        assert!(xml.contains(r#"<a:audioFile r:link="rId2"/>"#));
+        assert!(xml.contains(r#"r:embed="rId3""#));
+        assert!(xml.contains(r#"<a:blip r:embed="rId4"/>"#));
+    }
+
+    #[test]
+    fn test_media_xml_escapes_alt_text() {
+        let video =
+            Video::new("video.mp4", VideoFormat::Mp4, 0, 0, 1, 1).with_alt_text("a<b & \"c\"");
+        let rids = MediaRelIds {
+            link_rid: "rId1".to_string(),
+            embed_rid: "rId2".to_string(),
+            poster_rid: "rId3".to_string(),
+            is_video: true,
+        };
+        let xml = generate_video_xml(&video, 1, &rids);
+        assert!(xml.contains("a&lt;b &amp; &quot;c&quot;"));
     }
 }

@@ -2,9 +2,11 @@
 //!
 //! High-level API for working with PowerPoint presentations.
 
-use crate::exc::{messages, PptxError, Result};
+use crate::exc::{PptxError, Result, messages};
 use crate::export::html::export_to_html;
-use crate::generator::{create_pptx_with_settings, Image, PresentationSettings, PresentationTheme, SlideContent};
+use crate::generator::{
+    Image, PresentationSettings, PresentationTheme, SlideContent, create_pptx_with_settings,
+};
 use crate::import::import_pptx;
 use std::path::Path;
 use std::process::Command;
@@ -83,12 +85,60 @@ impl Presentation {
         self
     }
 
+    /// Register a comment author for the presentation and return its id.
+    ///
+    /// Slide comments reference authors by this id:
+    /// `SlideContent::add_comment(id, "text", x, y)`. Registering the same
+    /// name twice returns the same id.
+    pub fn add_comment_author(&mut self, name: &str, initials: &str) -> u32 {
+        let mut settings = self.settings.take().unwrap_or_default();
+        let id = settings.comment_authors.get_or_add(name, initials);
+        self.settings = Some(settings);
+        id
+    }
+
+    /// Set the slide sections for the presentation (emitted into
+    /// `presentation.xml` and used by section-aware Markdown/HTML export).
+    pub fn with_sections(mut self, sections: crate::generator::SectionManager) -> Self {
+        let mut settings = self.settings.take().unwrap_or_default();
+        settings.sections = sections;
+        self.settings = Some(settings);
+        self
+    }
+
+    /// Add a section covering slides `[first_slide, first_slide + slide_count)`
+    /// (0-based). Errors if it overlaps an existing section.
+    pub fn add_section(
+        mut self,
+        name: &str,
+        first_slide: usize,
+        slide_count: usize,
+    ) -> Result<Self> {
+        let mut settings = self.settings.take().unwrap_or_default();
+        settings
+            .sections
+            .add_section(name, first_slide, slide_count)
+            .map_err(PptxError::Generic)?;
+        self.settings = Some(settings);
+        Ok(self)
+    }
+
+    /// Get the presentation's sections (empty when none are defined)
+    pub fn sections(&self) -> &crate::generator::SectionManager {
+        static EMPTY: std::sync::OnceLock<crate::generator::SectionManager> =
+            std::sync::OnceLock::new();
+        self.settings
+            .as_ref()
+            .map(|s| &s.sections)
+            .unwrap_or_else(|| EMPTY.get_or_init(crate::generator::SectionManager::default))
+    }
+
     /// Build the presentation as PPTX bytes
     pub fn build(&self) -> Result<Vec<u8>> {
         if self.slides.is_empty() {
-            return Err(PptxError::InvalidState(
-                messages::must_not_be_empty("presentation slides"),
-            ));
+            return Err(PptxError::InvalidState(messages::must_not_be_empty(
+                "presentation slides",
+            )));
         }
         create_pptx_with_settings(&self.title, &self.slides, self.settings.clone())
             .map_err(|e| PptxError::Generic(e.to_string()))
@@ -97,9 +147,9 @@ impl Presentation {
     /// Consume the presentation and build PPTX bytes without cloning slide data.
     pub fn into_bytes(self) -> Result<Vec<u8>> {
         if self.slides.is_empty() {
-            return Err(PptxError::InvalidState(
-                messages::must_not_be_empty("presentation slides"),
-            ));
+            return Err(PptxError::InvalidState(messages::must_not_be_empty(
+                "presentation slides",
+            )));
         }
         create_pptx_with_settings(&self.title, &self.slides, self.settings)
             .map_err(|e| PptxError::Generic(e.to_string()))
@@ -265,10 +315,11 @@ impl Presentation {
             // "page-1.png" -> 1
             if let Some(start) = name.rfind('-')
                 && let Some(end) = name.rfind('.')
-                    && start < end
-                        && let Ok(num) = name[start + 1..end].parse::<u32>() {
-                            return num;
-                        }
+                && start < end
+                && let Ok(num) = name[start + 1..end].parse::<u32>()
+            {
+                return num;
+            }
             0 // Fallback
         });
 
@@ -331,7 +382,8 @@ impl Presentation {
 
     /// Export slides to image files (PNG/JPEG)
     ///
-    /// Uses LibreOffice for raster image rendering. Requires LibreOffice to be installed.
+    /// Slides are rendered with the pure-Rust PDF engine and rasterized
+    /// with `pdftoppm` (from poppler). LibreOffice is not required.
     ///
     /// # Arguments
     /// * `output_dir` - Directory to save images
@@ -369,7 +421,11 @@ impl Presentation {
     /// # Arguments
     /// * `output_path` - Output file path
     /// * `width` - Desired width in pixels
-    pub fn save_thumbnail<P: AsRef<Path>>(&self, output_path: P, width: u32) -> Result<std::path::PathBuf> {
+    pub fn save_thumbnail<P: AsRef<Path>>(
+        &self,
+        output_path: P,
+        width: u32,
+    ) -> Result<std::path::PathBuf> {
         use crate::export::image_export::render_thumbnail;
         render_thumbnail(self, output_path, width)
     }

@@ -30,9 +30,10 @@ impl PackageContext {
         let mut names = std::collections::HashSet::new();
         for i in 0..archive.len() {
             if let Ok(file) = archive.by_index(i)
-                && !file.is_dir() {
-                    names.insert(file.name().to_string());
-                }
+                && !file.is_dir()
+            {
+                names.insert(file.name().to_string());
+            }
         }
 
         let mut ctx = Self {

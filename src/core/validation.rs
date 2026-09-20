@@ -1,6 +1,6 @@
 //! Shared validation helpers used across generators, repair, and CLI tools.
 
-use crate::exc::{messages, PptxError, Result};
+use crate::exc::{PptxError, Result, messages};
 use std::collections::HashSet;
 
 /// A required PPTX package part and its human-readable description.
@@ -134,7 +134,11 @@ pub fn validate_well_formed_xml(xml: &str) -> Result<()> {
 /// Validate chart data before generation: categories and series must be
 /// non-empty, and every series must have exactly as many values as there are
 /// categories. Mismatches produce broken chart XML in PowerPoint.
-pub fn validate_chart(categories: &[String], series_names: &[&str], series_lengths: &[usize]) -> Result<()> {
+pub fn validate_chart(
+    categories: &[String],
+    series_names: &[&str],
+    series_lengths: &[usize],
+) -> Result<()> {
     validate_non_empty(categories, "chart categories")?;
     validate_non_empty(series_lengths, "chart series")?;
     let expected = categories.len();
@@ -153,10 +157,7 @@ pub fn validate_chart(categories: &[String], series_names: &[&str], series_lengt
 }
 
 /// Check that all required part paths exist in `found`.
-pub fn check_required_parts(
-    found: &HashSet<String>,
-    required: &[&str],
-) -> Vec<ValidationIssue> {
+pub fn check_required_parts(found: &HashSet<String>, required: &[&str]) -> Vec<ValidationIssue> {
     required
         .iter()
         .filter(|path| !found.contains(**path))

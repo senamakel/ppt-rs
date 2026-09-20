@@ -25,15 +25,33 @@ impl RelationshipType {
     /// Get the relationship type URI
     pub fn uri(&self) -> &str {
         match self {
-            RelationshipType::OfficeDocument => "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument",
-            RelationshipType::Slide => "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide",
-            RelationshipType::SlideLayout => "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout",
-            RelationshipType::SlideMaster => "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster",
-            RelationshipType::Theme => "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme",
-            RelationshipType::Image => "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image",
-            RelationshipType::Chart => "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart",
-            RelationshipType::CoreProperties => "http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties",
-            RelationshipType::ExtendedProperties => "http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties",
+            RelationshipType::OfficeDocument => {
+                "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"
+            }
+            RelationshipType::Slide => {
+                "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+            }
+            RelationshipType::SlideLayout => {
+                "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+            }
+            RelationshipType::SlideMaster => {
+                "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+            }
+            RelationshipType::Theme => {
+                "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"
+            }
+            RelationshipType::Image => {
+                "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
+            }
+            RelationshipType::Chart => {
+                "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart"
+            }
+            RelationshipType::CoreProperties => {
+                "http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties"
+            }
+            RelationshipType::ExtendedProperties => {
+                "http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties"
+            }
             RelationshipType::Custom(uri) => uri,
         }
     }
@@ -130,9 +148,10 @@ impl Relationships {
             .push(Relationship::new(id, rel_type, target));
         // Update next_id if needed
         if let Some(num) = id.strip_prefix("rId").and_then(|s| s.parse::<u32>().ok())
-            && num >= self.next_id {
-                self.next_id = num + 1;
-            }
+            && num >= self.next_id
+        {
+            self.next_id = num + 1;
+        }
     }
 
     /// Get relationship by ID

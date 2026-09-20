@@ -583,6 +583,9 @@ pres.save_as_markdown_with_options("output.md", &options)?;
 
 ### Export to Images (v0.2.12)
 
+No LibreOffice required: slides are rendered to PDF with the pure-Rust
+`pdfrs` engine and rasterized with `pdftoppm` (poppler).
+
 ```rust
 use ppt_rs::api::Presentation;
 use ppt_rs::export::image_export::{ImageExportOptions, ImageFormat};
@@ -714,6 +717,67 @@ let pptx = create_pptx_with_settings("Deck", &slides, Some(settings))?;
 
 CLI: `pptcli create output.pptx --title "Title" --slides 8 --template brand.pptx`
 
+### Review Comments
+
+Attach review comments to slides; authors are presentation-wide and referenced by id:
+
+```rust
+use ppt_rs::{Presentation, SlideContent};
+
+let mut pres = Presentation::new().title("Review");
+let alice = pres.add_comment_author("Alice", "AR"); // → ppt/commentAuthors.xml
+
+let pres = pres.add_slide(
+    SlideContent::new("Draft")
+        .add_bullet("Point")
+        .add_comment(alice, "Fix wording", 500_000, 300_000), // x/y in EMU
+);
+// Packages ppt/comments/comment1.xml + slide rel (…/relationships/comments)
+```
+
+### Video & Audio Embedding
+
+Embed media files from disk; PowerPoint needs two relationships per element
+(`…/relationships/video|audio` for `r:link`, `…/relationships/media` for the
+`p14:media r:embed` extension) plus a poster-frame image:
+
+```rust
+use ppt_rs::generator::{SlideContent, Video, VideoFormat, Audio, AudioFormat};
+
+let video = Video::new("clip.mp4", VideoFormat::Mp4, 1_000_000, 500_000, 4_000_000, 3_000_000)
+    .with_poster("poster.png"); // optional; built-in 1×1 placeholder otherwise
+let audio = Audio::new("narration.mp3", AudioFormat::Mp3, 500_000, 4_500_000, 1_000_000, 1_000_000);
+
+let slide = SlideContent::new("Demo").add_video(video).add_audio(audio);
+// Packages ppt/media/media1.mp4, ppt/media/media2.mp3 + content-type Defaults
+```
+
+Sources are file paths (read at generation time; unreadable or unsupported
+extensions are errors). Default `remove_unused_media` compression keeps media
+referenced from slide rels.
+
+### Slide Sections
+
+Group slides into named sections; emitted as `<p14:sectionLst>` in
+`presentation.xml` and usable by section-aware export:
+
+```rust
+let pres = Presentation::new()
+    .title("Report")
+    .add_section("Intro", 0, 2)?    // slides [0, 2), 0-based; overlap-checked
+    .add_section("Results", 2, 3)?
+    .add_slide(SlideContent::new("Welcome"));
+
+// Markdown: opt-in grouping ("## Intro" headings, slide headers become ###)
+let md = export_to_markdown_with_options(&pres, &MarkdownOptions::new().with_section_grouping(true))?;
+
+// HTML: opt-in per-slide section labels
+let html = export_to_html_with_options(&pres, &HtmlExportOptions::new().with_section_grouping(true))?;
+```
+
+Import-side `sectionLst` parsing is not implemented: decks imported via
+`Presentation::from_path` lose their sections.
+
 ### Package Validation (v0.2.19)
 
 Structured structural validation of any PPTX byte stream (the same engine the generator self-checks in debug builds):
@@ -772,7 +836,7 @@ pptcli web2ppt <url> [-o output.pptx] [--web2md]             # Webpage→PPTX (r
 | File size overhead | ~10-15 KB base |
 | Generation speed | ~1000 slides/sec |
 | Memory usage | ~2 MB + content |
-| Test coverage | 1100+ tests |
+| Test coverage | 1200+ tests |
 
 ## Error Handling
 
@@ -793,6 +857,7 @@ match create_pptx("title", 5) {
 
 | Version | Features | Significance |
 |---------|----------|--------------|
+| 0.2.27 | Comments round-trip (`add_comment` / `add_comment_author`), video & audio embedding (`add_video` / `add_audio` with dual rels + poster frames), section-aware export (`add_section` → `<p14:sectionLst>`), lazy content-types append fix, pure-Rust image export (pdfrs + pdftoppm) | **Content & round-trip milestone** — review comments, media, and sections packaged with validation; image export without LibreOffice |
 | 0.2.26 | Chart build-time validation (`ChartBuilder::build()` → `Result<Chart>`), MCP tool expansion (+3: `compress_pptx`, `repair_pptx`, `apply_theme` = 11 total), rmcp 2.2.0 API migration, `MEMORY.md` institutional knowledge repository | **Validation & MCP milestone** — charts fail fast on bad data; MCP covers full compress/repair/theme lifecycle |
 | 0.2.25 | Dependency updates, URL validation simplification in `web2ppt/fetcher.rs` | Maintenance — keep dependency tree current and streamline fetcher validation |
 | 0.2.24 | `web2md` bridge: HTML→Markdown→Slides pipeline via `web2md` crate, `--web2md` CLI flag, `url_to_pptx_via_web2md` / `html_to_pptx_via_web2md` | **Conversion milestone** — alternate HTML ingestion path through Markdown normalization |

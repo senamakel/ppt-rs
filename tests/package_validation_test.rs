@@ -9,18 +9,18 @@ use std::io::{Cursor, Read, Write};
 use std::path::PathBuf;
 
 use ppt_rs::core::{
-    validate_package_bytes, PackageValidationIssue, ValidationCategory, ValidationSeverity,
+    PackageValidationIssue, ValidationCategory, ValidationSeverity, validate_package_bytes,
 };
 use ppt_rs::generator::layout_parts::STANDARD_LAYOUT_COUNT;
 use ppt_rs::generator::package_xml::{HANDOUT_MASTER_ID, NOTES_MASTER_ID, SLIDE_LAYOUT_ID};
-use ppt_rs::generator::{
-    create_pptx, create_pptx_with_content, create_pptx_with_settings, ChartBuilder,
-    ChartSeries, ChartType, Image, PresentationSettings, PrintSettings, PrintWhat, SlideContent,
-};
 use ppt_rs::generator::slide_content::print_settings::HandoutLayout;
-use zip::write::FileOptions;
+use ppt_rs::generator::{
+    ChartBuilder, ChartSeries, ChartType, Image, PresentationSettings, PrintSettings, PrintWhat,
+    SlideContent, create_pptx, create_pptx_with_content, create_pptx_with_settings,
+};
 use zip::ZipArchive;
 use zip::ZipWriter;
+use zip::write::FileOptions;
 
 use common::{assert_package_file_valid, assert_package_valid, issues_in_category};
 

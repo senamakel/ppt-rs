@@ -8,16 +8,18 @@
 //! - Text wrapping
 //! - XML generation for OOXML
 
-mod cell;
-mod row;
 mod builder;
+mod cell;
 mod format;
+mod row;
 mod style;
 mod xml;
 
-pub use cell::{TableCell, CellAlign, CellVAlign};
-pub use row::TableRow;
 pub use builder::{Table, TableBuilder};
+pub use cell::{CellAlign, CellVAlign, TableCell};
 pub use format::generate_cell_xml;
-pub use style::{header_cell, table_from_string_rows, IMPORT_HEADER_BG, HELPER_HEADER_BG, HEADER_TEXT};
+pub use row::TableRow;
+pub use style::{
+    HEADER_TEXT, HELPER_HEADER_BG, IMPORT_HEADER_BG, header_cell, table_from_string_rows,
+};
 pub use xml::generate_table_xml;

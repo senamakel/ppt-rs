@@ -251,7 +251,10 @@ pub fn generate_gradient_fill_xml(gradient: &GradientFill) -> String {
         ));
 
         if let Some(alpha) = stop.transparency {
-            xml.push_str(&format!(r#"><a:alpha val="{}"/></a:srgbClr>"#, 100000 - alpha));
+            xml.push_str(&format!(
+                r#"><a:alpha val="{}"/></a:srgbClr>"#,
+                100000 - alpha
+            ));
         } else {
             xml.push_str("/>");
         }

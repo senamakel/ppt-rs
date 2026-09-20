@@ -2,7 +2,10 @@
 //!
 //! Tests the image XML generation module
 
-use ppt_rs::generator::{Image, ImageBuilder, generate_image_xml, generate_image_relationship, generate_image_content_type};
+use ppt_rs::generator::{
+    Image, ImageBuilder, generate_image_content_type, generate_image_relationship,
+    generate_image_xml,
+};
 
 // ============================================================================
 // IMAGE CREATION TESTS
@@ -19,8 +22,7 @@ fn test_image_creation() {
 
 #[test]
 fn test_image_position() {
-    let img = Image::new("photo.png", 1920, 1080, "PNG")
-        .position(500000, 1000000);
+    let img = Image::new("photo.png", 1920, 1080, "PNG").position(500000, 1000000);
     assert_eq!(img.x, 500000);
     assert_eq!(img.y, 1000000);
 }
@@ -48,16 +50,14 @@ fn test_image_aspect_ratio_1_1() {
 
 #[test]
 fn test_image_scale_to_width() {
-    let img = Image::new("photo.png", 1920, 1080, "PNG")
-        .scale_to_width(960);
+    let img = Image::new("photo.png", 1920, 1080, "PNG").scale_to_width(960);
     assert_eq!(img.width, 960);
     assert_eq!(img.height, 540);
 }
 
 #[test]
 fn test_image_scale_to_height() {
-    let img = Image::new("photo.png", 1920, 1080, "PNG")
-        .scale_to_height(540);
+    let img = Image::new("photo.png", 1920, 1080, "PNG").scale_to_height(540);
     assert_eq!(img.width, 960);
     assert_eq!(img.height, 540);
 }
@@ -151,7 +151,7 @@ fn test_image_builder_fluent() {
         .position(500000, 1000000)
         .scale_to_width(960)
         .build();
-    
+
     assert_eq!(img.filename, "photo.png");
     assert_eq!(img.width, 960);
     assert_eq!(img.height, 540);
@@ -164,7 +164,7 @@ fn test_image_builder_auto_format_detection() {
     let img_png = ImageBuilder::new("photo.png", 100, 100).build();
     let img_jpg = ImageBuilder::new("photo.jpg", 100, 100).build();
     let img_gif = ImageBuilder::new("photo.gif", 100, 100).build();
-    
+
     assert_eq!(img_png.format, "PNG");
     assert_eq!(img_jpg.format, "JPG");
     assert_eq!(img_gif.format, "GIF");
@@ -186,8 +186,7 @@ fn test_generate_simple_image_xml() {
 
 #[test]
 fn test_generate_image_with_position() {
-    let img = Image::new("photo.png", 1920000, 1080000, "PNG")
-        .position(500000, 1000000);
+    let img = Image::new("photo.png", 1920000, 1080000, "PNG").position(500000, 1000000);
     let xml = generate_image_xml(&img, 1, 1);
 
     assert!(xml.contains("x=\"500000\""));
@@ -313,7 +312,7 @@ fn test_generate_image_xml_fill_rect() {
 #[test]
 fn test_image_various_formats() {
     let formats = vec!["PNG", "JPG", "JPEG", "GIF", "BMP", "TIFF", "SVG"];
-    
+
     for format in formats {
         let img = Image::new("photo.ext", 1920, 1080, format);
         assert_eq!(img.format, format);
@@ -331,7 +330,7 @@ fn test_image_various_sizes() {
         (2560, 1440),
         (3840, 2160),
     ];
-    
+
     for (width, height) in sizes {
         let img = Image::new("photo.png", width, height, "PNG");
         assert_eq!(img.width, width);
@@ -342,7 +341,7 @@ fn test_image_various_sizes() {
 #[test]
 fn test_image_square_formats() {
     let sizes = vec![512, 1024, 2048];
-    
+
     for size in sizes {
         let img = Image::new("photo.png", size, size, "PNG");
         assert_eq!(img.aspect_ratio(), 1.0);

@@ -7,16 +7,12 @@
 //! - Gradient fills
 //! - Video/Audio embedding
 
-use ppt_rs::{
-    create_pptx_with_content, SlideContent, SlideLayout,
-    ChartType,
-    Connector, ArrowType, ConnectionSite,
-    Hyperlink,
-    GradientFill, GradientDirection, PresetGradients,
-    Video, VideoOptions,
-    Audio, AudioOptions,
-};
 use ppt_rs::generator::shapes::inches_to_emu;
+use ppt_rs::{
+    ArrowType, Audio, AudioOptions, ChartType, ConnectionSite, Connector, GradientDirection,
+    GradientFill, Hyperlink, PresetGradients, SlideContent, SlideLayout, Video, VideoOptions,
+    create_pptx_with_content,
+};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== New PPT Elements Demo ===\n");
@@ -31,7 +27,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .add_bullet("Gradient fills")
             .add_bullet("Video/Audio embedding")
             .layout(SlideLayout::TitleAndContent),
-
         // Slide 2: New Chart Types
         SlideContent::new("New Chart Types")
             .add_bullet("Area charts (standard, stacked, 100% stacked)")
@@ -42,7 +37,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .add_bullet("Stock charts (HLC, OHLC)")
             .add_bullet("Combo charts (bar + line)")
             .layout(SlideLayout::TitleAndContent),
-
         // Slide 3: Connector Types
         SlideContent::new("Connector Types")
             .add_bullet("Straight connectors")
@@ -51,7 +45,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .add_bullet("Arrow heads (Triangle, Stealth, Diamond, Oval)")
             .add_bullet("Connection sites (Top, Bottom, Left, Right, Corners)")
             .layout(SlideLayout::TitleAndContent),
-
         // Slide 4: Hyperlink Types
         SlideContent::new("Hyperlink Support")
             .add_bullet("URL links (external websites)")
@@ -60,7 +53,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .add_bullet("File links (local files)")
             .add_bullet("Navigation (First, Last, Next, Previous slide)")
             .layout(SlideLayout::TitleAndContent),
-
         // Slide 5: Gradient Fills
         SlideContent::new("Gradient Fill Support")
             .add_bullet("Linear gradients (horizontal, vertical, diagonal)")
@@ -70,7 +62,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .add_bullet("Preset gradients (Blue, Green, Rainbow, etc.)")
             .add_bullet("Custom gradient stops with transparency")
             .layout(SlideLayout::TitleAndContent),
-
         // Slide 6: Media Support
         SlideContent::new("Video & Audio Support")
             .add_bullet("Video formats: MP4, WMV, AVI, MOV, MKV, WebM")
@@ -122,8 +113,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Connector example
     println!("\nConnector Example:");
     let connector = Connector::elbow(
-        inches_to_emu(1.0), inches_to_emu(1.0),
-        inches_to_emu(5.0), inches_to_emu(3.0),
+        inches_to_emu(1.0),
+        inches_to_emu(1.0),
+        inches_to_emu(5.0),
+        inches_to_emu(3.0),
     )
     .with_color("0066CC")
     .with_end_arrow(ArrowType::Triangle)
@@ -154,7 +147,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Video example
     println!("\nVideo Example:");
-    if let Some(video) = Video::from_file("video.mp4", 0, 0, inches_to_emu(6.0), inches_to_emu(4.0)) {
+    if let Some(video) = Video::from_file("video.mp4", 0, 0, inches_to_emu(6.0), inches_to_emu(4.0))
+    {
         let video = video.with_options(VideoOptions::auto_play().with_loop(true));
         println!("  Format: {:?}", video.format);
         println!("  Auto-play: {}", video.options.auto_play);
@@ -163,7 +157,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Audio example
     println!("\nAudio Example:");
-    if let Some(audio) = Audio::from_file("audio.mp3", 0, 0, inches_to_emu(1.0), inches_to_emu(1.0)) {
+    if let Some(audio) = Audio::from_file("audio.mp3", 0, 0, inches_to_emu(1.0), inches_to_emu(1.0))
+    {
         let audio = audio.with_options(AudioOptions::auto_play().with_play_across_slides(true));
         println!("  Format: {:?}", audio.format);
         println!("  Auto-play: {}", audio.options.auto_play);

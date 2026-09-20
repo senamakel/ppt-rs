@@ -592,7 +592,8 @@ pres.save_as_html("deck.html")?;
 pres.compress("deck-web.pptx", &CompressionOptions::web())?;
 ```
 
-Image export (PNG/JPEG) and PDF require LibreOffice (`soffice`).
+Image export (PNG/JPEG) rasterizes the pure-Rust PDF render with `pdftoppm`
+(poppler) — LibreOffice is not required. PDF export is fully pure-Rust.
 
 ---
 

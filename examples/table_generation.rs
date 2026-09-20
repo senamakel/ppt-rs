@@ -5,7 +5,7 @@
 //! Run with: cargo run --example table_generation
 
 use ppt_rs::generator::{SlideContent, create_pptx_with_content};
-use ppt_rs::prelude::{QuickTable, table_from_data, header_cell, cell, highlight_cell};
+use ppt_rs::prelude::{QuickTable, cell, header_cell, highlight_cell, table_from_data};
 use std::fs;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -48,11 +48,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn create_simple_table_example() -> Result<(), Box<dyn std::error::Error>> {
-    let data = vec![
-        vec!["Name", "Age"],
-        vec!["Alice", "30"],
-        vec!["Bob", "25"],
-    ];
+    let data = vec![vec!["Name", "Age"], vec!["Alice", "30"], vec!["Bob", "25"]];
     let table = table_from_data(&data, Some(vec![2.0, 2.0]))
         .position(500000, 1500000)
         .build();

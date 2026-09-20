@@ -7,11 +7,11 @@
 //! - Modify presentation properties
 
 use super::slide::{ParsedSlide, SlideParser};
-use crate::exc::{messages, PptxError};
-use crate::generator::slide_content::SlideContent;
+use crate::exc::{PptxError, messages};
 use crate::generator::package_xml::{
     create_presentation_rels_xml_full, slide_id_value, slide_rel_id,
 };
+use crate::generator::slide_content::SlideContent;
 use crate::generator::slide_xml::{create_slide_rels_xml, create_slide_xml_with_content};
 use crate::opc::Package;
 
@@ -64,7 +64,7 @@ impl PresentationEditor {
         let new_index = self.slide_count + 1;
 
         // Generate slide XML
-        let slide_xml = create_slide_xml_with_content(new_index, &content, &[], None);
+        let slide_xml = create_slide_xml_with_content(new_index, &content, &[], None, &[]);
         let slide_rels_xml = create_slide_rels_xml();
 
         // Add slide file
@@ -96,7 +96,7 @@ impl PresentationEditor {
         }
 
         let slide_num = index + 1;
-        let slide_xml = create_slide_xml_with_content(slide_num, &content, &[], None);
+        let slide_xml = create_slide_xml_with_content(slide_num, &content, &[], None, &[]);
         let slide_path = format!("ppt/slides/slide{slide_num}.xml");
 
         self.package.add_part(slide_path, slide_xml.into_bytes());
@@ -167,8 +167,10 @@ impl PresentationEditor {
         // Insert duplicate at the newly vacated position.
         self.package
             .add_part(format!("ppt/slides/slide{new_num}.xml"), slide_data);
-        self.package
-            .add_part(format!("ppt/slides/_rels/slide{new_num}.xml.rels"), rels_data);
+        self.package.add_part(
+            format!("ppt/slides/_rels/slide{new_num}.xml.rels"),
+            rels_data,
+        );
 
         self.slide_count += 1;
 
@@ -180,7 +182,11 @@ impl PresentationEditor {
     }
 
     /// Insert a new slide at the specified index.
-    pub fn insert_slide(&mut self, index: usize, content: SlideContent) -> Result<usize, PptxError> {
+    pub fn insert_slide(
+        &mut self,
+        index: usize,
+        content: SlideContent,
+    ) -> Result<usize, PptxError> {
         if index > self.slide_count {
             return Err(PptxError::NotFound(messages::slide_not_found(index)));
         }
@@ -193,11 +199,13 @@ impl PresentationEditor {
         }
 
         // Generate and insert the new slide.
-        let slide_xml = create_slide_xml_with_content(new_num, &content, &[], None);
+        let slide_xml = create_slide_xml_with_content(new_num, &content, &[], None, &[]);
         let slide_rels_xml = create_slide_rels_xml();
 
-        self.package
-            .add_part(format!("ppt/slides/slide{new_num}.xml"), slide_xml.into_bytes());
+        self.package.add_part(
+            format!("ppt/slides/slide{new_num}.xml"),
+            slide_xml.into_bytes(),
+        );
         self.package.add_part(
             format!("ppt/slides/_rels/slide{new_num}.xml.rels"),
             slide_rels_xml.into_bytes(),
@@ -231,11 +239,15 @@ impl PresentationEditor {
         let temp_slide_path = "ppt/slides/_temp_slide.xml".to_string();
         let temp_rels_path = "ppt/slides/_rels/_temp_slide.xml.rels".to_string();
 
-        if let Some(data) = self.package.remove_part(&format!("ppt/slides/slide{from_num}.xml")) {
+        if let Some(data) = self
+            .package
+            .remove_part(&format!("ppt/slides/slide{from_num}.xml"))
+        {
             self.package.add_part(temp_slide_path.clone(), data);
         }
-        if let Some(data) =
-            self.package.remove_part(&format!("ppt/slides/_rels/slide{from_num}.xml.rels"))
+        if let Some(data) = self
+            .package
+            .remove_part(&format!("ppt/slides/_rels/slide{from_num}.xml.rels"))
         {
             self.package.add_part(temp_rels_path.clone(), data);
         }

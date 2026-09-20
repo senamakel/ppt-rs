@@ -1,8 +1,8 @@
 //! Tests for core validation and placement modules.
 
 use ppt_rs::core::{
-    check_required_parts, validate_index, validate_non_empty, validate_non_empty_str,
-    validate_well_formed_xml, ElementPlacement, REQUIRED_PARTS_MINIMAL,
+    ElementPlacement, REQUIRED_PARTS_MINIMAL, check_required_parts, validate_index,
+    validate_non_empty, validate_non_empty_str, validate_well_formed_xml,
 };
 use std::collections::HashSet;
 
@@ -17,7 +17,11 @@ fn test_check_required_parts_reports_missing() {
     let found: HashSet<_> = ["_rels/.rels"].into_iter().map(str::to_string).collect();
     let issues = check_required_parts(&found, REQUIRED_PARTS_MINIMAL);
     assert!(!issues.is_empty());
-    assert!(issues.iter().all(|i| i.message().contains("Missing required part")));
+    assert!(
+        issues
+            .iter()
+            .all(|i| i.message().contains("Missing required part"))
+    );
 }
 
 #[test]

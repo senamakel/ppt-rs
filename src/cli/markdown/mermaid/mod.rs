@@ -93,19 +93,21 @@ pub fn create_diagram_elements(code: &str) -> DiagramElements {
         MermaidType::GitGraph => DiagramElements::from_shapes(gitgraph::generate_shapes(code)),
         _ => {
             // Fallback: create a placeholder
-            DiagramElements::from_shapes(vec![Shape::new(
-                ShapeType::Rectangle,
-                1_000_000,
-                2_000_000,
-                7_000_000,
-                3_000_000,
-            )
-            .with_fill(ShapeFill::new("F5F5F5"))
-            .with_line(ShapeLine::new("757575", 1))
-            .with_text(&format!(
-                "Diagram: {}",
-                code.lines().next().unwrap_or("Unknown")
-            ))])
+            DiagramElements::from_shapes(vec![
+                Shape::new(
+                    ShapeType::Rectangle,
+                    1_000_000,
+                    2_000_000,
+                    7_000_000,
+                    3_000_000,
+                )
+                .with_fill(ShapeFill::new("F5F5F5"))
+                .with_line(ShapeLine::new("757575", 1))
+                .with_text(&format!(
+                    "Diagram: {}",
+                    code.lines().next().unwrap_or("Unknown")
+                )),
+            ])
         }
     }
 }

@@ -5,7 +5,7 @@
 
 #![cfg(feature = "web2md")]
 
-use ppt_rs::{html_to_pptx_via_web2md, ConversionOptions, Web2PptConfig};
+use ppt_rs::{ConversionOptions, Web2PptConfig, html_to_pptx_via_web2md};
 use std::io::Cursor;
 use zip::ZipArchive;
 
@@ -77,7 +77,9 @@ fn test_html_to_pptx_via_web2md_empty_content() {
 fn test_html_to_pptx_via_web2md_max_slides_limit() {
     let mut html = String::from("<html><body><article>");
     for i in 1..=50 {
-        html.push_str(&format!("<h1>Slide {i}</h1>\n<p>Content for slide {i} with enough text.</p>\n"));
+        html.push_str(&format!(
+            "<h1>Slide {i}</h1>\n<p>Content for slide {i} with enough text.</p>\n"
+        ));
     }
     html.push_str("</article></body></html>");
 

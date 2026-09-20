@@ -3,9 +3,9 @@
 //! Pipeline: URL → HTML (WebFetcher) → Markdown (web2md::PageToMarkdown)
 //!           → Slides (cli::markdown::parser) → PPTX bytes.
 
-use super::{Web2PptError, Result, Web2PptConfig};
 use super::converter::ConversionOptions;
 use super::fetcher::WebFetcher;
+use super::{Result, Web2PptConfig, Web2PptError};
 
 /// Convert a URL to PPTX bytes using the web2md pipeline.
 ///
@@ -34,8 +34,8 @@ pub fn html_to_pptx_via_web2md(
     let markdown = web2md::PageToMarkdown::convert(
         html,
         config.include_images,
-        true,           // keep_header
-        true,           // main_content — extract <article>/<main>
+        true, // keep_header
+        true, // main_content — extract <article>/<main>
         &exclude,
     )
     .map_err(|e| Web2PptError::ParseError(format!("web2md conversion failed: {e}")))?;
@@ -54,10 +54,9 @@ pub fn html_to_pptx_via_web2md(
     }
 
     // Override title if requested
-    let title = options
-        .title
-        .clone()
-        .unwrap_or_else(|| extract_title_from_markdown(&markdown).unwrap_or_else(|| url.to_string()));
+    let title = options.title.clone().unwrap_or_else(|| {
+        extract_title_from_markdown(&markdown).unwrap_or_else(|| url.to_string())
+    });
 
     crate::create_pptx_with_content(&title, slides)
         .map_err(|e| Web2PptError::GenerationError(e.to_string()))
@@ -84,7 +83,10 @@ mod tests {
     #[test]
     fn test_extract_title_from_markdown() {
         let md = "# My Title\n\nSome content";
-        assert_eq!(extract_title_from_markdown(md), Some("My Title".to_string()));
+        assert_eq!(
+            extract_title_from_markdown(md),
+            Some("My Title".to_string())
+        );
     }
 
     #[test]

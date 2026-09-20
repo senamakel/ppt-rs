@@ -137,7 +137,7 @@ mod tests {
             .max_slides(10)
             .max_bullets(4)
             .with_images(false);
-        
+
         assert_eq!(config.max_slides, 10);
         assert_eq!(config.max_bullets_per_slide, 4);
         assert!(!config.include_images);

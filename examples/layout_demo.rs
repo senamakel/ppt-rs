@@ -1,24 +1,20 @@
-use ppt_rs::generator::{create_pptx_with_content, SlideContent, SlideLayout};
+use ppt_rs::generator::{SlideContent, SlideLayout, create_pptx_with_content};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let slides = vec![
         // Slide 1: Title Only
-        SlideContent::new("Welcome to Layout Demo")
-            .layout(SlideLayout::TitleOnly),
-
+        SlideContent::new("Welcome to Layout Demo").layout(SlideLayout::TitleOnly),
         // Slide 2: Centered Title (good for cover slides)
         SlideContent::new("Centered Title Slide")
             .layout(SlideLayout::CenteredTitle)
             .title_size(60)
             .title_color("4F81BD"),
-
         // Slide 3: Title and Content (standard layout)
         SlideContent::new("Standard Layout")
             .add_bullet("Point 1: Title at top")
             .add_bullet("Point 2: Content below")
             .add_bullet("Point 3: Most common layout")
             .layout(SlideLayout::TitleAndContent),
-
         // Slide 4: Title and Big Content
         SlideContent::new("Big Content Area")
             .add_bullet("More space for content")
@@ -26,24 +22,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .add_bullet("Good for detailed slides")
             .add_bullet("Maximizes content space")
             .layout(SlideLayout::TitleAndBigContent),
-
         // Slide 5: Section Header (divider slide)
         SlideContent::new("Section Two")
             .title_size(48)
             .title_bold(true)
             .with_layout(SlideLayout::SectionHeader),
-
         // Slide 6: Two Column Layout
         SlideContent::new("Two Column Layout")
             .add_bullet("Left column content")
             .add_bullet("Organized side by side")
             .add_bullet("Great for comparisons")
             .with_layout(SlideLayout::TwoColumn),
-
         // Slide 7: Blank Slide
-        SlideContent::new("")
-            .with_layout(SlideLayout::Blank),
-
+        SlideContent::new("").with_layout(SlideLayout::Blank),
         // Slide 8: Summary with different formatting
         SlideContent::new("Summary")
             .title_size(48)

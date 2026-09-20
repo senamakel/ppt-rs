@@ -1,41 +1,37 @@
 //! PPTX builder - orchestrates ZIP creation and file writing
 
-use std::io::{Write, Seek, Cursor};
-use zip::write::FileOptions;
-use zip::ZipWriter;
-use crate::exc::Result;
-use crate::core::append_usize;
-use super::slide_content::SlideContent;
+use super::layout_parts::{STANDARD_LAYOUT_COUNT, create_slide_layout_xml};
+use super::media_registry::MediaRegistry;
 use super::memory_profile::estimate_output_capacity;
+use super::notes_xml::*;
 use super::package_cache::{self, print_affects_theme_parts};
 use super::package_xml::{
-    create_rels_xml_with_signature,
-    create_presentation_rels_xml_full, create_presentation_rels_xml_full_with_fonts,
-    create_presentation_xml, create_presentation_xml_with_fonts,
-    create_content_types_xml_with_notes_and_charts,
-    content_types_opening, append_digital_signature_content_type,
-    append_embedded_font_content_type, table_styles_rel_id,
-    create_pres_props_xml, create_view_props_xml, create_table_styles_xml,
-    create_handout_master_rels_xml,
+    append_digital_signature_content_type, append_embedded_font_content_type,
+    content_types_opening, create_content_types_xml_with_notes_and_charts,
+    create_handout_master_rels_xml, create_pres_props_xml, create_presentation_rels_xml_full,
+    create_presentation_rels_xml_full_with_fonts, create_presentation_xml,
+    create_presentation_xml_with_fonts, create_rels_xml_with_signature, create_table_styles_xml,
+    create_view_props_xml, table_styles_rel_id,
 };
-use super::slide_xml::{
-    create_slide_xml, create_slide_xml_with_content, create_slide_rels_xml,
-};
-use super::theme_xml::{
-    create_slide_master_xml, create_master_rels_xml, create_theme_xml, create_layout_rels_xml,
-};
-use super::layout_parts::{create_slide_layout_xml, STANDARD_LAYOUT_COUNT};
+use super::props_xml::{create_app_props_xml, create_core_props_xml};
+use super::slide_content::SlideContent;
+use super::slide_xml::{create_slide_rels_xml, create_slide_xml, create_slide_xml_with_content};
 use super::template::PptxTemplate;
-use super::props_xml::{create_core_props_xml, create_app_props_xml};
-use super::notes_xml::*;
-use crate::generator::presentation_theme::office_theme_xml;
+use super::theme_xml::{
+    create_layout_rels_xml, create_master_rels_xml, create_slide_master_xml, create_theme_xml,
+};
+use crate::core::append_usize;
+use crate::exc::{PptxError, Result};
 use crate::generator::charts::{
     chart_embedding_filename, create_chart_rels_xml, generate_chart_part_xml,
     reference_workbook_bytes,
 };
-use crate::generator::slide_content::print_settings::PrintWhat;
+use crate::generator::presentation_theme::office_theme_xml;
 use crate::generator::slide_content::presentation_settings::PresentationSettings;
-use super::media_registry::MediaRegistry;
+use crate::generator::slide_content::print_settings::PrintWhat;
+use std::io::{Cursor, Seek, Write};
+use zip::ZipWriter;
+use zip::write::FileOptions;
 
 fn zip_options() -> FileOptions {
     FileOptions::default()
@@ -54,8 +50,29 @@ fn build_media_registry(slides: &[SlideContent]) -> MediaRegistry {
                 registry.image_number(&bytes, &image.extension());
             }
         }
+        register_slide_media(&mut registry, slide);
     }
     registry
+}
+
+/// Register video/audio bytes and their poster/placeholder frames so the
+/// parts get written and rel targets resolve. Failures surface at plan time.
+fn register_slide_media(registry: &mut MediaRegistry, slide: &SlideContent) {
+    for video in &slide.videos {
+        if let Ok((bytes, ext)) = read_media_source(&video.source) {
+            registry.media_number(&bytes, &ext);
+        }
+        if let Ok((poster, ext)) = media_poster_bytes(video.poster.as_ref()) {
+            registry.image_number(&poster, &ext);
+        }
+    }
+    for audio in &slide.audios {
+        if let Ok((bytes, ext)) = read_media_source(&audio.source) {
+            registry.media_number(&bytes, &ext);
+        }
+        let (poster, ext) = media_poster_bytes(None).expect("placeholder poster is constant");
+        registry.image_number(&poster, &ext);
+    }
 }
 
 fn build_media_registry_lazy(slides: &dyn LazySlideSource) -> MediaRegistry {
@@ -67,6 +84,7 @@ fn build_media_registry_lazy(slides: &dyn LazySlideSource) -> MediaRegistry {
                     registry.image_number(&bytes, &image.extension());
                 }
             }
+            register_slide_media(&mut registry, &slide);
         }
     }
     registry
@@ -76,11 +94,152 @@ fn slide_image_rel_targets(slide: &SlideContent, registry: &MediaRegistry) -> Ve
     let mut images = Vec::with_capacity(slide.images.len());
     for image in &slide.images {
         if let Some(bytes) = image.get_bytes()
-            && let Some(num) = registry.lookup_number(&bytes, &image.extension()) {
-                images.push((num, image.extension()));
-            }
+            && let Some(num) = registry.lookup_number(&bytes, &image.extension())
+        {
+            images.push((num, image.extension()));
+        }
     }
     images
+}
+
+/// 1×1 dark-gray PNG used as the poster frame when a media element has no
+/// poster image. `p:pic` requires a `p:blipFill`, so audio elements and
+/// poster-less videos embed this placeholder.
+pub const DEFAULT_MEDIA_POSTER_PNG: &[u8] = &[
+    137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 2, 0,
+    0, 0, 144, 119, 83, 222, 0, 0, 0, 12, 73, 68, 65, 84, 120, 156, 99, 112, 112, 112, 0, 0, 1,
+    132, 0, 193, 131, 95, 105, 148, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130,
+];
+const DEFAULT_MEDIA_POSTER_EXT: &str = "png";
+
+/// Read a media source file and return its bytes plus lowercased extension.
+fn read_media_source(source: &str) -> Result<(Vec<u8>, String)> {
+    let ext = std::path::Path::new(source)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+    let bytes = std::fs::read(source)
+        .map_err(|e| PptxError::Generic(format!("Failed to read media file \"{source}\": {e}")))?;
+    Ok((bytes, ext))
+}
+
+/// Poster bytes for a media element: the configured poster image, or the
+/// built-in 1×1 placeholder.
+fn media_poster_bytes(poster: Option<&String>) -> Result<(Vec<u8>, String)> {
+    match poster {
+        Some(path) => read_media_source(path),
+        None => Ok((
+            DEFAULT_MEDIA_POSTER_PNG.to_vec(),
+            DEFAULT_MEDIA_POSTER_EXT.to_string(),
+        )),
+    }
+}
+
+/// Per-slide media plan: relationship ids for the slide XML, prebuilt
+/// relationship entries for the slide rels, and the poster image-rel
+/// entries (appended after the slide's own images).
+struct SlideMediaPlan {
+    rel_ids: Vec<super::media::MediaRelIds>,
+    rels_xml: Vec<String>,
+    poster_entries: Vec<(usize, String)>,
+}
+
+impl SlideMediaPlan {
+    fn empty() -> Self {
+        Self {
+            rel_ids: Vec::new(),
+            rels_xml: Vec::new(),
+            poster_entries: Vec::new(),
+        }
+    }
+}
+
+/// Plan the media relationships for one slide.
+///
+/// * `image_rel_start` — first image-band rId (`2 + has_notes`)
+/// * `resolved_image_count` — images with resolvable bytes (rel order)
+/// * `media_rid_base` — first free rId after layout/notes/images/charts/ink/comments
+fn slide_media_plan(
+    slide: &SlideContent,
+    registry: &mut MediaRegistry,
+    image_rel_start: usize,
+    resolved_image_count: usize,
+    media_rid_base: usize,
+) -> Result<SlideMediaPlan> {
+    if slide.videos.is_empty() && slide.audios.is_empty() {
+        return Ok(SlideMediaPlan::empty());
+    }
+
+    let mut plan = SlideMediaPlan::empty();
+    let mut rid = media_rid_base;
+
+    let elements: Vec<(&String, Option<&String>, bool)> = slide
+        .videos
+        .iter()
+        .map(|v| (&v.source, v.poster.as_ref(), true))
+        .chain(slide.audios.iter().map(|a| (&a.source, None, false)))
+        .collect();
+
+    for (poster_slot, (source, poster, is_video)) in elements.into_iter().enumerate() {
+        let (bytes, ext) = read_media_source(source)?;
+        if is_video && super::media::VideoFormat::from_extension(&ext).is_none()
+            || !is_video && super::media::AudioFormat::from_extension(&ext).is_none()
+        {
+            return Err(PptxError::Generic(format!(
+                "Unsupported media extension \".{ext}\" for \"{source}\""
+            )));
+        }
+        let media_num = registry.media_number(&bytes, &ext);
+
+        let (poster_bytes, poster_ext) = media_poster_bytes(poster)?;
+        let poster_num = registry.image_number(&poster_bytes, &poster_ext);
+        plan.poster_entries.push((poster_num, poster_ext));
+
+        let link_rid = format!("rId{rid}");
+        let embed_rid = format!("rId{}", rid + 1);
+        rid += 2;
+        let poster_rid = format!(
+            "rId{}",
+            image_rel_start + resolved_image_count + poster_slot
+        );
+
+        let rel_type = if is_video {
+            super::package_xml::VIDEO_REL_TYPE
+        } else {
+            super::package_xml::AUDIO_REL_TYPE
+        };
+        plan.rels_xml
+            .push(super::package_xml::media_relationship_xml(
+                &link_rid, rel_type, media_num, &ext,
+            ));
+        plan.rels_xml
+            .push(super::package_xml::media_relationship_xml(
+                &embed_rid,
+                super::package_xml::MEDIA_REL_TYPE,
+                media_num,
+                &ext,
+            ));
+
+        plan.rel_ids.push(super::media::MediaRelIds {
+            link_rid,
+            embed_rid,
+            poster_rid,
+            is_video,
+        });
+    }
+    Ok(plan)
+}
+
+/// Media rId base for a slide: first free id after layout/notes/images/
+/// charts/ink/comments.
+fn slide_media_rid_base(
+    start_rid: usize,
+    chart_count: usize,
+    has_ink: bool,
+    has_comments: bool,
+) -> usize {
+    start_rid + chart_count + usize::from(has_ink) + usize::from(has_comments)
 }
 
 /// Collect hyperlink relationship XML (`<Relationship .../>`) for every shape on
@@ -137,10 +296,7 @@ pub fn create_pptx(title: &str, slides: usize) -> Result<Vec<u8>> {
 }
 
 /// Create a PPTX file with custom slide content
-pub fn create_pptx_with_content(
-    title: &str,
-    slides: Vec<SlideContent>,
-) -> Result<Vec<u8>> {
+pub fn create_pptx_with_content(title: &str, slides: Vec<SlideContent>) -> Result<Vec<u8>> {
     create_pptx_with_settings(title, &slides, None)
 }
 
@@ -183,7 +339,14 @@ pub fn create_pptx_with_settings(
     let mut zip = ZipWriter::new(cursor);
     let options = zip_options();
 
-    write_package_files(&mut zip, &options, title, slides.len(), Some(slides), settings)?;
+    write_package_files(
+        &mut zip,
+        &options,
+        title,
+        slides.len(),
+        Some(slides),
+        settings,
+    )?;
 
     let cursor = zip.finish()?;
     let bytes = cursor.into_inner();
@@ -204,11 +367,7 @@ pub fn create_pptx_with_settings(
 /// create_pptx_to_writer(file, "My Presentation", 10)?;
 /// # Ok::<(), ppt_rs::PptxError>(())
 /// ```
-pub fn create_pptx_to_writer<W: Write + Seek>(
-    writer: W,
-    title: &str,
-    slides: usize,
-) -> Result<W> {
+pub fn create_pptx_to_writer<W: Write + Seek>(writer: W, title: &str, slides: usize) -> Result<W> {
     let mut zip = ZipWriter::new(writer);
     let options = FileOptions::default();
 
@@ -242,7 +401,14 @@ pub fn create_pptx_with_content_to_writer<W: Write + Seek>(
     let mut zip = ZipWriter::new(writer);
     let options = FileOptions::default();
 
-    write_package_files(&mut zip, &options, title, slides.len(), Some(slides), settings)?;
+    write_package_files(
+        &mut zip,
+        &options,
+        title,
+        slides.len(),
+        Some(slides),
+        settings,
+    )?;
 
     Ok(zip.finish()?)
 }
@@ -444,18 +610,26 @@ fn has_embedded_fonts(settings: Option<&PresentationSettings>) -> bool {
 }
 
 /// Borrow embedded fonts from settings, if any.
-fn embedded_fonts(settings: Option<&PresentationSettings>) -> Option<&super::slide_content::embedded_fonts::EmbeddedFontList> {
+fn embedded_fonts(
+    settings: Option<&PresentationSettings>,
+) -> Option<&super::slide_content::embedded_fonts::EmbeddedFontList> {
     settings.and_then(|s| s.embedded_fonts.as_ref())
 }
 
 /// Prepare settings by assigning relationship IDs to embedded fonts.
 /// Must be called after `has_notes` and `has_handout` are known.
-fn prepare_settings(settings: &mut Option<PresentationSettings>, slide_count: usize, has_notes: bool, has_handout: bool) {
+fn prepare_settings(
+    settings: &mut Option<PresentationSettings>,
+    slide_count: usize,
+    has_notes: bool,
+    has_handout: bool,
+) {
     if let Some(s) = settings
-        && let Some(fonts) = s.embedded_fonts.as_mut() {
-            let first_rid = table_styles_rel_id(slide_count, has_notes, has_handout) + 1;
-            fonts.assign_relationship_ids(first_rid);
-        }
+        && let Some(fonts) = s.embedded_fonts.as_mut()
+    {
+        let first_rid = table_styles_rel_id(slide_count, has_notes, has_handout) + 1;
+        fonts.assign_relationship_ids(first_rid);
+    }
 }
 
 /// Collect slide titles for `docProps/app.xml` (eager version).
@@ -510,8 +684,9 @@ fn write_content_types<W: Write + Seek>(
     has_handout: bool,
     settings: Option<&PresentationSettings>,
 ) -> Result<()> {
-    let media_exts = custom_slides
-        .map(build_media_registry)
+    let media_registry = custom_slides.map(build_media_registry);
+    let image_exts = media_registry
+        .as_ref()
         .map(|registry| registry.extensions())
         .unwrap_or_default();
     let mut content_types = create_content_types_xml_with_notes_and_charts(
@@ -519,7 +694,7 @@ fn write_content_types<W: Write + Seek>(
         custom_slides,
         chart_info.total_charts,
         has_handout,
-        &media_exts,
+        &image_exts,
     );
 
     if has_digital_signature(settings) {
@@ -530,13 +705,39 @@ fn write_content_types<W: Write + Seek>(
     }
 
     let ink_count = custom_slides
-        .map(|slides| slides.iter().filter(|s| s.ink_annotations.is_some()).count())
+        .map(|slides| {
+            slides
+                .iter()
+                .filter(|s| s.ink_annotations.is_some())
+                .count()
+        })
         .unwrap_or(0);
     super::package_xml::append_ink_content_types(&mut content_types, ink_count);
+
+    let comment_count = custom_slides
+        .map(|slides| slides.iter().filter(|s| !s.comments.is_empty()).count())
+        .unwrap_or(0);
+    let has_comment_authors = has_comment_authors(settings);
+    super::package_xml::append_comment_content_types(
+        &mut content_types,
+        comment_count,
+        has_comment_authors,
+    );
+
+    let media_exts = media_registry
+        .as_ref()
+        .map(|registry| registry.media_extensions())
+        .unwrap_or_default();
+    super::package_xml::append_media_content_type_defaults(&mut content_types, &media_exts);
 
     zip.start_file("[Content_Types].xml", *options)?;
     zip.write_all(content_types.as_bytes())?;
     Ok(())
+}
+
+/// Whether the presentation settings carry any comment authors.
+fn has_comment_authors(settings: Option<&PresentationSettings>) -> bool {
+    settings.is_some_and(|s| !s.comment_authors.is_empty())
 }
 
 /// Write presentation relationships in PowerPoint order.
@@ -548,11 +749,18 @@ fn write_presentation_relationships<W: Write + Seek>(
     has_handout: bool,
     settings: Option<&PresentationSettings>,
 ) -> Result<()> {
-    let pres_rels = if let Some(fonts) = embedded_fonts(settings) {
+    let has_authors = has_comment_authors(settings);
+    let mut pres_rels = if let Some(fonts) = embedded_fonts(settings) {
         create_presentation_rels_xml_full_with_fonts(slide_count, has_notes, has_handout, fonts)
     } else {
         create_presentation_rels_xml_full(slide_count, has_notes, has_handout)
     };
+    if has_authors {
+        super::package_xml::append_comment_authors_relationship(
+            &mut pres_rels,
+            super::package_xml::comment_authors_rel_id(slide_count, has_notes, has_handout),
+        );
+    }
 
     zip.start_file("ppt/_rels/presentation.xml.rels", *options)?;
     zip.write_all(pres_rels.as_bytes())?;
@@ -655,7 +863,10 @@ fn write_theme_and_layouts<W: Write + Seek>(
             zip.write_all(layout_xml.as_bytes())?;
         }
 
-        zip.start_file(format!("ppt/slideLayouts/_rels/slideLayout{n}.xml.rels"), *options)?;
+        zip.start_file(
+            format!("ppt/slideLayouts/_rels/slideLayout{n}.xml.rels"),
+            *options,
+        )?;
         zip.write_all(create_layout_rels_xml().as_bytes())?;
     }
 
@@ -729,7 +940,15 @@ fn write_package_files<W: Write + Seek>(
     let chart_info = collect_chart_info(custom_slides);
 
     // 1. Content types
-    write_content_types(zip, options, slide_count, custom_slides, &chart_info, has_handout, settings.as_ref())?;
+    write_content_types(
+        zip,
+        options,
+        slide_count,
+        custom_slides,
+        &chart_info,
+        has_handout,
+        settings.as_ref(),
+    )?;
 
     // 2. Package relationships
     let rels = create_rels_xml_with_signature(has_signature);
@@ -737,14 +956,24 @@ fn write_package_files<W: Write + Seek>(
     zip.write_all(rels.as_bytes())?;
 
     // 3. Presentation relationships
-    write_presentation_relationships(zip, options, slide_count, has_notes, has_handout, settings.as_ref())?;
+    write_presentation_relationships(
+        zip,
+        options,
+        slide_count,
+        has_notes,
+        has_handout,
+        settings.as_ref(),
+    )?;
 
     // 4. Presentation document
-    let presentation = if let Some(fonts) = embedded_fonts(settings.as_ref()) {
+    let mut presentation = if let Some(fonts) = embedded_fonts(settings.as_ref()) {
         create_presentation_xml_with_fonts(title, slide_count, has_notes, has_handout, fonts)
     } else {
         create_presentation_xml(title, slide_count, has_notes, has_handout)
     };
+    if let Some(s) = settings.as_ref() {
+        super::package_xml::append_section_lst_ext(&mut presentation, &s.sections, slide_count);
+    }
     zip.start_file("ppt/presentation.xml", *options)?;
     zip.write_all(presentation.as_bytes())?;
 
@@ -803,6 +1032,12 @@ fn write_package_files<W: Write + Seek>(
         write_digital_signature_parts(zip, options, settings.as_ref())?;
     }
 
+    // 16. Comment authors part
+    if let Some(s) = settings.as_ref().filter(|s| !s.comment_authors.is_empty()) {
+        zip.start_file("ppt/commentAuthors.xml", *options)?;
+        zip.write_all(s.comment_authors.to_xml().as_bytes())?;
+    }
+
     Ok(())
 }
 
@@ -829,7 +1064,15 @@ fn write_package_files_lazy<W: Write + Seek>(
     let chart_info = collect_chart_info_lazy(slides);
 
     // 1. Content types (lazy version)
-    write_content_types_lazy(zip, options, slide_count, slides, &chart_info, has_handout, settings.as_ref())?;
+    write_content_types_lazy(
+        zip,
+        options,
+        slide_count,
+        slides,
+        &chart_info,
+        has_handout,
+        settings.as_ref(),
+    )?;
 
     // 2. Package relationships
     let rels = create_rels_xml_with_signature(has_signature);
@@ -837,14 +1080,24 @@ fn write_package_files_lazy<W: Write + Seek>(
     zip.write_all(rels.as_bytes())?;
 
     // 3. Presentation relationships
-    write_presentation_relationships(zip, options, slide_count, has_notes, has_handout, settings.as_ref())?;
+    write_presentation_relationships(
+        zip,
+        options,
+        slide_count,
+        has_notes,
+        has_handout,
+        settings.as_ref(),
+    )?;
 
     // 4. Presentation document
-    let presentation = if let Some(fonts) = embedded_fonts(settings.as_ref()) {
+    let mut presentation = if let Some(fonts) = embedded_fonts(settings.as_ref()) {
         create_presentation_xml_with_fonts(title, slide_count, has_notes, has_handout, fonts)
     } else {
         create_presentation_xml(title, slide_count, has_notes, has_handout)
     };
+    if let Some(s) = settings.as_ref() {
+        super::package_xml::append_section_lst_ext(&mut presentation, &s.sections, slide_count);
+    }
     zip.start_file("ppt/presentation.xml", *options)?;
     zip.write_all(presentation.as_bytes())?;
 
@@ -897,6 +1150,12 @@ fn write_package_files_lazy<W: Write + Seek>(
     // 14. Digital signature package parts
     if has_signature {
         write_digital_signature_parts(zip, options, settings.as_ref())?;
+    }
+
+    // 15. Comment authors part
+    if let Some(s) = settings.as_ref().filter(|s| !s.comment_authors.is_empty()) {
+        zip.start_file("ppt/commentAuthors.xml", *options)?;
+        zip.write_all(s.comment_authors.to_xml().as_bytes())?;
     }
 
     Ok(())
@@ -984,7 +1243,15 @@ fn write_content_types_lazy<W: Write + Seek>(
 <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
 <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>"#,
     );
-    super::layout_parts::append_layout_content_type_overrides(&mut content_types, STANDARD_LAYOUT_COUNT);
+    super::layout_parts::append_layout_content_type_overrides(
+        &mut content_types,
+        STANDARD_LAYOUT_COUNT,
+    );
+
+    // Close the Types element BEFORE the append_* helpers run — they insert
+    // their entries at rfind("</Types>"). Pushing the close tag after them
+    // (the old order) made every append a silent no-op in the lazy path.
+    content_types.push_str("\n</Types>");
 
     if has_digital_signature(settings) {
         append_digital_signature_content_type(&mut content_types);
@@ -995,7 +1262,25 @@ fn write_content_types_lazy<W: Write + Seek>(
 
     super::package_xml::append_ink_content_types(&mut content_types, ink_count);
 
-    content_types.push_str("\n</Types>");
+    let comment_count = (0..slide_count)
+        .filter(|i| {
+            slides
+                .generate_slide(*i)
+                .map(|s| !s.comments.is_empty())
+                .unwrap_or(false)
+        })
+        .count();
+    let has_authors = has_comment_authors(settings);
+    super::package_xml::append_comment_content_types(
+        &mut content_types,
+        comment_count,
+        has_authors,
+    );
+
+    super::package_xml::append_media_content_type_defaults(
+        &mut content_types,
+        &media_registry.media_extensions(),
+    );
 
     zip.start_file("[Content_Types].xml", *options)?;
     zip.write_all(content_types.as_bytes())?;
@@ -1015,7 +1300,10 @@ fn write_chart_package<W: Write + Seek>(
 
     let embedding_name = chart_embedding_filename(chart_idx);
     let rels_xml = create_chart_rels_xml(&embedding_name);
-    zip.start_file(format!("ppt/charts/_rels/chart{chart_idx}.xml.rels"), *options)?;
+    zip.start_file(
+        format!("ppt/charts/_rels/chart{chart_idx}.xml.rels"),
+        *options,
+    )?;
     zip.write_all(rels_xml.as_bytes())?;
 
     zip.start_file(format!("ppt/embeddings/{embedding_name}"), *options)?;
@@ -1031,11 +1319,12 @@ fn write_slide_packages_lazy<W: Write + Seek>(
     slide_chart_start_indices: &[usize],
     template: Option<&PptxTemplate>,
 ) -> Result<()> {
-    let media_registry = build_media_registry_lazy(slides);
+    let mut media_registry = build_media_registry_lazy(slides);
     let mut slide_path = String::with_capacity(48);
     let mut rels_path = String::with_capacity(56);
     let mut notes_part_num = 0usize;
     let mut ink_part_num = 0usize;
+    let mut comment_part_num = 0usize;
 
     for (i, &start_chart_idx) in slide_chart_start_indices.iter().enumerate() {
         let Some(slide) = slides.generate_slide(i) else {
@@ -1043,10 +1332,11 @@ fn write_slide_packages_lazy<W: Write + Seek>(
         };
         let slide_num = i + 1;
         let layout_number = resolve_layout_number(&slide, template);
-        let images = slide_image_rel_targets(&slide, &media_registry);
-        let image_count = images.len();
+        let resolved_images = slide_image_rel_targets(&slide, &media_registry);
+        let poster_count = slide.videos.len() + slide.audios.len();
+        let image_band_len = resolved_images.len() + poster_count;
 
-        let start_rid = slide_content_rel_start(slide.notes.is_some(), image_count);
+        let start_rid = slide_content_rel_start(slide.notes.is_some(), image_band_len);
         let mut chart_rids = Vec::with_capacity(slide.charts.len());
         for j in 0..slide.charts.len() {
             push_chart_rid(&mut chart_rids, start_rid + j);
@@ -1062,11 +1352,37 @@ fn write_slide_packages_lazy<W: Write + Seek>(
             None
         };
 
+        let has_comments = !slide.comments.is_empty();
+        if has_comments {
+            comment_part_num += 1;
+            let comments_xml = slide.comments.to_xml();
+            zip.start_file(
+                format!("ppt/comments/comment{comment_part_num}.xml"),
+                *options,
+            )?;
+            zip.write_all(comments_xml.as_bytes())?;
+        }
+        let comment_part = has_comments.then_some(comment_part_num);
+
+        let media_plan = slide_media_plan(
+            &slide,
+            &mut media_registry,
+            2 + usize::from(slide.notes.is_some()),
+            resolved_images.len(),
+            slide_media_rid_base(
+                start_rid,
+                slide.charts.len(),
+                slide.ink_annotations.is_some(),
+                has_comments,
+            ),
+        )?;
+
         let slide_xml = create_slide_xml_with_content(
             slide_num,
             &slide,
             &chart_rids,
             ink_rel_id.as_deref(),
+            &media_plan.rel_ids,
         );
         set_slide_xml_path(&mut slide_path, slide_num);
         zip.start_file(&slide_path, *options)?;
@@ -1099,6 +1415,17 @@ fn write_slide_packages_lazy<W: Write + Seek>(
         }
 
         let ink_rel_tuple = ink_rel_id.map(|_| (start_rid + slide.charts.len(), ink_part_num));
+
+        let comment_rel = comment_part.map(|num| {
+            (
+                start_rid + slide.charts.len() + usize::from(slide.ink_annotations.is_some()),
+                num,
+            )
+        });
+
+        let mut images = resolved_images;
+        images.extend(media_plan.poster_entries.iter().cloned());
+
         let slide_rels = super::package_xml::create_slide_rels_xml_with_images(
             layout_number,
             slide.notes.is_some(),
@@ -1107,6 +1434,8 @@ fn write_slide_packages_lazy<W: Write + Seek>(
             &images,
             &slide_hyperlink_relationships(&slide),
             ink_rel_tuple,
+            comment_rel,
+            &media_plan.rels_xml,
         );
         set_slide_rels_path(&mut rels_path, slide_num);
         zip.start_file(&rels_path, *options)?;
@@ -1137,7 +1466,10 @@ fn write_notes_relationships_lazy<W: Write + Seek>(
             notes_part_num += 1;
             let slide_num = i + 1;
             let notes_rels = create_notes_rels_xml(slide_num);
-            zip.start_file(format!("ppt/notesSlides/_rels/notesSlide{notes_part_num}.xml.rels"), *options)?;
+            zip.start_file(
+                format!("ppt/notesSlides/_rels/notesSlide{notes_part_num}.xml.rels"),
+                *options,
+            )?;
             zip.write_all(notes_rels.as_bytes())?;
         }
     }
@@ -1155,13 +1487,21 @@ fn write_slides<W: Write + Seek>(
 
     match custom_slides {
         Some(slides) => {
+            let mut media_registry = build_media_registry(slides);
             let mut notes_part_num = 0usize;
             let mut ink_part_num = 0usize;
+            let mut comment_part_num = 0usize;
             for (i, slide) in slides.iter().enumerate() {
                 let slide_num = i + 1;
 
+                let resolved_images = slide_image_rel_targets(slide, &media_registry);
+                let poster_count = slide.videos.len() + slide.audios.len();
+
                 let mut chart_rids = Vec::with_capacity(slide.charts.len());
-                let start_rid = slide_content_rel_start(slide.notes.is_some(), slide.images.len());
+                let start_rid = slide_content_rel_start(
+                    slide.notes.is_some(),
+                    resolved_images.len() + poster_count,
+                );
                 for j in 0..slide.charts.len() {
                     push_chart_rid(&mut chart_rids, start_rid + j);
                 }
@@ -1176,11 +1516,36 @@ fn write_slides<W: Write + Seek>(
                     None
                 };
 
+                let has_comments = !slide.comments.is_empty();
+                if has_comments {
+                    comment_part_num += 1;
+                    let comments_xml = slide.comments.to_xml();
+                    zip.start_file(
+                        format!("ppt/comments/comment{comment_part_num}.xml"),
+                        *options,
+                    )?;
+                    zip.write_all(comments_xml.as_bytes())?;
+                }
+
+                let media_plan = slide_media_plan(
+                    slide,
+                    &mut media_registry,
+                    2 + usize::from(slide.notes.is_some()),
+                    resolved_images.len(),
+                    slide_media_rid_base(
+                        start_rid,
+                        slide.charts.len(),
+                        slide.ink_annotations.is_some(),
+                        has_comments,
+                    ),
+                )?;
+
                 let slide_xml = create_slide_xml_with_content(
                     slide_num,
                     slide,
                     &chart_rids,
                     ink_rel_id.as_deref(),
+                    &media_plan.rel_ids,
                 );
                 set_slide_xml_path(&mut zip_path, slide_num);
                 zip.start_file(&zip_path, *options)?;
@@ -1216,20 +1581,17 @@ fn write_slide_relationships_extended<W: Write + Seek>(
     slide_count: usize,
     template: Option<&PptxTemplate>,
 ) -> Result<()> {
-    let media_registry = custom_slides
-        .map(build_media_registry)
-        .unwrap_or_default();
+    let mut media_registry = custom_slides.map(build_media_registry).unwrap_or_default();
     let mut notes_part_num = 0usize;
 
     match custom_slides {
         Some(slides) => {
             let mut zip_path = String::with_capacity(56);
             let mut ink_part_num = 0usize;
+            let mut comment_part_num = 0usize;
             for (i, slide) in slides.iter().enumerate() {
                 let slide_num = i + 1;
                 let layout_number = resolve_layout_number(slide, template);
-                let images = slide_image_rel_targets(slide, &media_registry);
-                let image_count = images.len();
                 let notes_part = if slide.notes.is_some() {
                     notes_part_num += 1;
                     Some(notes_part_num)
@@ -1239,7 +1601,12 @@ fn write_slide_relationships_extended<W: Write + Seek>(
 
                 let mut chart_rels = Vec::with_capacity(slide.charts.len());
                 let start_chart_idx = slide_chart_start_indices[i];
-                let start_rid = slide_content_rel_start(slide.notes.is_some(), image_count);
+                let resolved_images = slide_image_rel_targets(slide, &media_registry);
+                let poster_count = slide.videos.len() + slide.audios.len();
+                let start_rid = slide_content_rel_start(
+                    slide.notes.is_some(),
+                    resolved_images.len() + poster_count,
+                );
 
                 for j in 0..slide.charts.len() {
                     let mut rid = String::with_capacity(8);
@@ -1259,6 +1626,35 @@ fn write_slide_relationships_extended<W: Write + Seek>(
                     None
                 };
 
+                let has_comments = !slide.comments.is_empty();
+                let comment_rel = if has_comments {
+                    comment_part_num += 1;
+                    Some((
+                        start_rid
+                            + slide.charts.len()
+                            + usize::from(slide.ink_annotations.is_some()),
+                        comment_part_num,
+                    ))
+                } else {
+                    None
+                };
+
+                let media_plan = slide_media_plan(
+                    slide,
+                    &mut media_registry,
+                    2 + usize::from(slide.notes.is_some()),
+                    resolved_images.len(),
+                    slide_media_rid_base(
+                        start_rid,
+                        slide.charts.len(),
+                        slide.ink_annotations.is_some(),
+                        has_comments,
+                    ),
+                )?;
+
+                let mut images = resolved_images;
+                images.extend(media_plan.poster_entries.iter().cloned());
+
                 let slide_rels = super::package_xml::create_slide_rels_xml_with_images(
                     layout_number,
                     slide.notes.is_some(),
@@ -1267,6 +1663,8 @@ fn write_slide_relationships_extended<W: Write + Seek>(
                     &images,
                     &slide_hyperlink_relationships(slide),
                     ink_rel_tuple,
+                    comment_rel,
+                    &media_plan.rels_xml,
                 );
                 set_slide_rels_path(&mut zip_path, slide_num);
                 zip.start_file(&zip_path, *options)?;
@@ -1318,7 +1716,10 @@ fn write_notes_relationships<W: Write + Seek>(
                 notes_part_num += 1;
                 let slide_num = i + 1;
                 let notes_rels = create_notes_rels_xml(slide_num);
-                zip.start_file(format!("ppt/notesSlides/_rels/notesSlide{notes_part_num}.xml.rels"), *options)?;
+                zip.start_file(
+                    format!("ppt/notesSlides/_rels/notesSlide{notes_part_num}.xml.rels"),
+                    *options,
+                )?;
                 zip.write_all(notes_rels.as_bytes())?;
             }
         }
@@ -1352,6 +1753,7 @@ fn write_images<W: Write + Seek>(
             zip.start_file(filename, *options)?;
             zip.write_all(bytes)?;
         }
+        write_media_files(zip, options, &registry)?;
     }
     Ok(())
 }
@@ -1385,6 +1787,21 @@ fn write_images_lazy<W: Write + Seek>(
     let registry = build_media_registry_lazy(slides);
     for (i, (bytes, ext)) in registry.files().iter().enumerate() {
         let filename = format!("ppt/media/image{}.{}", i + 1, ext);
+        zip.start_file(filename, *options)?;
+        zip.write_all(bytes)?;
+    }
+    write_media_files(zip, options, &registry)?;
+    Ok(())
+}
+
+/// Write video/audio parts (`ppt/media/mediaN.{ext}`).
+fn write_media_files<W: Write + Seek>(
+    zip: &mut ZipWriter<W>,
+    options: &FileOptions,
+    registry: &MediaRegistry,
+) -> Result<()> {
+    for (i, (bytes, ext)) in registry.media_files().iter().enumerate() {
+        let filename = format!("ppt/media/media{}.{}", i + 1, ext);
         zip.start_file(filename, *options)?;
         zip.write_all(bytes)?;
     }
@@ -1445,12 +1862,19 @@ mod tests {
 
         let signature = DigitalSignature::new(SignerInfo::new("Alice"));
         let settings = PresentationSettings::new().digital_signature(signature);
-        let bytes = create_pptx_with_settings("Signed", &[
-            SlideContent::new("Slide 1").add_bullet("Point 1"),
-        ], Some(settings)).unwrap();
+        let bytes = create_pptx_with_settings(
+            "Signed",
+            &[SlideContent::new("Slide 1").add_bullet("Point 1")],
+            Some(settings),
+        )
+        .unwrap();
 
         let report = crate::core::validate_package_bytes(&bytes);
-        assert!(report.is_valid(), "signature package invalid: {:?}", report.issues);
+        assert!(
+            report.is_valid(),
+            "signature package invalid: {:?}",
+            report.issues
+        );
 
         let cursor = Cursor::new(bytes);
         let mut archive = zip::ZipArchive::new(cursor).unwrap();
@@ -1467,15 +1891,27 @@ mod tests {
         use crate::generator::slide_content::{EmbeddedFont, EmbeddedFontList, FontStyle};
 
         let mut fonts = EmbeddedFontList::new();
-        fonts.add(EmbeddedFont::new("Arial", FontStyle::Regular, vec![0u8; 20], ""));
+        fonts.add(EmbeddedFont::new(
+            "Arial",
+            FontStyle::Regular,
+            vec![0u8; 20],
+            "",
+        ));
         let settings = PresentationSettings::new().embedded_fonts(fonts);
 
-        let bytes = create_pptx_with_settings("Font Demo", &[
-            SlideContent::new("Slide 1").add_bullet("Point 1"),
-        ], Some(settings)).unwrap();
+        let bytes = create_pptx_with_settings(
+            "Font Demo",
+            &[SlideContent::new("Slide 1").add_bullet("Point 1")],
+            Some(settings),
+        )
+        .unwrap();
 
         let report = crate::core::validate_package_bytes(&bytes);
-        assert!(report.is_valid(), "embedded font package invalid: {:?}", report.issues);
+        assert!(
+            report.is_valid(),
+            "embedded font package invalid: {:?}",
+            report.issues
+        );
 
         let cursor = Cursor::new(bytes);
         let mut archive = zip::ZipArchive::new(cursor).unwrap();
@@ -1485,14 +1921,20 @@ mod tests {
         assert!(names.contains("ppt/fonts/Arial-regular.fntdata"));
 
         let mut rels = String::new();
-        archive.by_name("ppt/_rels/presentation.xml.rels").unwrap()
-            .read_to_string(&mut rels).unwrap();
+        archive
+            .by_name("ppt/_rels/presentation.xml.rels")
+            .unwrap()
+            .read_to_string(&mut rels)
+            .unwrap();
         assert!(rels.contains("relationships/font"));
         assert!(rels.contains("fonts/Arial-regular.fntdata"));
 
         let mut presentation = String::new();
-        archive.by_name("ppt/presentation.xml").unwrap()
-            .read_to_string(&mut presentation).unwrap();
+        archive
+            .by_name("ppt/presentation.xml")
+            .unwrap()
+            .read_to_string(&mut presentation)
+            .unwrap();
         assert!(presentation.contains("<p:embeddedFontLst>"));
         assert!(presentation.contains("Arial"));
     }
@@ -1508,13 +1950,22 @@ mod tests {
                 .add_point(200.0, 200.0),
         );
 
-        let bytes = create_pptx_with_content("Ink Demo", vec![
-            SlideContent::new("Slide 1").add_bullet("Point 1").with_ink(ink),
-        ])
+        let bytes = create_pptx_with_content(
+            "Ink Demo",
+            vec![
+                SlideContent::new("Slide 1")
+                    .add_bullet("Point 1")
+                    .with_ink(ink),
+            ],
+        )
         .unwrap();
 
         let report = crate::core::validate_package_bytes(&bytes);
-        assert!(report.is_valid(), "ink package invalid: {:?}", report.issues);
+        assert!(
+            report.is_valid(),
+            "ink package invalid: {:?}",
+            report.issues
+        );
 
         let cursor = Cursor::new(bytes);
         let mut archive = zip::ZipArchive::new(cursor).unwrap();
@@ -1557,7 +2008,10 @@ mod tests {
 
     #[test]
     fn test_create_pptx_lazy_to_writer() {
-        let source = TestSlideSource { count: 10, with_notes: false };
+        let source = TestSlideSource {
+            count: 10,
+            with_notes: false,
+        };
 
         let buffer = Vec::new();
         let cursor = Cursor::new(buffer);
@@ -1567,17 +2021,24 @@ mod tests {
 
     #[test]
     fn test_create_pptx_lazy_with_notes() {
-        let source = TestSlideSource { count: 5, with_notes: true };
+        let source = TestSlideSource {
+            count: 5,
+            with_notes: true,
+        };
 
         let buffer = Vec::new();
         let cursor = Cursor::new(buffer);
-        let result = create_pptx_lazy_to_writer(cursor, "Lazy Test with Notes", Box::new(source), None);
+        let result =
+            create_pptx_lazy_to_writer(cursor, "Lazy Test with Notes", Box::new(source), None);
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_lazy_slide_source() {
-        let source = TestSlideSource { count: 3, with_notes: false };
+        let source = TestSlideSource {
+            count: 3,
+            with_notes: false,
+        };
 
         assert_eq!(source.slide_count(), 3);
         assert!(!source.slide_has_notes(0));
@@ -1594,9 +2055,7 @@ mod tests {
     #[test]
     fn test_streaming_api_compatibility() {
         // Test that the streaming API produces the same output as the in-memory API
-        let slides = vec![
-            SlideContent::new("Test").add_bullet("Item 1"),
-        ];
+        let slides = vec![SlideContent::new("Test").add_bullet("Item 1")];
 
         // In-memory version
         let in_memory = create_pptx_with_content("Test", slides.clone()).unwrap();
@@ -1604,7 +2063,9 @@ mod tests {
         // Streaming version
         let buffer = Vec::new();
         let cursor = Cursor::new(buffer);
-        let streaming = create_pptx_with_content_to_writer(cursor, "Test", &slides, None).unwrap().into_inner();
+        let streaming = create_pptx_with_content_to_writer(cursor, "Test", &slides, None)
+            .unwrap()
+            .into_inner();
 
         // Both should produce valid ZIP files (non-empty)
         assert!(!in_memory.is_empty());
@@ -1623,10 +2084,15 @@ mod tests {
         let eager = create_pptx_with_content("Test", eager_slides).unwrap();
 
         // Lazy version (equivalent content)
-        let source = TestSlideSource { count: 2, with_notes: false };
+        let source = TestSlideSource {
+            count: 2,
+            with_notes: false,
+        };
         let buffer = Vec::new();
         let cursor = Cursor::new(buffer);
-        let lazy = create_pptx_lazy_to_writer(cursor, "Test", Box::new(source), None).unwrap().into_inner();
+        let lazy = create_pptx_lazy_to_writer(cursor, "Test", Box::new(source), None)
+            .unwrap()
+            .into_inner();
 
         // Both should produce valid ZIP files
         assert!(!eager.is_empty());

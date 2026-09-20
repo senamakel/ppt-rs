@@ -356,8 +356,16 @@ pub fn generate_connector_xml(connector: &Connector, shape_id: usize) -> String 
     let cx = connector.width();
     let cy = connector.height();
 
-    let flip_h = if connector.flip_h() { " flipH=\"1\"" } else { "" };
-    let flip_v = if connector.flip_v() { " flipV=\"1\"" } else { "" };
+    let flip_h = if connector.flip_h() {
+        " flipH=\"1\""
+    } else {
+        ""
+    };
+    let flip_v = if connector.flip_v() {
+        " flipV=\"1\""
+    } else {
+        ""
+    };
 
     let mut xml = format!(
         r#"<p:cxnSp>
@@ -372,7 +380,8 @@ pub fn generate_connector_xml(connector: &Connector, shape_id: usize) -> String 
         xml.push_str(&format!(
             r#"
 <a:stCxn id="{}" idx="{}"/>"#,
-            start_id, start_site.index()
+            start_id,
+            start_site.index()
         ));
     }
 
@@ -380,7 +389,8 @@ pub fn generate_connector_xml(connector: &Connector, shape_id: usize) -> String 
         xml.push_str(&format!(
             r#"
 <a:endCxn id="{}" idx="{}"/>"#,
-            end_id, end_site.index()
+            end_id,
+            end_site.index()
         ));
     }
 
@@ -402,8 +412,12 @@ pub fn generate_connector_xml(connector: &Connector, shape_id: usize) -> String 
 <a:srgbClr val="{}"/>
 </a:solidFill>
 <a:prstDash val="{}"/>"#,
-        flip_h, flip_v,
-        x, y, cx, cy,
+        flip_h,
+        flip_v,
+        x,
+        y,
+        cx,
+        cy,
         connector.connector_type.preset_name(),
         connector.line.width,
         connector.line.color,
@@ -431,9 +445,11 @@ pub fn generate_connector_xml(connector: &Connector, shape_id: usize) -> String 
         ));
     }
 
-    xml.push_str(r#"
+    xml.push_str(
+        r#"
 </a:ln>
-</p:spPr>"#);
+</p:spPr>"#,
+    );
 
     // Add label if present
     if let Some(label) = &connector.label {
@@ -453,8 +469,10 @@ pub fn generate_connector_xml(connector: &Connector, shape_id: usize) -> String 
         ));
     }
 
-    xml.push_str(r#"
-</p:cxnSp>"#);
+    xml.push_str(
+        r#"
+</p:cxnSp>"#,
+    );
 
     xml
 }
@@ -501,8 +519,7 @@ mod tests {
 
     #[test]
     fn test_generate_connector_xml() {
-        let conn = Connector::straight(0, 0, 1000000, 500000)
-            .with_end_arrow(ArrowType::Triangle);
+        let conn = Connector::straight(0, 0, 1000000, 500000).with_end_arrow(ArrowType::Triangle);
 
         let xml = generate_connector_xml(&conn, 1);
         assert!(xml.contains("p:cxnSp"));
@@ -512,8 +529,7 @@ mod tests {
 
     #[test]
     fn test_connector_with_label() {
-        let conn = Connector::straight(0, 0, 1000000, 500000)
-            .with_label("Connection");
+        let conn = Connector::straight(0, 0, 1000000, 500000).with_label("Connection");
 
         let xml = generate_connector_xml(&conn, 1);
         assert!(xml.contains("Connection"));

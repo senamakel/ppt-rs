@@ -96,8 +96,16 @@ mod tests {
 
     #[test]
     fn test_chart_add_series() {
-        let chart = Chart::new("Test", ChartType::Pie, vec!["A".to_string()], 0, 0, 1000000, 1000000)
-            .add_series(ChartSeries::new("Data", vec![50.0]));
+        let chart = Chart::new(
+            "Test",
+            ChartType::Pie,
+            vec!["A".to_string()],
+            0,
+            0,
+            1000000,
+            1000000,
+        )
+        .add_series(ChartSeries::new("Data", vec![50.0]));
 
         assert_eq!(chart.series_count(), 1);
     }

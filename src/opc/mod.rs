@@ -1,11 +1,10 @@
 //! OPC (Open Packaging Convention) package handling
 
-pub mod package;
 pub mod compress;
+pub mod package;
 
-pub use package::Package;
 pub use compress::{
-    compress_pptx, compress_pptx_in_memory, analyze_pptx,
-    CompressionOptions, CompressionLevel, CompressionResult,
-    PptxAnalysis
+    CompressionLevel, CompressionOptions, CompressionResult, PptxAnalysis, analyze_pptx,
+    compress_pptx, compress_pptx_in_memory,
 };
+pub use package::Package;

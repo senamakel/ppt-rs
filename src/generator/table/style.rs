@@ -1,9 +1,9 @@
 //! Shared table styling presets and builders
 
+use super::TableBuilder;
 use super::builder::Table;
 use super::cell::TableCell;
 use super::row::TableRow;
-use super::TableBuilder;
 
 /// Header background used by HTML/Markdown import tables.
 pub const IMPORT_HEADER_BG: &str = "4472C4";
@@ -54,9 +54,7 @@ pub fn table_from_string_rows(rows: Vec<Vec<String>>, style_header: bool) -> Tab
         builder = builder.add_row(TableRow::new(cells));
     }
 
-    builder
-        .position(DEFAULT_TABLE_X, DEFAULT_TABLE_Y)
-        .build()
+    builder.position(DEFAULT_TABLE_X, DEFAULT_TABLE_Y).build()
 }
 
 #[cfg(test)]

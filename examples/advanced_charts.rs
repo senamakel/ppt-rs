@@ -1,8 +1,6 @@
 //! Advanced chart examples with multiple chart types and data
 
-use ppt_rs::generator::{
-    create_pptx_with_content, SlideContent,
-};
+use ppt_rs::generator::{SlideContent, create_pptx_with_content};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Slide 1: Title

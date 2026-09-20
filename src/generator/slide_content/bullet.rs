@@ -38,7 +38,7 @@ impl BulletStyle {
             BulletStyle::None => r#"<a:buNone/>"#.to_string(),
         }
     }
-    
+
     /// Get the OOXML indent level XML
     pub fn indent_xml(&self, level: u32) -> String {
         let indent = 457200 + (level * 457200); // 0.5 inch base + 0.5 inch per level
@@ -72,54 +72,54 @@ impl BulletTextFormat {
     pub fn new() -> Self {
         Self::default()
     }
-    
+
     pub fn bold(mut self) -> Self {
         self.bold = true;
         self
     }
-    
+
     pub fn italic(mut self) -> Self {
         self.italic = true;
         self
     }
-    
+
     pub fn underline(mut self) -> Self {
         self.underline = true;
         self
     }
-    
+
     pub fn strikethrough(mut self) -> Self {
         self.strikethrough = true;
         self
     }
-    
+
     pub fn subscript(mut self) -> Self {
         self.subscript = true;
         self.superscript = false;
         self
     }
-    
+
     pub fn superscript(mut self) -> Self {
         self.superscript = true;
         self.subscript = false;
         self
     }
-    
+
     pub fn color(mut self, hex: &str) -> Self {
         self.color = Some(hex.trim_start_matches('#').to_uppercase());
         self
     }
-    
+
     pub fn highlight(mut self, hex: &str) -> Self {
         self.highlight = Some(hex.trim_start_matches('#').to_uppercase());
         self
     }
-    
+
     pub fn font_size(mut self, size: u32) -> Self {
         self.font_size = Some(size);
         self
     }
-    
+
     pub fn font_family(mut self, family: &str) -> Self {
         self.font_family = Some(family.to_string());
         self
@@ -144,60 +144,59 @@ impl BulletPoint {
             format: None,
         }
     }
-    
+
     pub fn with_level(mut self, level: u32) -> Self {
         self.level = level;
         self
     }
-    
+
     pub fn with_style(mut self, style: BulletStyle) -> Self {
         self.style = style;
         self
     }
-    
+
     pub fn with_format(mut self, format: BulletTextFormat) -> Self {
         self.format = Some(format);
         self
     }
-    
+
     pub fn bold(mut self) -> Self {
         self.format = Some(self.format.unwrap_or_default().bold());
         self
     }
-    
+
     pub fn italic(mut self) -> Self {
         self.format = Some(self.format.unwrap_or_default().italic());
         self
     }
-    
+
     pub fn strikethrough(mut self) -> Self {
         self.format = Some(self.format.unwrap_or_default().strikethrough());
         self
     }
-    
+
     pub fn subscript(mut self) -> Self {
         self.format = Some(self.format.unwrap_or_default().subscript());
         self
     }
-    
+
     pub fn superscript(mut self) -> Self {
         self.format = Some(self.format.unwrap_or_default().superscript());
         self
     }
-    
+
     pub fn highlight(mut self, color: &str) -> Self {
         self.format = Some(self.format.unwrap_or_default().highlight(color));
         self
     }
-    
+
     pub fn color(mut self, hex: &str) -> Self {
         self.format = Some(self.format.unwrap_or_default().color(hex));
         self
     }
-    
+
     pub fn font_size(mut self, size: u32) -> Self {
         self.format = Some(self.format.unwrap_or_default().font_size(size));
         self
     }
 }
-

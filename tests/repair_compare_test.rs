@@ -20,10 +20,7 @@ fn compare_generated_vs_repaired_comprehensive_demo() {
     assert!(
         issues.is_empty(),
         "generated deck should pass repair validation without issues: {:?}",
-        issues
-            .iter()
-            .map(|i| i.description())
-            .collect::<Vec<_>>()
+        issues.iter().map(|i| i.description()).collect::<Vec<_>>()
     );
 
     let result = repair.repair();
@@ -56,7 +53,8 @@ fn assert_packages_equal(a: &[u8], b: &[u8]) {
         .collect();
 
     assert_eq!(
-        names_a, names_b,
+        names_a,
+        names_b,
         "repair changed package part list: only in generated {:?}, only in repaired {:?}",
         names_a.difference(&names_b).collect::<Vec<_>>(),
         names_b.difference(&names_a).collect::<Vec<_>>()

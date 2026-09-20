@@ -60,7 +60,10 @@ Examples:
         slides: usize,
 
         /// Template file to use
-        #[arg(long, help = "Template PPTX file — clones masters, layouts, and theme from the file")]
+        #[arg(
+            long,
+            help = "Template PPTX file — clones masters, layouts, and theme from the file"
+        )]
         template: Option<String>,
     },
 
@@ -246,7 +249,11 @@ Examples:
         title: Option<String>,
 
         /// Maximum number of slides
-        #[arg(long, default_value_t = 50, help = "Maximum number of slides to generate")]
+        #[arg(
+            long,
+            default_value_t = 50,
+            help = "Maximum number of slides to generate"
+        )]
         max_slides: usize,
 
         /// Maximum bullets per slide

@@ -38,8 +38,8 @@
 //! - `<br>` → Line break within text
 //! - `<title>` → Presentation title (falls back to first `<h1>`)
 
-use crate::generator::{CodeBlock, SlideContent};
 use crate::generator::slide_content::{BulletPoint, BulletTextFormat};
+use crate::generator::{CodeBlock, SlideContent};
 
 /// Options for HTML parsing
 #[derive(Clone, Debug)]
@@ -105,7 +105,10 @@ pub fn parse_html(html: &str) -> Result<Vec<SlideContent>, String> {
 }
 
 /// Parse HTML content into slides with custom options
-pub fn parse_html_with_options(html: &str, options: HtmlParseOptions) -> Result<Vec<SlideContent>, String> {
+pub fn parse_html_with_options(
+    html: &str,
+    options: HtmlParseOptions,
+) -> Result<Vec<SlideContent>, String> {
     Html2Ppt::with_options(options).parse(html)
 }
 
@@ -116,7 +119,10 @@ pub fn parse_html_with_options(html: &str, options: HtmlParseOptions) -> Result<
 /// A simple tag-based HTML event
 #[derive(Debug)]
 enum HtmlEvent {
-    OpenTag { name: String, attrs: Vec<(String, String)> },
+    OpenTag {
+        name: String,
+        attrs: Vec<(String, String)>,
+    },
     CloseTag(String),
     Text(String),
 }
@@ -128,37 +134,38 @@ fn decode_entities(s: &str) -> String {
     let mut i = 0;
     while i < bytes.len() {
         if bytes[i] == b'&'
-            && let Some(end) = s[i..].find(';') {
-                let entity = &s[i + 1..i + end];
-                let ch = match entity {
-                    "amp" => Some('&'),
-                    "lt" => Some('<'),
-                    "gt" => Some('>'),
-                    "quot" => Some('"'),
-                    "apos" | "#39" | "#x27" => Some('\''),
-                    "nbsp" => Some('\u{00a0}'),
-                    "#x2018" => Some('\u{2018}'),
-                    "#x2019" => Some('\u{2019}'),
-                    "#x201c" => Some('\u{201c}'),
-                    "#x201d" => Some('\u{201d}'),
-                    "#x2014" => Some('\u{2014}'),
-                    "#x2013" => Some('\u{2013}'),
-                    _ => {
-                        if let Some(hex) = entity.strip_prefix("#x") {
-                            u32::from_str_radix(hex, 16).ok().and_then(char::from_u32)
-                        } else if let Some(num) = entity.strip_prefix('#') {
-                            num.parse::<u32>().ok().and_then(char::from_u32)
-                        } else {
-                            None
-                        }
+            && let Some(end) = s[i..].find(';')
+        {
+            let entity = &s[i + 1..i + end];
+            let ch = match entity {
+                "amp" => Some('&'),
+                "lt" => Some('<'),
+                "gt" => Some('>'),
+                "quot" => Some('"'),
+                "apos" | "#39" | "#x27" => Some('\''),
+                "nbsp" => Some('\u{00a0}'),
+                "#x2018" => Some('\u{2018}'),
+                "#x2019" => Some('\u{2019}'),
+                "#x201c" => Some('\u{201c}'),
+                "#x201d" => Some('\u{201d}'),
+                "#x2014" => Some('\u{2014}'),
+                "#x2013" => Some('\u{2013}'),
+                _ => {
+                    if let Some(hex) = entity.strip_prefix("#x") {
+                        u32::from_str_radix(hex, 16).ok().and_then(char::from_u32)
+                    } else if let Some(num) = entity.strip_prefix('#') {
+                        num.parse::<u32>().ok().and_then(char::from_u32)
+                    } else {
+                        None
                     }
-                };
-                if let Some(c) = ch {
-                    out.push(c);
-                    i = i + end + 1;
-                    continue;
                 }
+            };
+            if let Some(c) = ch {
+                out.push(c);
+                i = i + end + 1;
+                continue;
             }
+        }
         // Preserve full Unicode characters (not just ASCII bytes)
         let c = s[i..].chars().next().unwrap();
         out.push(c);
@@ -235,7 +242,10 @@ fn parse_css_color(value: &str) -> Option<String> {
         Some(hex.to_uppercase())
     } else if let Some(named) = css_named_color(value) {
         Some(named.to_string())
-    } else if let Some(rgb) = value.strip_prefix("rgba(").or_else(|| value.strip_prefix("rgb(")) {
+    } else if let Some(rgb) = value
+        .strip_prefix("rgba(")
+        .or_else(|| value.strip_prefix("rgb("))
+    {
         if let Some(end) = rgb.rfind(')') {
             let parts: Vec<&str> = rgb[..end].split(',').collect();
             if parts.len() >= 3 {
@@ -267,7 +277,10 @@ fn parse_font_size(value: &str) -> Option<u32> {
 
 /// Check if a CSS font-weight value represents bold
 fn is_font_weight_bold(value: &str) -> bool {
-    matches!(value.trim().to_lowercase().as_str(), "bold" | "bolder" | "700" | "800" | "900")
+    matches!(
+        value.trim().to_lowercase().as_str(),
+        "bold" | "bolder" | "700" | "800" | "900"
+    )
 }
 
 /// Check if a CSS font-style represents italic
@@ -315,7 +328,8 @@ impl InlineStyle {
                     "font-style" => style.font_style = Some(value.to_string()),
                     "text-decoration" => style.text_decoration = Some(value.to_string()),
                     "font-family" => {
-                        style.font_family = Some(value.trim_matches('"').trim_matches('\'').to_string());
+                        style.font_family =
+                            Some(value.trim_matches('"').trim_matches('\'').to_string());
                     }
                     "text-align" => style.text_align = Some(value.to_string()),
                     "margin-top" => style.margin_top = Some(value.to_string()),
@@ -337,21 +351,48 @@ impl InlineStyle {
     fn merge(&self, other: &InlineStyle) -> InlineStyle {
         InlineStyle {
             color: other.color.clone().or_else(|| self.color.clone()),
-            background_color: other.background_color.clone().or_else(|| self.background_color.clone()),
+            background_color: other
+                .background_color
+                .clone()
+                .or_else(|| self.background_color.clone()),
             font_size: other.font_size.or(self.font_size),
-            font_weight: other.font_weight.clone().or_else(|| self.font_weight.clone()),
+            font_weight: other
+                .font_weight
+                .clone()
+                .or_else(|| self.font_weight.clone()),
             font_style: other.font_style.clone().or_else(|| self.font_style.clone()),
-            text_decoration: other.text_decoration.clone().or_else(|| self.text_decoration.clone()),
-            font_family: other.font_family.clone().or_else(|| self.font_family.clone()),
+            text_decoration: other
+                .text_decoration
+                .clone()
+                .or_else(|| self.text_decoration.clone()),
+            font_family: other
+                .font_family
+                .clone()
+                .or_else(|| self.font_family.clone()),
             text_align: other.text_align.clone().or_else(|| self.text_align.clone()),
             margin_top: other.margin_top.clone().or_else(|| self.margin_top.clone()),
-            margin_bottom: other.margin_bottom.clone().or_else(|| self.margin_bottom.clone()),
-            margin_left: other.margin_left.clone().or_else(|| self.margin_left.clone()),
-            margin_right: other.margin_right.clone().or_else(|| self.margin_right.clone()),
+            margin_bottom: other
+                .margin_bottom
+                .clone()
+                .or_else(|| self.margin_bottom.clone()),
+            margin_left: other
+                .margin_left
+                .clone()
+                .or_else(|| self.margin_left.clone()),
+            margin_right: other
+                .margin_right
+                .clone()
+                .or_else(|| self.margin_right.clone()),
             padding: other.padding.clone().or_else(|| self.padding.clone()),
             border: other.border.clone().or_else(|| self.border.clone()),
-            line_height: other.line_height.clone().or_else(|| self.line_height.clone()),
-            letter_spacing: other.letter_spacing.clone().or_else(|| self.letter_spacing.clone()),
+            line_height: other
+                .line_height
+                .clone()
+                .or_else(|| self.line_height.clone()),
+            letter_spacing: other
+                .letter_spacing
+                .clone()
+                .or_else(|| self.letter_spacing.clone()),
         }
     }
 
@@ -391,13 +432,15 @@ impl InlineStyle {
             fmt = fmt.font_size(sz);
         }
         if let Some(ref fw) = self.font_weight
-            && is_font_weight_bold(fw) {
-                fmt = fmt.bold();
-            }
+            && is_font_weight_bold(fw)
+        {
+            fmt = fmt.bold();
+        }
         if let Some(ref fs) = self.font_style
-            && is_font_style_italic(fs) {
-                fmt = fmt.italic();
-            }
+            && is_font_style_italic(fs)
+        {
+            fmt = fmt.italic();
+        }
         if let Some(ref td) = self.text_decoration {
             if td.contains("underline") {
                 fmt = fmt.underline();
@@ -415,8 +458,8 @@ impl InlineStyle {
 
 /// Tags that are void (self-closing) and should not push/pop the style stack
 const VOID_TAGS: &[&str] = &[
-    "area", "base", "br", "col", "embed", "hr", "img", "input",
-    "link", "meta", "param", "source", "track", "wbr",
+    "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source",
+    "track", "wbr",
 ];
 
 /// Walk through HTML and produce events
@@ -434,10 +477,18 @@ fn tokenize_html(html: &str) -> Vec<HtmlEvent> {
             }
 
             // Comment <!-- ... -->
-            if i + 3 <= len && chars[i] == '!' && i + 1 < len && chars[i + 1] == '-' && i + 2 < len && chars[i + 2] == '-' {
+            if i + 3 <= len
+                && chars[i] == '!'
+                && i + 1 < len
+                && chars[i + 1] == '-'
+                && i + 2 < len
+                && chars[i + 2] == '-'
+            {
                 // skip to -->
                 i += 3;
-                while i + 2 < len && !(chars[i] == '-' && chars[i + 1] == '-' && chars[i + 2] == '>') {
+                while i + 2 < len
+                    && !(chars[i] == '-' && chars[i + 1] == '-' && chars[i + 2] == '>')
+                {
                     i += 1;
                 }
                 i += 3; // skip -->
@@ -457,12 +508,19 @@ fn tokenize_html(html: &str) -> Vec<HtmlEvent> {
             if chars[i] == '/' {
                 i += 1;
                 // skip whitespace
-                while i < len && (chars[i] == ' ' || chars[i] == '\t' || chars[i] == '\n' || chars[i] == '\r') {
+                while i < len
+                    && (chars[i] == ' ' || chars[i] == '\t' || chars[i] == '\n' || chars[i] == '\r')
+                {
                     i += 1;
                 }
                 let mut name = String::new();
                 while i < len && chars[i] != '>' {
-                    if chars[i].is_alphanumeric() || chars[i] == '-' || chars[i] == ':' || chars[i] == '_' || chars[i] == '.' {
+                    if chars[i].is_alphanumeric()
+                        || chars[i] == '-'
+                        || chars[i] == ':'
+                        || chars[i] == '_'
+                        || chars[i] == '.'
+                    {
                         name.push(chars[i]);
                     }
                     i += 1;
@@ -478,11 +536,19 @@ fn tokenize_html(html: &str) -> Vec<HtmlEvent> {
 
             // Opening or self-closing tag
             // Skip whitespace before tag name
-            while i < len && (chars[i] == ' ' || chars[i] == '\t' || chars[i] == '\n' || chars[i] == '\r') {
+            while i < len
+                && (chars[i] == ' ' || chars[i] == '\t' || chars[i] == '\n' || chars[i] == '\r')
+            {
                 i += 1;
             }
             let mut name = String::new();
-            while i < len && (chars[i].is_alphanumeric() || chars[i] == '-' || chars[i] == ':' || chars[i] == '_' || chars[i] == '.') {
+            while i < len
+                && (chars[i].is_alphanumeric()
+                    || chars[i] == '-'
+                    || chars[i] == ':'
+                    || chars[i] == '_'
+                    || chars[i] == '.')
+            {
                 name.push(chars[i]);
                 i += 1;
             }
@@ -493,7 +559,9 @@ fn tokenize_html(html: &str) -> Vec<HtmlEvent> {
 
             while i < len && chars[i] != '>' {
                 // Skip whitespace
-                while i < len && (chars[i] == ' ' || chars[i] == '\t' || chars[i] == '\n' || chars[i] == '\r') {
+                while i < len
+                    && (chars[i] == ' ' || chars[i] == '\t' || chars[i] == '\n' || chars[i] == '\r')
+                {
                     i += 1;
                 }
                 if i >= len || chars[i] == '>' {
@@ -506,13 +574,23 @@ fn tokenize_html(html: &str) -> Vec<HtmlEvent> {
 
                 // Read attribute name
                 let mut attr_name = String::new();
-                while i < len && chars[i] != '=' && chars[i] != '>' && chars[i] != ' ' && chars[i] != '\t' && chars[i] != '\n' && chars[i] != '\r' && chars[i] != '/' {
+                while i < len
+                    && chars[i] != '='
+                    && chars[i] != '>'
+                    && chars[i] != ' '
+                    && chars[i] != '\t'
+                    && chars[i] != '\n'
+                    && chars[i] != '\r'
+                    && chars[i] != '/'
+                {
                     attr_name.push(chars[i]);
                     i += 1;
                 }
 
                 // Skip whitespace around =
-                while i < len && (chars[i] == ' ' || chars[i] == '\t' || chars[i] == '\n' || chars[i] == '\r') {
+                while i < len
+                    && (chars[i] == ' ' || chars[i] == '\t' || chars[i] == '\n' || chars[i] == '\r')
+                {
                     i += 1;
                 }
 
@@ -520,7 +598,12 @@ fn tokenize_html(html: &str) -> Vec<HtmlEvent> {
                 if i < len && chars[i] == '=' {
                     i += 1;
                     // Skip whitespace after =
-                    while i < len && (chars[i] == ' ' || chars[i] == '\t' || chars[i] == '\n' || chars[i] == '\r') {
+                    while i < len
+                        && (chars[i] == ' '
+                            || chars[i] == '\t'
+                            || chars[i] == '\n'
+                            || chars[i] == '\r')
+                    {
                         i += 1;
                     }
                     if i < len && (chars[i] == '"' || chars[i] == '\'') {
@@ -535,7 +618,14 @@ fn tokenize_html(html: &str) -> Vec<HtmlEvent> {
                         }
                     } else {
                         // unquoted value
-                        while i < len && chars[i] != '>' && chars[i] != ' ' && chars[i] != '\t' && chars[i] != '\n' && chars[i] != '\r' && chars[i] != '/' {
+                        while i < len
+                            && chars[i] != '>'
+                            && chars[i] != ' '
+                            && chars[i] != '\t'
+                            && chars[i] != '\n'
+                            && chars[i] != '\r'
+                            && chars[i] != '/'
+                        {
                             attr_value.push(chars[i]);
                             i += 1;
                         }
@@ -550,7 +640,10 @@ fn tokenize_html(html: &str) -> Vec<HtmlEvent> {
             }
 
             if !tag_name.is_empty() {
-                events.push(HtmlEvent::OpenTag { name: tag_name, attrs });
+                events.push(HtmlEvent::OpenTag {
+                    name: tag_name,
+                    attrs,
+                });
             }
         } else {
             // Text content
@@ -575,8 +668,7 @@ fn tokenize_html(html: &str) -> Vec<HtmlEvent> {
 
 /// Tags whose content should be entirely skipped
 const SKIP_TAGS: &[&str] = &[
-    "script", "style", "noscript", "nav", "form", "svg", "canvas", "iframe",
-    "title",
+    "script", "style", "noscript", "nav", "form", "svg", "canvas", "iframe", "title",
 ];
 
 struct HtmlSlideParser {
@@ -663,7 +755,9 @@ impl HtmlSlideParser {
     }
 
     fn is_inside_skip_tag(&self) -> bool {
-        self.tag_stack.iter().any(|t| SKIP_TAGS.contains(&t.as_str()))
+        self.tag_stack
+            .iter()
+            .any(|t| SKIP_TAGS.contains(&t.as_str()))
     }
 
     fn handle_open_tag(&mut self, name: &str, attrs: &[(String, String)]) {
@@ -717,8 +811,16 @@ impl HtmlSlideParser {
             "title" => {}
             "img" => {
                 if self.options.include_images {
-                    let alt = attrs.iter().find(|(k, _)| k == "alt").map(|(_, v)| v.as_str()).unwrap_or("");
-                    let src = attrs.iter().find(|(k, _)| k == "src").map(|(_, v)| v.as_str()).unwrap_or("");
+                    let alt = attrs
+                        .iter()
+                        .find(|(k, _)| k == "alt")
+                        .map(|(_, v)| v.as_str())
+                        .unwrap_or("");
+                    let src = attrs
+                        .iter()
+                        .find(|(k, _)| k == "src")
+                        .map(|(_, v)| v.as_str())
+                        .unwrap_or("");
 
                     if !src.is_empty() {
                         // Try to download and embed the actual image
@@ -741,7 +843,11 @@ impl HtmlSlideParser {
             "a" => {
                 // Handle hyperlinks - just mark that we're inside a link
                 // The actual link text will be handled in text processing
-                if let Some(href) = attrs.iter().find(|(k, _)| k == "href").map(|(_, v)| v.as_str()) {
+                if let Some(href) = attrs
+                    .iter()
+                    .find(|(k, _)| k == "href")
+                    .map(|(_, v)| v.as_str())
+                {
                     // Store the current href for later use
                     self.current_href = Some(href.to_string());
                 }
@@ -768,15 +874,35 @@ impl HtmlSlideParser {
                 if self.presentation_title.is_none() && !title.is_empty() {
                     self.presentation_title = Some(title.clone());
                 }
-                let slide_title = if title.is_empty() { "Slide".to_string() } else { title };
+                let slide_title = if title.is_empty() {
+                    "Slide".to_string()
+                } else {
+                    title
+                };
                 let mut slide = SlideContent::new(&slide_title);
                 // Apply title-level styles from active style
                 if let Some(s) = self.active_style() {
-                    if let Some(ref c) = s.color { slide = slide.title_color(c); }
-                    if let Some(sz) = s.font_size { slide = slide.title_size(sz); }
-                    if let Some(ref fw) = s.font_weight && is_font_weight_bold(fw) { slide = slide.title_bold(true); }
-                    if let Some(ref fs) = s.font_style && is_font_style_italic(fs) { slide = slide.title_italic(true); }
-                    if let Some(ref td) = s.text_decoration && td.contains("underline") { slide = slide.title_underline(true); }
+                    if let Some(ref c) = s.color {
+                        slide = slide.title_color(c);
+                    }
+                    if let Some(sz) = s.font_size {
+                        slide = slide.title_size(sz);
+                    }
+                    if let Some(ref fw) = s.font_weight
+                        && is_font_weight_bold(fw)
+                    {
+                        slide = slide.title_bold(true);
+                    }
+                    if let Some(ref fs) = s.font_style
+                        && is_font_style_italic(fs)
+                    {
+                        slide = slide.title_italic(true);
+                    }
+                    if let Some(ref td) = s.text_decoration
+                        && td.contains("underline")
+                    {
+                        slide = slide.title_underline(true);
+                    }
                 }
                 self.current_slide = Some(slide);
             }
@@ -902,7 +1028,10 @@ impl HtmlSlideParser {
                 slide.bullets.push(bp);
             }
         } else {
-            let title = self.presentation_title.clone().unwrap_or_else(|| "Overview".to_string());
+            let title = self
+                .presentation_title
+                .clone()
+                .unwrap_or_else(|| "Overview".to_string());
             let mut slide = SlideContent::new(&title);
             let mut bp = BulletPoint::new(text).with_style(slide.bullet_style);
             if let Some(ref f) = fmt {
@@ -940,7 +1069,10 @@ impl HtmlSlideParser {
                 }
             }
         } else {
-            let title = self.presentation_title.clone().unwrap_or_else(|| "Key Points".to_string());
+            let title = self
+                .presentation_title
+                .clone()
+                .unwrap_or_else(|| "Key Points".to_string());
             let mut slide = SlideContent::new(&title);
             for (item, item_style) in items {
                 if slide.content.len() < self.options.max_bullets {
@@ -1034,13 +1166,14 @@ impl HtmlSlideParser {
             // Try to load from local file path
             let path = Path::new(src);
             if path.exists()
-                && let Ok(bytes) = std::fs::read(path) {
-                    let img = ImageBuilder::auto(bytes)
-                        .at(2000000, 2000000)
-                        .size(5000000, 3000000)
-                        .build();
-                    return Some(img);
-                }
+                && let Ok(bytes) = std::fs::read(path)
+            {
+                let img = ImageBuilder::auto(bytes)
+                    .at(2000000, 2000000)
+                    .size(5000000, 3000000)
+                    .build();
+                return Some(img);
+            }
             None
         }
     }
@@ -1091,8 +1224,8 @@ impl Html2Ppt {
 
     /// Parse HTML from a file path
     pub fn parse_file(&self, path: &str) -> Result<Vec<SlideContent>, String> {
-        let html = std::fs::read_to_string(path)
-            .map_err(|e| format!("Failed to read HTML file: {e}"))?;
+        let html =
+            std::fs::read_to_string(path).map_err(|e| format!("Failed to read HTML file: {e}"))?;
         self.parse(&html)
     }
 }
@@ -1210,7 +1343,12 @@ mod tests {
             </body></html>
         "#;
         let slides = parse_html(html).unwrap();
-        assert!(slides[0].content.iter().any(|c| c.contains("[Image: A photo]")));
+        assert!(
+            slides[0]
+                .content
+                .iter()
+                .any(|c| c.contains("[Image: A photo]"))
+        );
     }
 
     #[test]
@@ -1336,8 +1474,20 @@ mod tests {
         match &events[0] {
             HtmlEvent::OpenTag { name, attrs } => {
                 assert_eq!(name, "img");
-                assert_eq!(attrs.iter().find(|(k,_)| k == "src").map(|(_,v)| v.as_str()), Some("pic.jpg"));
-                assert_eq!(attrs.iter().find(|(k,_)| k == "alt").map(|(_,v)| v.as_str()), Some("hello"));
+                assert_eq!(
+                    attrs
+                        .iter()
+                        .find(|(k, _)| k == "src")
+                        .map(|(_, v)| v.as_str()),
+                    Some("pic.jpg")
+                );
+                assert_eq!(
+                    attrs
+                        .iter()
+                        .find(|(k, _)| k == "alt")
+                        .map(|(_, v)| v.as_str()),
+                    Some("hello")
+                );
             }
             _ => panic!("expected OpenTag"),
         }
@@ -1429,8 +1579,14 @@ mod tests {
     #[test]
     fn test_parse_css_color_rgb() {
         assert_eq!(parse_css_color("rgb(255,0,0)"), Some("FF0000".to_string()));
-        assert_eq!(parse_css_color("rgb(0, 128, 0)"), Some("008000".to_string()));
-        assert_eq!(parse_css_color("rgba(0, 0, 255, 0.5)"), Some("0000FF".to_string()));
+        assert_eq!(
+            parse_css_color("rgb(0, 128, 0)"),
+            Some("008000".to_string())
+        );
+        assert_eq!(
+            parse_css_color("rgba(0, 0, 255, 0.5)"),
+            Some("0000FF".to_string())
+        );
     }
 
     #[test]
@@ -1550,7 +1706,10 @@ mod tests {
         let html = r#"<h1>Test</h1><p style="color:red">Red text</p>"#;
         let slides = parse_html(html).unwrap();
         assert_eq!(slides[0].bullets.len(), 1);
-        let fmt = slides[0].bullets[0].format.as_ref().expect("Should have format");
+        let fmt = slides[0].bullets[0]
+            .format
+            .as_ref()
+            .expect("Should have format");
         assert_eq!(fmt.color, Some("FF0000".to_string()));
     }
 
@@ -1558,7 +1717,10 @@ mod tests {
     fn test_paragraph_inline_font_size() {
         let html = r#"<h1>Test</h1><p style="font-size:20px">Bigger text</p>"#;
         let slides = parse_html(html).unwrap();
-        let fmt = slides[0].bullets[0].format.as_ref().expect("Should have format");
+        let fmt = slides[0].bullets[0]
+            .format
+            .as_ref()
+            .expect("Should have format");
         assert_eq!(fmt.font_size, Some(15));
     }
 
@@ -1566,7 +1728,10 @@ mod tests {
     fn test_paragraph_inline_bold() {
         let html = r#"<h1>Test</h1><p style="font-weight:bold">Bold paragraph</p>"#;
         let slides = parse_html(html).unwrap();
-        let fmt = slides[0].bullets[0].format.as_ref().expect("Should have format");
+        let fmt = slides[0].bullets[0]
+            .format
+            .as_ref()
+            .expect("Should have format");
         assert!(fmt.bold);
     }
 
@@ -1574,7 +1739,10 @@ mod tests {
     fn test_paragraph_inline_italic() {
         let html = r#"<h1>Test</h1><p style="font-style:italic">Italic paragraph</p>"#;
         let slides = parse_html(html).unwrap();
-        let fmt = slides[0].bullets[0].format.as_ref().expect("Should have format");
+        let fmt = slides[0].bullets[0]
+            .format
+            .as_ref()
+            .expect("Should have format");
         assert!(fmt.italic);
     }
 
@@ -1582,15 +1750,22 @@ mod tests {
     fn test_paragraph_inline_underline() {
         let html = r#"<h1>Test</h1><p style="text-decoration:underline">Underlined</p>"#;
         let slides = parse_html(html).unwrap();
-        let fmt = slides[0].bullets[0].format.as_ref().expect("Should have format");
+        let fmt = slides[0].bullets[0]
+            .format
+            .as_ref()
+            .expect("Should have format");
         assert!(fmt.underline);
     }
 
     #[test]
     fn test_paragraph_inline_multiple_styles() {
-        let html = r#"<h1>Test</h1><p style="color:blue; font-size:18pt; font-weight:bold">Styled</p>"#;
+        let html =
+            r#"<h1>Test</h1><p style="color:blue; font-size:18pt; font-weight:bold">Styled</p>"#;
         let slides = parse_html(html).unwrap();
-        let fmt = slides[0].bullets[0].format.as_ref().expect("Should have format");
+        let fmt = slides[0].bullets[0]
+            .format
+            .as_ref()
+            .expect("Should have format");
         assert_eq!(fmt.color, Some("0000FF".to_string()));
         assert_eq!(fmt.font_size, Some(18));
         assert!(fmt.bold);
@@ -1640,30 +1815,45 @@ mod tests {
 
     #[test]
     fn test_list_item_with_inline_style() {
-        let html = r#"<h1>List</h1><ul><li style="color:red">Red item</li><li>Normal item</li></ul>"#;
+        let html =
+            r#"<h1>List</h1><ul><li style="color:red">Red item</li><li>Normal item</li></ul>"#;
         let slides = parse_html(html).unwrap();
-        let fmt0 = slides[0].bullets[0].format.as_ref().expect("First item should have format");
+        let fmt0 = slides[0].bullets[0]
+            .format
+            .as_ref()
+            .expect("First item should have format");
         assert_eq!(fmt0.color, Some("FF0000".to_string()));
         assert!(slides[0].bullets[1].format.is_none()); // second item has no style
     }
 
     #[test]
     fn test_nested_style_inheritance() {
-        let html = r#"<div style="color:red"><p>Red text</p><p style="color:blue">Blue text</p></div>"#;
+        let html =
+            r#"<div style="color:red"><p>Red text</p><p style="color:blue">Blue text</p></div>"#;
         let slides = parse_html(html).unwrap();
         // Both paragraphs ended up as bullets on the same slide (if first h1 existed or auto-title)
         assert_eq!(slides[0].bullets.len(), 2);
-        let fmt0 = slides[0].bullets[0].format.as_ref().expect("First should have format");
+        let fmt0 = slides[0].bullets[0]
+            .format
+            .as_ref()
+            .expect("First should have format");
         assert_eq!(fmt0.color, Some("FF0000".to_string())); // inherits red from div
-        let fmt1 = slides[0].bullets[1].format.as_ref().expect("Second should have format");
+        let fmt1 = slides[0].bullets[1]
+            .format
+            .as_ref()
+            .expect("Second should have format");
         assert_eq!(fmt1.color, Some("0000FF".to_string())); // overrides to blue
     }
 
     #[test]
     fn test_style_on_container_div() {
-        let html = r#"<h1>Styled Container</h1><div style="color:purple"><p>Purple paragraph</p></div>"#;
+        let html =
+            r#"<h1>Styled Container</h1><div style="color:purple"><p>Purple paragraph</p></div>"#;
         let slides = parse_html(html).unwrap();
-        let fmt = slides[0].bullets[0].format.as_ref().expect("Should have format");
+        let fmt = slides[0].bullets[0]
+            .format
+            .as_ref()
+            .expect("Should have format");
         assert_eq!(fmt.color, Some("800080".to_string()));
     }
 
@@ -1672,7 +1862,10 @@ mod tests {
         let html = r#"<h1>Test</h1><p style="color:red">First<br style="color:blue">Second</p>"#;
         let slides = parse_html(html).unwrap();
         // The <br> should not push/pop style, so the paragraph should have color:red
-        let fmt = slides[0].bullets[0].format.as_ref().expect("Should have format");
+        let fmt = slides[0].bullets[0]
+            .format
+            .as_ref()
+            .expect("Should have format");
         assert_eq!(fmt.color, Some("FF0000".to_string()));
     }
 
@@ -1687,7 +1880,10 @@ mod tests {
     fn test_background_color_as_highlight() {
         let html = r#"<h1>Test</h1><p style="background-color:yellow">Highlighted</p>"#;
         let slides = parse_html(html).unwrap();
-        let fmt = slides[0].bullets[0].format.as_ref().expect("Should have format");
+        let fmt = slides[0].bullets[0]
+            .format
+            .as_ref()
+            .expect("Should have format");
         assert_eq!(fmt.highlight, Some("FFFF00".to_string()));
     }
 }

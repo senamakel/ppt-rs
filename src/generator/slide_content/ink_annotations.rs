@@ -193,13 +193,20 @@ impl InkAnnotations {
         // Brush definitions
         for (i, stroke) in self.strokes.iter().enumerate() {
             let opacity_attr = if (stroke.pen.opacity - 1.0).abs() > 0.01 {
-                format!(r#" transparency="{:.0}""#, (1.0 - stroke.pen.opacity) * 255.0)
+                format!(
+                    r#" transparency="{:.0}""#,
+                    (1.0 - stroke.pen.opacity) * 255.0
+                )
             } else {
                 String::new()
             };
             xml.push_str(&format!(
                 "<ink:brush id=\"br{}\" color=\"#{}\" width=\"{}\" tip=\"{}\"{} />\n",
-                i, stroke.pen.color, stroke.pen.width, stroke.pen.tip.to_xml(), opacity_attr,
+                i,
+                stroke.pen.color,
+                stroke.pen.width,
+                stroke.pen.tip.to_xml(),
+                opacity_attr,
             ));
         }
 
@@ -302,8 +309,8 @@ mod tests {
 
     #[test]
     fn test_ink_stroke_add_points_batch() {
-        let stroke = InkStroke::new(InkPen::blue())
-            .add_points(&[(0.0, 0.0), (50.0, 50.0), (100.0, 0.0)]);
+        let stroke =
+            InkStroke::new(InkPen::blue()).add_points(&[(0.0, 0.0), (50.0, 50.0), (100.0, 0.0)]);
         assert_eq!(stroke.len(), 3);
     }
 

@@ -185,49 +185,49 @@ impl PresentationTheme {
     pub fn corporate() -> Self {
         Self::from_palette(
             "Corporate",
-            "1565C0", "1976D2", "FF6F00", "FFFFFF", "212121", "E3F2FD", "0D47A1",
+            "1565C0",
+            "1976D2",
+            "FF6F00",
+            "FFFFFF",
+            "212121",
+            "E3F2FD",
+            "0D47A1",
         )
     }
 
     pub fn modern() -> Self {
         Self::from_palette(
-            "Modern",
-            "212121", "757575", "00BCD4", "FAFAFA", "212121", "F5F5F5", "424242",
+            "Modern", "212121", "757575", "00BCD4", "FAFAFA", "212121", "F5F5F5", "424242",
         )
     }
 
     pub fn vibrant() -> Self {
         Self::from_palette(
-            "Vibrant",
-            "E91E63", "9C27B0", "FF9800", "FFFFFF", "212121", "FCE4EC", "880E4F",
+            "Vibrant", "E91E63", "9C27B0", "FF9800", "FFFFFF", "212121", "FCE4EC", "880E4F",
         )
     }
 
     pub fn dark() -> Self {
         Self::from_palette(
-            "Dark",
-            "BB86FC", "03DAC6", "CF6679", "121212", "FFFFFF", "1E1E1E", "000000",
+            "Dark", "BB86FC", "03DAC6", "CF6679", "121212", "FFFFFF", "1E1E1E", "000000",
         )
     }
 
     pub fn nature() -> Self {
         Self::from_palette(
-            "Nature",
-            "2E7D32", "4CAF50", "8BC34A", "FFFFFF", "1B5E20", "E8F5E9", "1B5E20",
+            "Nature", "2E7D32", "4CAF50", "8BC34A", "FFFFFF", "1B5E20", "E8F5E9", "1B5E20",
         )
     }
 
     pub fn tech() -> Self {
         Self::from_palette(
-            "Tech",
-            "0D47A1", "1976D2", "00E676", "FAFAFA", "263238", "E3F2FD", "01579B",
+            "Tech", "0D47A1", "1976D2", "00E676", "FAFAFA", "263238", "E3F2FD", "01579B",
         )
     }
 
     pub fn carbon() -> Self {
         Self::from_palette(
-            "Carbon",
-            "0043CE", "4589FF", "24A148", "FFFFFF", "161616", "E0E0E0", "161616",
+            "Carbon", "0043CE", "4589FF", "24A148", "FFFFFF", "161616", "E0E0E0", "161616",
         )
     }
 
@@ -238,9 +238,8 @@ impl PresentationTheme {
         }
 
         let c = &self.colors;
-        let color_slot = |tag: &str, hex: &str| {
-            format!(r#"<a:{tag}><a:srgbClr val="{hex}"/></a:{tag}>"#)
-        };
+        let color_slot =
+            |tag: &str, hex: &str| format!(r#"<a:{tag}><a:srgbClr val="{hex}"/></a:{tag}>"#);
         let colors_xml = [
             color_slot("dk1", &c.dk1),
             color_slot("lt1", &c.lt1),
@@ -262,7 +261,8 @@ impl PresentationTheme {
         let mut xml = office_theme_xml().to_string();
         if let (Some(start), Some(end)) = (
             xml.find("<a:clrScheme"),
-            xml.find("</a:clrScheme>").map(|i| i + "</a:clrScheme>".len()),
+            xml.find("</a:clrScheme>")
+                .map(|i| i + "</a:clrScheme>".len()),
         ) {
             xml.replace_range(start..end, &clr_scheme);
         }
@@ -320,7 +320,9 @@ mod tests {
 
     #[test]
     fn test_corporate_theme_xml_contains_colors() {
-        let theme = PresentationTheme::corporate().major_font("Arial").minor_font("Arial");
+        let theme = PresentationTheme::corporate()
+            .major_font("Arial")
+            .minor_font("Arial");
         let xml = theme.to_theme_xml();
         assert!(xml.contains("1565C0"));
         assert!(xml.contains("FF6F00"));

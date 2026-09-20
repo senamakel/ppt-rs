@@ -10,7 +10,9 @@ pub mod parser;
 pub mod syntax;
 
 #[cfg(feature = "cli")]
-pub use commands::{CreateCommand, FromHtmlCommand, FromMarkdownCommand, InfoCommand, ValidateCommand};
+pub use commands::{
+    CreateCommand, FromHtmlCommand, FromMarkdownCommand, InfoCommand, ValidateCommand,
+};
 #[cfg(feature = "cli")]
 pub use markdown::parse_markdown;
 #[cfg(feature = "cli")]

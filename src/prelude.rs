@@ -20,9 +20,9 @@
 
 // Re-export commonly used types
 pub use crate::generator::{
-    create_pptx, create_pptx_with_content, ArrowType, BulletPoint, BulletStyle, Connector,
-    ConnectorType, FormattedText, Image, Shape, ShapeFill, ShapeLine, ShapeType, SlideContent,
-    SlideLayout, TextFormat,
+    ArrowType, BulletPoint, BulletStyle, Connector, ConnectorType, FormattedText, Image, Shape,
+    ShapeFill, ShapeLine, ShapeType, SlideContent, SlideLayout, TextFormat, create_pptx,
+    create_pptx_with_content,
 };
 
 pub use crate::generator::shapes::{GradientDirection, GradientFill, GradientStop};
@@ -33,6 +33,10 @@ pub use crate::exc::Result;
 
 // Re-export simplified helpers
 pub use crate::helpers::{
+    // Color utilities
+    ColorValue,
+    QuickTable,
+    ShapeExt,
     black,
     blue,
     brown,
@@ -70,10 +74,6 @@ pub use crate::helpers::{
     triangle,
     white,
     yellow,
-    // Color utilities
-    ColorValue,
-    QuickTable,
-    ShapeExt,
 };
 
 /// Font size module with common presets (in points)

@@ -28,9 +28,10 @@ impl PptxTemplate {
                 || path.starts_with("ppt/slideMasters/")
                 || path.starts_with("ppt/slideLayouts/")
                 || path == "ppt/tableStyles.xml")
-                && let Some(data) = pkg.get_part(path) {
-                    parts.insert(path.to_string(), data.to_vec());
-                }
+                && let Some(data) = pkg.get_part(path)
+            {
+                parts.insert(path.to_string(), data.to_vec());
+            }
         }
 
         if !parts.keys().any(|p| p.starts_with("ppt/slideMasters/")) {
@@ -49,7 +50,10 @@ impl PptxTemplate {
             .count()
             .max(1);
 
-        Ok(PptxTemplate { parts, layout_count })
+        Ok(PptxTemplate {
+            parts,
+            layout_count,
+        })
     }
 
     pub fn layout_count(&self) -> usize {

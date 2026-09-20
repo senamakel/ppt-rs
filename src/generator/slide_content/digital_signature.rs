@@ -142,7 +142,9 @@ impl DigitalSignature {
     /// Generate signature info XML for `_xmlsignatures/sig1.xml`
     pub fn to_signature_xml(&self) -> String {
         let date = self.sign_date.as_deref().unwrap_or("2025-01-01T00:00:00Z");
-        let comments_xml = self.comments.as_ref()
+        let comments_xml = self
+            .comments
+            .as_ref()
             .map(|c| format!("<SignatureComments>{}</SignatureComments>", xml_escape(c)))
             .unwrap_or_default();
 
@@ -266,8 +268,7 @@ mod tests {
 
     #[test]
     fn test_signature_xml() {
-        let sig = DigitalSignature::new(SignerInfo::new("Alice"))
-            .sign_date("2025-01-01T00:00:00Z");
+        let sig = DigitalSignature::new(SignerInfo::new("Alice")).sign_date("2025-01-01T00:00:00Z");
         let xml = sig.to_signature_xml();
         assert!(xml.contains("<Signature"));
         assert!(xml.contains("Alice"));
@@ -277,8 +278,7 @@ mod tests {
 
     #[test]
     fn test_signature_xml_with_comments() {
-        let sig = DigitalSignature::new(SignerInfo::new("Bob"))
-            .comments("Reviewed & approved");
+        let sig = DigitalSignature::new(SignerInfo::new("Bob")).comments("Reviewed & approved");
         let xml = sig.to_signature_xml();
         assert!(xml.contains("Reviewed &amp; approved"));
     }

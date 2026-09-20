@@ -9,7 +9,7 @@
 //! - File integrity
 
 use ppt_rs::generator::{
-    SlideContent, Table, TableRow, TableCell, SlideLayout, create_pptx_with_content,
+    SlideContent, SlideLayout, Table, TableCell, TableRow, create_pptx_with_content,
 };
 use std::fs;
 use std::io::{Cursor, Read};
@@ -23,16 +23,13 @@ use zip::ZipArchive;
 fn test_pptx_is_valid_zip() {
     let _ = fs::create_dir_all("target/test_output");
 
-    let slides = vec![
-        SlideContent::new("Test Slide")
-            .add_bullet("Content"),
-    ];
+    let slides = vec![SlideContent::new("Test Slide").add_bullet("Content")];
 
     let result = create_pptx_with_content("Test", slides);
     assert!(result.is_ok());
 
     let pptx_data = result.unwrap();
-    
+
     // Verify it's a valid ZIP file
     let cursor = Cursor::new(pptx_data);
     let zip_result = ZipArchive::new(cursor);
@@ -41,10 +38,7 @@ fn test_pptx_is_valid_zip() {
 
 #[test]
 fn test_pptx_contains_required_files() {
-    let slides = vec![
-        SlideContent::new("Test")
-            .add_bullet("Content"),
-    ];
+    let slides = vec![SlideContent::new("Test").add_bullet("Content")];
 
     let result = create_pptx_with_content("Test", slides);
     assert!(result.is_ok());
@@ -77,20 +71,20 @@ fn test_pptx_contains_required_files() {
 
 #[test]
 fn test_pptx_file_size_reasonable() {
-    let slides = vec![
-        SlideContent::new("Test Slide")
-            .add_bullet("Content"),
-    ];
+    let slides = vec![SlideContent::new("Test Slide").add_bullet("Content")];
 
     let result = create_pptx_with_content("Test", slides);
     assert!(result.is_ok());
 
     let pptx_data = result.unwrap();
-    
+
     // Minimum size: ~5KB for basic PPTX (compressed XML is smaller than expected)
     // Maximum size: ~1MB for single slide (should be much smaller)
     assert!(pptx_data.len() > 5_000, "PPTX file should be at least 5KB");
-    assert!(pptx_data.len() < 1_000_000, "Single slide PPTX should be less than 1MB");
+    assert!(
+        pptx_data.len() < 1_000_000,
+        "Single slide PPTX should be less than 1MB"
+    );
 }
 
 // ============================================================================
@@ -99,10 +93,7 @@ fn test_pptx_file_size_reasonable() {
 
 #[test]
 fn test_slide_xml_has_valid_structure() {
-    let slides = vec![
-        SlideContent::new("Title")
-            .add_bullet("Content"),
-    ];
+    let slides = vec![SlideContent::new("Title").add_bullet("Content")];
 
     let result = create_pptx_with_content("Test", slides);
     assert!(result.is_ok());
@@ -117,24 +108,39 @@ fn test_slide_xml_has_valid_structure() {
     std::io::Read::read_to_string(&mut reader, &mut content).unwrap();
 
     // Check XML declaration
-    assert!(content.starts_with("<?xml"), "Slide XML should start with XML declaration");
-    
+    assert!(
+        content.starts_with("<?xml"),
+        "Slide XML should start with XML declaration"
+    );
+
     // Check root element
-    assert!(content.contains("<p:sld"), "Slide XML should have p:sld root element");
-    assert!(content.contains("</p:sld>"), "Slide XML should close p:sld element");
-    
+    assert!(
+        content.contains("<p:sld"),
+        "Slide XML should have p:sld root element"
+    );
+    assert!(
+        content.contains("</p:sld>"),
+        "Slide XML should close p:sld element"
+    );
+
     // Check required namespaces
-    assert!(content.contains("xmlns:a="), "Should have DrawingML namespace");
-    assert!(content.contains("xmlns:p="), "Should have PresentationML namespace");
-    assert!(content.contains("xmlns:r="), "Should have Relationships namespace");
+    assert!(
+        content.contains("xmlns:a="),
+        "Should have DrawingML namespace"
+    );
+    assert!(
+        content.contains("xmlns:p="),
+        "Should have PresentationML namespace"
+    );
+    assert!(
+        content.contains("xmlns:r="),
+        "Should have Relationships namespace"
+    );
 }
 
 #[test]
 fn test_presentation_xml_valid_structure() {
-    let slides = vec![
-        SlideContent::new("Slide 1"),
-        SlideContent::new("Slide 2"),
-    ];
+    let slides = vec![SlideContent::new("Slide 1"), SlideContent::new("Slide 2")];
 
     let result = create_pptx_with_content("Test", slides);
     assert!(result.is_ok());
@@ -149,16 +155,20 @@ fn test_presentation_xml_valid_structure() {
     std::io::Read::read_to_string(&mut reader, &mut content).unwrap();
 
     // Check structure
-    assert!(content.contains("<p:presentation"), "Should have presentation element");
+    assert!(
+        content.contains("<p:presentation"),
+        "Should have presentation element"
+    );
     assert!(content.contains("<p:sldIdLst"), "Should have slide ID list");
-    assert!(content.contains("</p:presentation>"), "Should close presentation element");
+    assert!(
+        content.contains("</p:presentation>"),
+        "Should close presentation element"
+    );
 }
 
 #[test]
 fn test_content_types_xml_valid() {
-    let slides = vec![
-        SlideContent::new("Test"),
-    ];
+    let slides = vec![SlideContent::new("Test")];
 
     let result = create_pptx_with_content("Test", slides);
     assert!(result.is_ok());
@@ -175,7 +185,10 @@ fn test_content_types_xml_valid() {
     // Check structure
     assert!(content.contains("<Types"), "Should have Types element");
     assert!(content.contains("</Types>"), "Should close Types element");
-    assert!(content.contains("Override"), "Should have Override elements");
+    assert!(
+        content.contains("Override"),
+        "Should have Override elements"
+    );
 }
 
 // ============================================================================
@@ -185,9 +198,7 @@ fn test_content_types_xml_valid() {
 #[test]
 fn test_slide_title_preserved() {
     let title = "My Important Title";
-    let slides = vec![
-        SlideContent::new(title),
-    ];
+    let slides = vec![SlideContent::new(title)];
 
     let result = create_pptx_with_content("Test", slides);
     assert!(result.is_ok());
@@ -201,7 +212,10 @@ fn test_slide_title_preserved() {
     let mut reader = std::io::BufReader::new(slide_xml);
     reader.read_to_string(&mut content).unwrap();
 
-    assert!(content.contains(title), "Slide title should be preserved in XML");
+    assert!(
+        content.contains(title),
+        "Slide title should be preserved in XML"
+    );
 }
 
 #[test]
@@ -225,17 +239,18 @@ fn test_bullet_content_preserved() {
     reader.read_to_string(&mut content).unwrap();
 
     for bullet in &bullets {
-        assert!(content.contains(bullet), "Bullet '{}' should be preserved", bullet);
+        assert!(
+            content.contains(bullet),
+            "Bullet '{}' should be preserved",
+            bullet
+        );
     }
 }
 
 #[test]
 fn test_special_characters_preserved() {
     let special_text = "Test & <More> \"Content\"";
-    let slides = vec![
-        SlideContent::new("Special Chars")
-            .add_bullet(special_text),
-    ];
+    let slides = vec![SlideContent::new("Special Chars").add_bullet(special_text)];
 
     let result = create_pptx_with_content("Test", slides);
     assert!(result.is_ok());
@@ -263,10 +278,7 @@ fn test_special_characters_preserved() {
 #[test]
 fn test_unicode_content_preserved() {
     let unicode_text = "日本語テキスト";
-    let slides = vec![
-        SlideContent::new("Unicode")
-            .add_bullet(unicode_text),
-    ];
+    let slides = vec![SlideContent::new("Unicode").add_bullet(unicode_text)];
 
     let result = create_pptx_with_content("Test", slides);
     assert!(result.is_ok());
@@ -280,7 +292,10 @@ fn test_unicode_content_preserved() {
     let mut reader = std::io::BufReader::new(slide_xml);
     reader.read_to_string(&mut content).unwrap();
 
-    assert!(content.contains(unicode_text), "Unicode text should be preserved");
+    assert!(
+        content.contains(unicode_text),
+        "Unicode text should be preserved"
+    );
 }
 
 // ============================================================================
@@ -308,7 +323,10 @@ fn test_bold_formatting_in_xml() {
     reader.read_to_string(&mut content).unwrap();
 
     // Check for bold attribute in title
-    assert!(content.contains(r#"b="1""#), "Bold formatting should be in XML");
+    assert!(
+        content.contains(r#"b="1""#),
+        "Bold formatting should be in XML"
+    );
 }
 
 #[test]
@@ -348,19 +366,13 @@ fn test_font_size_in_xml() {
 #[test]
 fn test_table_in_slide_has_valid_structure() {
     let table = Table::from_data(
-        vec![
-            vec!["Header 1", "Header 2"],
-            vec!["Data 1", "Data 2"],
-        ],
+        vec![vec!["Header 1", "Header 2"], vec!["Data 1", "Data 2"]],
         vec![2000000, 2000000],
         457200,
         1400000,
     );
 
-    let slides = vec![
-        SlideContent::new("Table Slide")
-            .table(table),
-    ];
+    let slides = vec![SlideContent::new("Table Slide").table(table)];
 
     let result = create_pptx_with_content("Test", slides);
     assert!(result.is_ok());
@@ -375,7 +387,10 @@ fn test_table_in_slide_has_valid_structure() {
     reader.read_to_string(&mut content).unwrap();
 
     // Check for table structure
-    assert!(content.contains("p:graphicFrame"), "Should have graphic frame for table");
+    assert!(
+        content.contains("p:graphicFrame"),
+        "Should have graphic frame for table"
+    );
     assert!(content.contains("a:tbl"), "Should have table element");
     assert!(content.contains("a:tblGrid"), "Should have table grid");
     assert!(content.contains("a:tr"), "Should have table rows");
@@ -385,20 +400,13 @@ fn test_table_in_slide_has_valid_structure() {
 #[test]
 fn test_table_content_preserved() {
     let table = Table::from_data(
-        vec![
-            vec!["Name", "Age"],
-            vec!["Alice", "30"],
-            vec!["Bob", "25"],
-        ],
+        vec![vec!["Name", "Age"], vec!["Alice", "30"], vec!["Bob", "25"]],
         vec![2000000, 2000000],
         457200,
         1400000,
     );
 
-    let slides = vec![
-        SlideContent::new("Data Table")
-            .table(table),
-    ];
+    let slides = vec![SlideContent::new("Data Table").table(table)];
 
     let result = create_pptx_with_content("Test", slides);
     assert!(result.is_ok());
@@ -413,10 +421,22 @@ fn test_table_content_preserved() {
     reader.read_to_string(&mut content).unwrap();
 
     // Check for all table data
-    assert!(content.contains("Name"), "Table header 'Name' should be preserved");
-    assert!(content.contains("Age"), "Table header 'Age' should be preserved");
-    assert!(content.contains("Alice"), "Table data 'Alice' should be preserved");
-    assert!(content.contains("30"), "Table data '30' should be preserved");
+    assert!(
+        content.contains("Name"),
+        "Table header 'Name' should be preserved"
+    );
+    assert!(
+        content.contains("Age"),
+        "Table header 'Age' should be preserved"
+    );
+    assert!(
+        content.contains("Alice"),
+        "Table data 'Alice' should be preserved"
+    );
+    assert!(
+        content.contains("30"),
+        "Table data '30' should be preserved"
+    );
 }
 
 #[test]
@@ -428,10 +448,7 @@ fn test_table_styling_preserved() {
     let row = TableRow::new(cells);
     let table = Table::new(vec![row], vec![2000000, 2000000], 457200, 1400000);
 
-    let slides = vec![
-        SlideContent::new("Styled Table")
-            .table(table),
-    ];
+    let slides = vec![SlideContent::new("Styled Table").table(table)];
 
     let result = create_pptx_with_content("Test", slides);
     assert!(result.is_ok());
@@ -448,7 +465,10 @@ fn test_table_styling_preserved() {
     // Check for styling
     assert!(content.contains("FF0000"), "Red color should be in XML");
     assert!(content.contains("00FF00"), "Green color should be in XML");
-    assert!(content.contains(r#"b="1""#), "Bold formatting should be in XML");
+    assert!(
+        content.contains(r#"b="1""#),
+        "Bold formatting should be in XML"
+    );
 }
 
 // ============================================================================
@@ -475,7 +495,11 @@ fn test_all_layouts_generate_valid_pptx() {
         ];
 
         let result = create_pptx_with_content("Test", slides);
-        assert!(result.is_ok(), "Layout {:?} should generate valid PPTX", layout);
+        assert!(
+            result.is_ok(),
+            "Layout {:?} should generate valid PPTX",
+            layout
+        );
 
         let pptx_data = result.unwrap();
         let cursor = Cursor::new(pptx_data);
@@ -497,10 +521,8 @@ fn test_multiple_slides_all_present() {
     let num_slides = 5;
     let mut slides = Vec::new();
     for i in 1..=num_slides {
-        slides.push(
-            SlideContent::new(&format!("Slide {}", i))
-                .add_bullet(&format!("Content {}", i))
-        );
+        slides
+            .push(SlideContent::new(&format!("Slide {}", i)).add_bullet(&format!("Content {}", i)));
     }
 
     let result = create_pptx_with_content("Test", slides);
@@ -524,12 +546,9 @@ fn test_multiple_slides_all_present() {
 #[test]
 fn test_multiple_slides_content_preserved() {
     let slides = vec![
-        SlideContent::new("Slide 1")
-            .add_bullet("First slide content"),
-        SlideContent::new("Slide 2")
-            .add_bullet("Second slide content"),
-        SlideContent::new("Slide 3")
-            .add_bullet("Third slide content"),
+        SlideContent::new("Slide 1").add_bullet("First slide content"),
+        SlideContent::new("Slide 2").add_bullet("Second slide content"),
+        SlideContent::new("Slide 3").add_bullet("Third slide content"),
     ];
 
     let result = create_pptx_with_content("Test", slides);
@@ -541,7 +560,9 @@ fn test_multiple_slides_content_preserved() {
 
     // Check each slide's content
     for i in 1..=3 {
-        let slide_xml = archive.by_name(&format!("ppt/slides/slide{}.xml", i)).unwrap();
+        let slide_xml = archive
+            .by_name(&format!("ppt/slides/slide{}.xml", i))
+            .unwrap();
         let mut content = String::new();
         let mut reader = std::io::BufReader::new(slide_xml);
         reader.read_to_string(&mut content).unwrap();
@@ -565,10 +586,7 @@ fn test_multiple_slides_content_preserved() {
 
 #[test]
 fn test_empty_slide_title() {
-    let slides = vec![
-        SlideContent::new("")
-            .add_bullet("Content"),
-    ];
+    let slides = vec![SlideContent::new("").add_bullet("Content")];
 
     let result = create_pptx_with_content("Test", slides);
     assert!(result.is_ok(), "Empty title should be handled gracefully");
@@ -576,16 +594,16 @@ fn test_empty_slide_title() {
     let pptx_data = result.unwrap();
     let cursor = Cursor::new(pptx_data);
     let zip_result = ZipArchive::new(cursor);
-    assert!(zip_result.is_ok(), "Should produce valid ZIP with empty title");
+    assert!(
+        zip_result.is_ok(),
+        "Should produce valid ZIP with empty title"
+    );
 }
 
 #[test]
 fn test_very_long_title() {
     let long_title = "A".repeat(500);
-    let slides = vec![
-        SlideContent::new(&long_title)
-            .add_bullet("Content"),
-    ];
+    let slides = vec![SlideContent::new(&long_title).add_bullet("Content")];
 
     let result = create_pptx_with_content("Test", slides);
     assert!(result.is_ok(), "Long title should be handled");
@@ -593,7 +611,10 @@ fn test_very_long_title() {
     let pptx_data = result.unwrap();
     let cursor = Cursor::new(pptx_data);
     let zip_result = ZipArchive::new(cursor);
-    assert!(zip_result.is_ok(), "Should produce valid ZIP with long title");
+    assert!(
+        zip_result.is_ok(),
+        "Should produce valid ZIP with long title"
+    );
 }
 
 #[test]
@@ -609,7 +630,10 @@ fn test_many_bullets() {
     let pptx_data = result.unwrap();
     let cursor = Cursor::new(pptx_data);
     let zip_result = ZipArchive::new(cursor);
-    assert!(zip_result.is_ok(), "Should produce valid ZIP with many bullets");
+    assert!(
+        zip_result.is_ok(),
+        "Should produce valid ZIP with many bullets"
+    );
 }
 
 #[test]
@@ -620,7 +644,7 @@ fn test_large_presentation() {
             SlideContent::new(&format!("Slide {}", i))
                 .add_bullet(&format!("Content {}", i))
                 .add_bullet("Additional point")
-                .add_bullet("More details")
+                .add_bullet("More details"),
         );
     }
 
@@ -628,11 +652,17 @@ fn test_large_presentation() {
     assert!(result.is_ok(), "Large presentation should be generated");
 
     let pptx_data = result.unwrap();
-    
+
     // File size should be reasonable (< 2MB for 20 slides)
-    assert!(pptx_data.len() < 2_000_000, "Large presentation should be < 2MB");
-    
+    assert!(
+        pptx_data.len() < 2_000_000,
+        "Large presentation should be < 2MB"
+    );
+
     let cursor = Cursor::new(pptx_data);
     let zip_result = ZipArchive::new(cursor);
-    assert!(zip_result.is_ok(), "Should produce valid ZIP for large presentation");
+    assert!(
+        zip_result.is_ok(),
+        "Should produce valid ZIP for large presentation"
+    );
 }

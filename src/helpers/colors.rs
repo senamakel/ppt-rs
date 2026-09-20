@@ -116,57 +116,143 @@ impl ColorValue {
 }
 
 // Popular color aliases
-pub fn red() -> ColorValue { ColorValue::rgb(255, 0, 0) }
-pub fn green() -> ColorValue { ColorValue::rgb(0, 255, 0) }
-pub fn blue() -> ColorValue { ColorValue::rgb(0, 0, 255) }
-pub fn yellow() -> ColorValue { ColorValue::rgb(255, 255, 0) }
-pub fn cyan() -> ColorValue { ColorValue::rgb(0, 255, 255) }
-pub fn magenta() -> ColorValue { ColorValue::rgb(255, 0, 255) }
-pub fn white() -> ColorValue { ColorValue::rgb(255, 255, 255) }
-pub fn black() -> ColorValue { ColorValue::rgb(0, 0, 0) }
-pub fn gray() -> ColorValue { ColorValue::rgb(128, 128, 128) }
-pub fn grey() -> ColorValue { ColorValue::rgb(128, 128, 128) }
+pub fn red() -> ColorValue {
+    ColorValue::rgb(255, 0, 0)
+}
+pub fn green() -> ColorValue {
+    ColorValue::rgb(0, 255, 0)
+}
+pub fn blue() -> ColorValue {
+    ColorValue::rgb(0, 0, 255)
+}
+pub fn yellow() -> ColorValue {
+    ColorValue::rgb(255, 255, 0)
+}
+pub fn cyan() -> ColorValue {
+    ColorValue::rgb(0, 255, 255)
+}
+pub fn magenta() -> ColorValue {
+    ColorValue::rgb(255, 0, 255)
+}
+pub fn white() -> ColorValue {
+    ColorValue::rgb(255, 255, 255)
+}
+pub fn black() -> ColorValue {
+    ColorValue::rgb(0, 0, 0)
+}
+pub fn gray() -> ColorValue {
+    ColorValue::rgb(128, 128, 128)
+}
+pub fn grey() -> ColorValue {
+    ColorValue::rgb(128, 128, 128)
+}
 
 // Shades of gray
-pub fn light_gray() -> ColorValue { ColorValue::rgb(211, 211, 211) }
-pub fn light_grey() -> ColorValue { ColorValue::rgb(211, 211, 211) }
-pub fn dark_gray() -> ColorValue { ColorValue::rgb(64, 64, 64) }
-pub fn dark_grey() -> ColorValue { ColorValue::rgb(64, 64, 64) }
-pub fn silver() -> ColorValue { ColorValue::rgb(192, 192, 192) }
+pub fn light_gray() -> ColorValue {
+    ColorValue::rgb(211, 211, 211)
+}
+pub fn light_grey() -> ColorValue {
+    ColorValue::rgb(211, 211, 211)
+}
+pub fn dark_gray() -> ColorValue {
+    ColorValue::rgb(64, 64, 64)
+}
+pub fn dark_grey() -> ColorValue {
+    ColorValue::rgb(64, 64, 64)
+}
+pub fn silver() -> ColorValue {
+    ColorValue::rgb(192, 192, 192)
+}
 
 // Common web colors
-pub fn orange() -> ColorValue { ColorValue::rgb(255, 165, 0) }
-pub fn purple() -> ColorValue { ColorValue::rgb(128, 0, 128) }
-pub fn pink() -> ColorValue { ColorValue::rgb(255, 192, 203) }
-pub fn brown() -> ColorValue { ColorValue::rgb(165, 42, 42) }
-pub fn navy() -> ColorValue { ColorValue::rgb(0, 0, 128) }
-pub fn teal() -> ColorValue { ColorValue::rgb(0, 128, 128) }
-pub fn olive() -> ColorValue { ColorValue::rgb(128, 128, 0) }
-pub fn maroon() -> ColorValue { ColorValue::rgb(128, 0, 0) }
-pub fn lime() -> ColorValue { ColorValue::rgb(0, 255, 0) }
-pub fn aqua() -> ColorValue { ColorValue::rgb(0, 255, 255) }
+pub fn orange() -> ColorValue {
+    ColorValue::rgb(255, 165, 0)
+}
+pub fn purple() -> ColorValue {
+    ColorValue::rgb(128, 0, 128)
+}
+pub fn pink() -> ColorValue {
+    ColorValue::rgb(255, 192, 203)
+}
+pub fn brown() -> ColorValue {
+    ColorValue::rgb(165, 42, 42)
+}
+pub fn navy() -> ColorValue {
+    ColorValue::rgb(0, 0, 128)
+}
+pub fn teal() -> ColorValue {
+    ColorValue::rgb(0, 128, 128)
+}
+pub fn olive() -> ColorValue {
+    ColorValue::rgb(128, 128, 0)
+}
+pub fn maroon() -> ColorValue {
+    ColorValue::rgb(128, 0, 0)
+}
+pub fn lime() -> ColorValue {
+    ColorValue::rgb(0, 255, 0)
+}
+pub fn aqua() -> ColorValue {
+    ColorValue::rgb(0, 255, 255)
+}
 
 // Material Design colors
-pub fn material_red() -> ColorValue { ColorValue::from_hex("F44336") }
-pub fn material_pink() -> ColorValue { ColorValue::from_hex("E91E63") }
-pub fn material_purple() -> ColorValue { ColorValue::from_hex("9C27B0") }
-pub fn material_indigo() -> ColorValue { ColorValue::from_hex("3F51B5") }
-pub fn material_blue() -> ColorValue { ColorValue::from_hex("2196F3") }
-pub fn material_cyan() -> ColorValue { ColorValue::from_hex("00BCD4") }
-pub fn material_teal() -> ColorValue { ColorValue::from_hex("009688") }
-pub fn material_green() -> ColorValue { ColorValue::from_hex("4CAF50") }
-pub fn material_lime() -> ColorValue { ColorValue::from_hex("CDDC39") }
-pub fn material_amber() -> ColorValue { ColorValue::from_hex("FFC107") }
-pub fn material_orange() -> ColorValue { ColorValue::from_hex("FF9800") }
-pub fn material_brown() -> ColorValue { ColorValue::from_hex("795548") }
-pub fn material_gray() -> ColorValue { ColorValue::from_hex("9E9E9E") }
-pub fn material_grey() -> ColorValue { ColorValue::from_hex("9E9E9E") }
+pub fn material_red() -> ColorValue {
+    ColorValue::from_hex("F44336")
+}
+pub fn material_pink() -> ColorValue {
+    ColorValue::from_hex("E91E63")
+}
+pub fn material_purple() -> ColorValue {
+    ColorValue::from_hex("9C27B0")
+}
+pub fn material_indigo() -> ColorValue {
+    ColorValue::from_hex("3F51B5")
+}
+pub fn material_blue() -> ColorValue {
+    ColorValue::from_hex("2196F3")
+}
+pub fn material_cyan() -> ColorValue {
+    ColorValue::from_hex("00BCD4")
+}
+pub fn material_teal() -> ColorValue {
+    ColorValue::from_hex("009688")
+}
+pub fn material_green() -> ColorValue {
+    ColorValue::from_hex("4CAF50")
+}
+pub fn material_lime() -> ColorValue {
+    ColorValue::from_hex("CDDC39")
+}
+pub fn material_amber() -> ColorValue {
+    ColorValue::from_hex("FFC107")
+}
+pub fn material_orange() -> ColorValue {
+    ColorValue::from_hex("FF9800")
+}
+pub fn material_brown() -> ColorValue {
+    ColorValue::from_hex("795548")
+}
+pub fn material_gray() -> ColorValue {
+    ColorValue::from_hex("9E9E9E")
+}
+pub fn material_grey() -> ColorValue {
+    ColorValue::from_hex("9E9E9E")
+}
 
 // Corporate/Professional colors
-pub fn corporate_blue() -> ColorValue { ColorValue::from_hex("1565C0") }
-pub fn corporate_green() -> ColorValue { ColorValue::from_hex("2E7D32") }
-pub fn corporate_red() -> ColorValue { ColorValue::from_hex("C62828") }
-pub fn corporate_orange() -> ColorValue { ColorValue::from_hex("EF6C00") }
+pub fn corporate_blue() -> ColorValue {
+    ColorValue::from_hex("1565C0")
+}
+pub fn corporate_green() -> ColorValue {
+    ColorValue::from_hex("2E7D32")
+}
+pub fn corporate_red() -> ColorValue {
+    ColorValue::from_hex("C62828")
+}
+pub fn corporate_orange() -> ColorValue {
+    ColorValue::from_hex("EF6C00")
+}
 
 #[cfg(test)]
 mod tests {

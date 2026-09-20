@@ -6,17 +6,15 @@
 //! - `builder` - Fluent chart builder
 //! - `xml` - XML generation for charts
 
-mod types;
-mod data;
 mod builder;
+mod data;
 mod embedding;
+mod types;
 pub mod xml;
 
-pub use types::ChartType;
-pub use data::{Chart, ChartSeries};
-pub use builder::ChartBuilder;
-pub use embedding::{
-    chart_embedding_filename, create_chart_rels_xml, reference_workbook_bytes,
-};
-pub use xml::{generate_chart_part_xml, generate_chart_ref_xml};
 pub(crate) use crate::core::escape_xml;
+pub use builder::ChartBuilder;
+pub use data::{Chart, ChartSeries};
+pub use embedding::{chart_embedding_filename, create_chart_rels_xml, reference_workbook_bytes};
+pub use types::ChartType;
+pub use xml::{generate_chart_part_xml, generate_chart_ref_xml};

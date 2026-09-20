@@ -1,9 +1,7 @@
 //! Common utilities for slide XML generation
 
 use crate::core::XmlWriter;
-use crate::generator::constants::{
-    SLIDE_WIDTH, SLIDE_HEIGHT,
-};
+use crate::generator::constants::{SLIDE_HEIGHT, SLIDE_WIDTH};
 use crate::generator::slide_content::BulletStyle;
 
 /// XML declaration and namespaces
@@ -32,8 +30,14 @@ impl ExtendedTextProps {
             ..Default::default()
         }
     }
-    
-    pub fn with_basic(size: u32, bold: bool, italic: bool, underline: bool, color: Option<&str>) -> Self {
+
+    pub fn with_basic(
+        size: u32,
+        bold: bool,
+        italic: bool,
+        underline: bool,
+        color: Option<&str>,
+    ) -> Self {
         Self {
             size,
             bold,
@@ -43,7 +47,7 @@ impl ExtendedTextProps {
             ..Default::default()
         }
     }
-    
+
     pub fn to_xml(&self) -> String {
         let mut attrs = format!(
             r#"<a:rPr lang="en-US" sz="{}" b="{}" i="{}" dirty="0""#,
@@ -55,11 +59,11 @@ impl ExtendedTextProps {
         if self.underline {
             attrs.push_str(r#" u="sng""#);
         }
-        
+
         if self.strikethrough {
             attrs.push_str(r#" strike="sngStrike""#);
         }
-        
+
         if self.subscript {
             attrs.push_str(r#" baseline="-25000""#);
         } else if self.superscript {
@@ -74,14 +78,14 @@ impl ExtendedTextProps {
                 r#"<a:solidFill><a:srgbClr val="{clean_color}"/></a:solidFill>"#
             ));
         }
-        
+
         if let Some(ref highlight) = self.highlight {
             let clean_color = highlight.trim_start_matches('#').to_uppercase();
             attrs.push_str(&format!(
                 r#"<a:highlight><a:srgbClr val="{clean_color}"/></a:highlight>"#
             ));
         }
-        
+
         if let Some(ref font) = self.font_family {
             attrs.push_str(&format!(
                 r#"<a:latin typeface="{font}"/><a:cs typeface="{font}"/>"#
@@ -155,14 +159,17 @@ impl SlideXmlBuilder {
         self.writer.raw("\n<p:sld ");
         self.writer.raw(SLIDE_NS);
         self.writer.raw(">\n<p:cSld>\n");
-        self.writer.raw("<p:bg><p:bgRef idx=\"1001\"><a:schemeClr val=\"bg1\"/></p:bgRef></p:bg>\n");
+        self.writer
+            .raw("<p:bg><p:bgRef idx=\"1001\"><a:schemeClr val=\"bg1\"/></p:bgRef></p:bg>\n");
         self
     }
 
     /// Start shape tree
     pub fn start_sp_tree(mut self) -> Self {
         self.writer.raw("<p:spTree>\n");
-        self.writer.raw("<p:nvGrpSpPr><p:cNvPr id=\"1\" name=\"\"/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>\n");
+        self.writer.raw(
+            "<p:nvGrpSpPr><p:cNvPr id=\"1\" name=\"\"/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>\n",
+        );
         self.writer.raw(&format!(
             "<p:grpSpPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"{SLIDE_WIDTH}\" cy=\"{SLIDE_HEIGHT}\"/><a:chOff x=\"0\" y=\"0\"/><a:chExt cx=\"{SLIDE_WIDTH}\" cy=\"{SLIDE_HEIGHT}\"/></a:xfrm></p:grpSpPr>\n"
         ));
@@ -170,7 +177,13 @@ impl SlideXmlBuilder {
     }
 
     /// Add title shape
-    pub fn add_title(mut self, id: u32, position: ShapePosition, content: TextContent<'_>, ph_type: &str) -> Self {
+    pub fn add_title(
+        mut self,
+        id: u32,
+        position: ShapePosition,
+        content: TextContent<'_>,
+        ph_type: &str,
+    ) -> Self {
         self.writer.raw(&format!(
             r#"<p:sp>
 <p:nvSpPr>
@@ -195,13 +208,25 @@ impl SlideXmlBuilder {
 </p:txBody>
 </p:sp>
 "#,
-            id, ph_type, position.x, position.y, position.cx, position.cy, content.props, escape_xml(content.text)
+            id,
+            ph_type,
+            position.x,
+            position.y,
+            position.cx,
+            position.cy,
+            content.props,
+            escape_xml(content.text)
         ));
         self
     }
 
     /// Add centered title
-    pub fn add_centered_title(mut self, id: u32, position: ShapePosition, content: TextContent<'_>) -> Self {
+    pub fn add_centered_title(
+        mut self,
+        id: u32,
+        position: ShapePosition,
+        content: TextContent<'_>,
+    ) -> Self {
         self.writer.raw(&format!(
             r#"<p:sp>
 <p:nvSpPr>
@@ -227,7 +252,13 @@ impl SlideXmlBuilder {
 </p:txBody>
 </p:sp>
 "#,
-            id, position.x, position.y, position.cx, position.cy, content.props, escape_xml(content.text)
+            id,
+            position.x,
+            position.y,
+            position.cx,
+            position.cy,
+            content.props,
+            escape_xml(content.text)
         ));
         self
     }
@@ -259,13 +290,19 @@ impl SlideXmlBuilder {
     pub fn add_bullet(self, text: &str, props: &str, level: u32) -> Self {
         self.add_bullet_with_style(text, props, level, BulletStyle::Bullet)
     }
-    
+
     /// Add bullet paragraph with specific style
-    pub fn add_bullet_with_style(mut self, text: &str, props: &str, level: u32, style: BulletStyle) -> Self {
+    pub fn add_bullet_with_style(
+        mut self,
+        text: &str,
+        props: &str,
+        level: u32,
+        style: BulletStyle,
+    ) -> Self {
         let indent = 457200 + (level * 457200); // 0.5 inch base + 0.5 inch per level
         let margin_left = level * 457200 + indent;
         let bullet_xml = style.to_xml();
-        
+
         self.writer.raw(&format!(
             r#"<a:p>
 <a:pPr lvl="{}" marL="{}" indent="-{}">
@@ -277,7 +314,12 @@ impl SlideXmlBuilder {
 </a:r>
 </a:p>
 "#,
-            level, margin_left, indent, bullet_xml, props, escape_xml(text)
+            level,
+            margin_left,
+            indent,
+            bullet_xml,
+            props,
+            escape_xml(text)
         ));
         self
     }
@@ -302,7 +344,8 @@ impl SlideXmlBuilder {
 
     /// End slide
     pub fn end_slide(mut self) -> Self {
-        self.writer.raw("</p:cSld>\n<p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>\n</p:sld>");
+        self.writer
+            .raw("</p:cSld>\n<p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>\n</p:sld>");
         self
     }
 
@@ -346,7 +389,7 @@ mod tests {
             .end_sp_tree()
             .end_slide()
             .build();
-        
+
         assert!(xml.contains("p:sld"));
         assert!(xml.contains("p:spTree"));
     }

@@ -95,8 +95,7 @@ mod tests {
 
     #[test]
     fn test_generate_image_with_position() {
-        let img = Image::new("photo.png", 1920000, 1080000, "PNG")
-            .position(500000, 1000000);
+        let img = Image::new("photo.png", 1920000, 1080000, "PNG").position(500000, 1000000);
         let xml = generate_image_xml(&img, 1, 1);
 
         assert!(xml.contains("x=\"500000\""));
@@ -165,8 +164,7 @@ mod tests {
 
     #[test]
     fn test_generate_image_with_shadow_effect() {
-        let img = Image::new("photo.png", 1920000, 1080000, "PNG")
-            .with_effect(ImageEffect::Shadow);
+        let img = Image::new("photo.png", 1920000, 1080000, "PNG").with_effect(ImageEffect::Shadow);
         let xml = generate_image_xml(&img, 1, 1);
         assert!(xml.contains("a:effectLst"));
         assert!(xml.contains("outerShdw"));
@@ -174,8 +172,7 @@ mod tests {
 
     #[test]
     fn test_generate_image_xml_with_alt_text() {
-        let img = Image::new("photo.png", 100, 100, "PNG")
-            .with_alt_text("A sample photo");
+        let img = Image::new("photo.png", 100, 100, "PNG").with_alt_text("A sample photo");
         let xml = generate_image_xml(&img, 1, 1);
 
         assert!(xml.contains(r#"descr="A sample photo""#));
@@ -183,8 +180,7 @@ mod tests {
 
     #[test]
     fn test_image_alt_text_is_escaped() {
-        let img = Image::new("photo.png", 100, 100, "PNG")
-            .with_alt_text("A & B");
+        let img = Image::new("photo.png", 100, 100, "PNG").with_alt_text("A & B");
         let xml = generate_image_xml(&img, 1, 1);
 
         assert!(xml.contains(r#"descr="A &amp; B""#));

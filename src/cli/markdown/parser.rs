@@ -6,9 +6,7 @@
 use pulldown_cmark::{Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 
 use super::mermaid;
-use crate::generator::{
-    CodeBlock, Shape, ShapeFill, ShapeType, SlideContent,
-};
+use crate::generator::{CodeBlock, Shape, ShapeFill, ShapeType, SlideContent};
 
 /// Parse markdown content into slides
 pub fn parse(content: &str) -> Result<Vec<SlideContent>, String> {

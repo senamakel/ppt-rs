@@ -4,8 +4,7 @@
 //! Generates example files demonstrating each advanced element type
 
 use ppt_rs::generator::{
-    SlideContent, create_pptx_with_content,
-    Table, TableRow, TableCell, TableBuilder,
+    SlideContent, Table, TableBuilder, TableCell, TableRow, create_pptx_with_content,
 };
 use std::fs;
 use std::path::Path;
@@ -27,7 +26,7 @@ fn test_table_cell_with_formatting() {
     let cell = TableCell::new("Formatted Header")
         .bold()
         .background_color("0000FF");
-    
+
     assert!(cell.bold);
     assert_eq!(cell.background_color, Some("0000FF".to_string()));
 }
@@ -40,7 +39,7 @@ fn test_table_row_creation() {
         TableCell::new("C"),
     ];
     let row = TableRow::new(cells);
-    
+
     assert_eq!(row.cells.len(), 3);
     assert!(row.height.is_none());
 }
@@ -49,22 +48,19 @@ fn test_table_row_creation() {
 fn test_table_row_with_height() {
     let cells = vec![TableCell::new("Data")];
     let row = TableRow::new(cells).with_height(500000);
-    
+
     assert_eq!(row.height, Some(500000));
 }
 
 #[test]
 fn test_simple_2x2_table() {
     let table = Table::from_data(
-        vec![
-            vec!["A", "B"],
-            vec!["1", "2"],
-        ],
+        vec![vec!["A", "B"], vec!["1", "2"]],
         vec![1000000, 1000000],
         0,
         0,
     );
-    
+
     assert_eq!(table.row_count(), 2);
     assert_eq!(table.column_count(), 2);
 }
@@ -81,7 +77,7 @@ fn test_3x3_table() {
         0,
         0,
     );
-    
+
     assert_eq!(table.row_count(), 3);
     assert_eq!(table.column_count(), 3);
 }
@@ -92,7 +88,7 @@ fn test_table_with_header_row() {
         .add_simple_row(vec!["Header 1", "Header 2"])
         .add_simple_row(vec!["Data 1", "Data 2"])
         .build();
-    
+
     assert_eq!(table.row_count(), 2);
     assert_eq!(table.rows[0].cells[0].text, "Header 1");
 }
@@ -105,7 +101,7 @@ fn test_table_with_multiple_rows() {
         .add_simple_row(vec!["C", "D"])
         .add_simple_row(vec!["E", "F"])
         .build();
-    
+
     assert_eq!(table.row_count(), 4);
 }
 
@@ -115,7 +111,7 @@ fn test_table_with_position() {
         .position(500000, 1000000)
         .add_simple_row(vec!["A", "B"])
         .build();
-    
+
     assert_eq!(table.x, 500000);
     assert_eq!(table.y, 1000000);
 }
@@ -131,21 +127,34 @@ fn test_wide_table() {
         0,
         0,
     );
-    
+
     assert_eq!(table.column_count(), 5);
 }
 
 #[test]
 fn test_tall_table() {
-    let names = vec!["Name", "Student 1", "Student 2", "Student 3", "Student 4", 
-                     "Student 5", "Student 6", "Student 7", "Student 8", "Student 9", "Student 10"];
-    let scores = vec!["Score", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"];
-    
+    let names = vec![
+        "Name",
+        "Student 1",
+        "Student 2",
+        "Student 3",
+        "Student 4",
+        "Student 5",
+        "Student 6",
+        "Student 7",
+        "Student 8",
+        "Student 9",
+        "Student 10",
+    ];
+    let scores = vec![
+        "Score", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%",
+    ];
+
     let mut rows = Vec::new();
     for i in 0..names.len() {
         rows.push(vec![names[i], scores[i]]);
     }
-    
+
     let table = Table::from_data(rows, vec![1000000, 1000000], 0, 0);
     assert_eq!(table.row_count(), 11);
 }
@@ -153,11 +162,13 @@ fn test_tall_table() {
 #[test]
 fn test_table_with_styled_cells() {
     let cells = vec![
-        TableCell::new("Bold Header").bold().background_color("0000FF"),
+        TableCell::new("Bold Header")
+            .bold()
+            .background_color("0000FF"),
         TableCell::new("Regular").background_color("FFFFFF"),
     ];
     let row = TableRow::new(cells);
-    
+
     assert!(row.cells[0].bold);
     assert!(!row.cells[1].bold);
 }
@@ -169,10 +180,12 @@ fn test_table_with_styled_cells() {
 #[test]
 fn test_chart_data_structure() {
     // Chart data structure for future implementation
-    let chart_data = [("Category 1", 100),
+    let chart_data = [
+        ("Category 1", 100),
         ("Category 2", 200),
-        ("Category 3", 150)];
-    
+        ("Category 3", 150),
+    ];
+
     assert_eq!(chart_data.len(), 3);
     assert_eq!(chart_data[0].1, 100);
 }
@@ -181,17 +194,19 @@ fn test_chart_data_structure() {
 fn test_bar_chart_data() {
     let categories = ["Q1", "Q2", "Q3", "Q4"];
     let values = [100, 150, 200, 175];
-    
+
     assert_eq!(categories.len(), values.len());
 }
 
 #[test]
 fn test_pie_chart_data() {
-    let slices = [("Category A", 30),
+    let slices = [
+        ("Category A", 30),
         ("Category B", 25),
         ("Category C", 20),
-        ("Category D", 25)];
-    
+        ("Category D", 25),
+    ];
+
     let total: u32 = slices.iter().map(|(_, v)| v).sum();
     assert_eq!(total, 100);
 }
@@ -201,18 +216,15 @@ fn test_line_chart_data() {
     let months = ["Jan", "Feb", "Mar", "Apr", "May"];
     let data_series1 = [10, 15, 12, 18, 20];
     let data_series2 = [8, 12, 14, 16, 19];
-    
+
     assert_eq!(months.len(), data_series1.len());
     assert_eq!(data_series1.len(), data_series2.len());
 }
 
 #[test]
 fn test_scatter_chart_data() {
-    let points = [(10, 20),
-        (15, 25),
-        (20, 30),
-        (25, 35)];
-    
+    let points = [(10, 20), (15, 25), (20, 30), (25, 35)];
+
     assert_eq!(points.len(), 4);
 }
 
@@ -230,24 +242,26 @@ fn test_image_metadata() {
         height: u32,
         format: String,
     }
-    
+
     let image = ImageMetadata {
         filename: "test.png".to_string(),
         width: 1920,
         height: 1080,
         format: "PNG".to_string(),
     };
-    
+
     assert_eq!(image.width, 1920);
     assert_eq!(image.height, 1080);
 }
 
 #[test]
 fn test_image_dimensions() {
-    let images = [("small.png", 640, 480),
+    let images = [
+        ("small.png", 640, 480),
         ("medium.jpg", 1280, 720),
-        ("large.png", 1920, 1080)];
-    
+        ("large.png", 1920, 1080),
+    ];
+
     assert_eq!(images.len(), 3);
     assert!(images[2].1 > images[1].1);
 }
@@ -260,7 +274,7 @@ fn test_image_aspect_ratios() {
         ("1:1", 1.0),
         ("21:9", 21.0 / 9.0),
     ];
-    
+
     assert_eq!(aspect_ratios.len(), 4);
     assert!((aspect_ratios[0].1 - 1.777).abs() < 0.01);
 }
@@ -268,7 +282,7 @@ fn test_image_aspect_ratios() {
 #[test]
 fn test_image_formats() {
     let formats = ["PNG", "JPG", "GIF", "BMP", "TIFF"];
-    
+
     assert!(formats.contains(&"PNG"));
     assert!(formats.contains(&"JPG"));
 }
@@ -281,10 +295,7 @@ fn test_image_formats() {
 fn test_generate_simple_table_slide() {
     let _ = fs::create_dir_all("target/test_output");
 
-    let slides = vec![
-        SlideContent::new("Simple Table")
-            .add_bullet("Basic 2x2 table"),
-    ];
+    let slides = vec![SlideContent::new("Simple Table").add_bullet("Basic 2x2 table")];
 
     let result = create_pptx_with_content("Simple Table", slides);
     assert!(result.is_ok());

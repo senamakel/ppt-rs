@@ -215,5 +215,11 @@ pub fn highlight_code(_language: &str, _code: &str) -> String {
 /// Fallback implementation when syntect feature is not enabled
 pub fn generate_highlighted_code_xml(_language: &str, _code: &str, _style_name: &str) -> String {
     // Return basic XML when syntax highlighting is not available
-    format!("<a:t>{}</a:t>", _code.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;"))
+    format!(
+        "<a:t>{}</a:t>",
+        _code
+            .replace('&', "&amp;")
+            .replace('<', "&lt;")
+            .replace('>', "&gt;")
+    )
 }

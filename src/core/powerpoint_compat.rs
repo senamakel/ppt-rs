@@ -7,7 +7,7 @@ use std::io::{Read, Seek};
 
 use zip::ZipArchive;
 
-pub use crate::core::package_validation::{validate_package, PackageValidationReport};
+pub use crate::core::package_validation::{PackageValidationReport, validate_package};
 
 /// Result of a PowerPoint structural compatibility scan (legacy).
 #[derive(Debug, Default)]
@@ -34,9 +34,7 @@ impl From<PackageValidationReport> for CompatReport {
 }
 
 /// Validate structural compatibility of a PPTX ZIP archive.
-pub fn validate_powerpoint_structure<R: Read + Seek>(
-    archive: &mut ZipArchive<R>,
-) -> CompatReport {
+pub fn validate_powerpoint_structure<R: Read + Seek>(archive: &mut ZipArchive<R>) -> CompatReport {
     validate_package(archive).into()
 }
 

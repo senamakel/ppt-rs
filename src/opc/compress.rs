@@ -12,8 +12,7 @@ use std::collections::HashSet;
 use std::path::Path;
 
 /// Compression level options
-#[derive(Debug, Clone, Copy, PartialEq)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum CompressionLevel {
     /// Light compression - remove unused parts only
     Light,
@@ -25,7 +24,6 @@ pub enum CompressionLevel {
     /// Custom compression with specific image quality
     Custom(u8), // JPEG quality 0-100
 }
-
 
 impl CompressionLevel {
     /// Get image quality for this level (for JPEG compression)
@@ -40,7 +38,10 @@ impl CompressionLevel {
 
     /// Whether to resize large images
     pub fn should_resize_images(&self) -> bool {
-        matches!(self, CompressionLevel::Aggressive | CompressionLevel::Custom(_))
+        matches!(
+            self,
+            CompressionLevel::Aggressive | CompressionLevel::Custom(_)
+        )
     }
 
     /// Maximum image dimension for this level
@@ -288,21 +289,27 @@ fn remove_unused_media(package: &mut Package) -> Result<usize> {
     let mut referenced = HashSet::new();
     let mut removed = 0;
 
-    // Find all media references in slide files
+    // Find all media references in slide files and slide relationship files.
+    // Media targets (`../media/media1.mp4`) live in `ppt/slides/_rels/*.rels`,
+    // not in the slide XML itself, so both must be scanned or embedded
+    // video/audio parts would be deleted (and their rels dangle).
     for path in package.part_paths() {
-        if path.starts_with("ppt/slides/slide") && path.ends_with(".xml")
-            && let Some(content) = package.get_part_string(path) {
-                // Look for media references like rId5, image1.png, etc.
-                for media_path in &media_paths {
-                    let filename = Path::new(media_path)
-                        .file_name()
-                        .and_then(|n| n.to_str())
-                        .unwrap_or("");
-                    if content.contains(filename) || content.contains(&media_path[4..]) {
-                        referenced.insert(media_path.clone());
-                    }
+        let is_slide_xml = path.starts_with("ppt/slides/slide") && path.ends_with(".xml");
+        let is_slide_rels = path.starts_with("ppt/slides/_rels/") && path.ends_with(".rels");
+        if (is_slide_xml || is_slide_rels)
+            && let Some(content) = package.get_part_string(path)
+        {
+            // Look for media references like rId5, image1.png, etc.
+            for media_path in &media_paths {
+                let filename = Path::new(media_path)
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("");
+                if content.contains(filename) || content.contains(&media_path[4..]) {
+                    referenced.insert(media_path.clone());
                 }
             }
+        }
     }
 
     // Remove unreferenced media
@@ -387,9 +394,10 @@ fn minimize_xml(xml: &str) -> String {
                 in_tag = true;
                 // Remove whitespace before tag
                 if (prev_char == ' ' || prev_char == '\n' || prev_char == '\t')
-                    && !result.is_empty() {
-                        result.pop();
-                    }
+                    && !result.is_empty()
+                {
+                    result.pop();
+                }
                 result.push(ch);
             }
             '>' if !in_string => {

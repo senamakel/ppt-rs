@@ -1,8 +1,6 @@
 //! Example demonstrating chart generation in PPTX presentations
 
-use ppt_rs::generator::{
-    create_pptx_with_content, SlideContent,
-};
+use ppt_rs::generator::{SlideContent, create_pptx_with_content};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create presentation with slides containing chart data
@@ -11,17 +9,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .add_bullet("Q1-Q4 Performance Comparison")
             .add_bullet("Year-over-year growth analysis")
             .add_bullet("Strategic insights and recommendations"),
-        
         SlideContent::new("Bar Chart: Quarterly Sales")
             .add_bullet("2023 vs 2024 comparison")
             .add_bullet("Q4 shows strongest performance")
             .add_bullet("Overall growth: 20% YoY"),
-        
         SlideContent::new("Line Chart: Revenue Trend")
             .add_bullet("6-month revenue tracking")
             .add_bullet("Consistent growth trajectory")
             .add_bullet("Exceeding targets in most months"),
-        
         SlideContent::new("Pie Chart: Market Distribution")
             .add_bullet("Product A leads with 35% market share")
             .add_bullet("Products B & C equally competitive")

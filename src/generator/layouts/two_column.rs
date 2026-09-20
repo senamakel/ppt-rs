@@ -1,6 +1,6 @@
 //! Two-column slide layout
 
-use super::common::{SlideXmlBuilder, generate_text_props, ShapePosition, TextContent};
+use super::common::{ShapePosition, SlideXmlBuilder, TextContent, generate_text_props};
 use crate::generator::slide_content::SlideContent;
 
 /// Two-column slide layout generator
@@ -32,17 +32,27 @@ impl TwoColumnLayout {
         let mut builder = SlideXmlBuilder::new()
             .start_slide_with_bg()
             .start_sp_tree()
-            .add_title(2, ShapePosition::new(457200, 274638, 8230200, 914400), TextContent::new(&content.title, &title_props), "title");
+            .add_title(
+                2,
+                ShapePosition::new(457200, 274638, 8230200, 914400),
+                TextContent::new(&content.title, &title_props),
+                "title",
+            );
 
         // Determine which bullets to use
         let use_styled_bullets = !content.bullets.is_empty();
-        let bullet_count = if use_styled_bullets { content.bullets.len() } else { content.content.len() };
-        
+        let bullet_count = if use_styled_bullets {
+            content.bullets.len()
+        } else {
+            content.content.len()
+        };
+
         if bullet_count > 0 {
             let mid = bullet_count.div_ceil(2);
 
             // Left column
-            builder = builder.raw(r#"
+            builder = builder.raw(
+                r#"
 <p:sp>
 <p:nvSpPr>
 <p:cNvPr id="3" name="Left Content"/>
@@ -60,22 +70,34 @@ impl TwoColumnLayout {
 <p:txBody>
 <a:bodyPr/>
 <a:lstStyle/>
-"#);
+"#,
+            );
 
             if use_styled_bullets {
                 for bullet in &content.bullets[..mid] {
-                    builder = builder.add_bullet_with_style(&bullet.text, &content_props, bullet.level, bullet.style);
+                    builder = builder.add_bullet_with_style(
+                        &bullet.text,
+                        &content_props,
+                        bullet.level,
+                        bullet.style,
+                    );
                 }
             } else {
                 for bullet in &content.content[..mid] {
-                    builder = builder.add_bullet_with_style(bullet, &content_props, 0, content.bullet_style);
+                    builder = builder.add_bullet_with_style(
+                        bullet,
+                        &content_props,
+                        0,
+                        content.bullet_style,
+                    );
                 }
             }
             builder = builder.raw("</p:txBody>\n</p:sp>\n");
 
             // Right column
             if mid < bullet_count {
-                builder = builder.raw(r#"
+                builder = builder.raw(
+                    r#"
 <p:sp>
 <p:nvSpPr>
 <p:cNvPr id="4" name="Right Content"/>
@@ -93,25 +115,33 @@ impl TwoColumnLayout {
 <p:txBody>
 <a:bodyPr/>
 <a:lstStyle/>
-"#);
+"#,
+                );
 
                 if use_styled_bullets {
                     for bullet in &content.bullets[mid..] {
-                        builder = builder.add_bullet_with_style(&bullet.text, &content_props, bullet.level, bullet.style);
+                        builder = builder.add_bullet_with_style(
+                            &bullet.text,
+                            &content_props,
+                            bullet.level,
+                            bullet.style,
+                        );
                     }
                 } else {
                     for bullet in &content.content[mid..] {
-                        builder = builder.add_bullet_with_style(bullet, &content_props, 0, content.bullet_style);
+                        builder = builder.add_bullet_with_style(
+                            bullet,
+                            &content_props,
+                            0,
+                            content.bullet_style,
+                        );
                     }
                 }
                 builder = builder.raw("</p:txBody>\n</p:sp>\n");
             }
         }
 
-        builder
-            .end_sp_tree()
-            .end_slide()
-            .build()
+        builder.end_sp_tree().end_slide().build()
     }
 }
 
@@ -127,7 +157,7 @@ mod tests {
             .add_bullet("Right 1")
             .add_bullet("Right 2");
         let xml = TwoColumnLayout::generate(&content);
-        
+
         assert!(xml.contains("Left Content"));
         assert!(xml.contains("Right Content"));
         assert!(xml.contains("Left 1"));

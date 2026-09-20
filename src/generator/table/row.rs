@@ -38,18 +38,14 @@ mod tests {
 
     #[test]
     fn test_row_new() {
-        let row = TableRow::new(vec![
-            TableCell::new("A"),
-            TableCell::new("B"),
-        ]);
+        let row = TableRow::new(vec![TableCell::new("A"), TableCell::new("B")]);
         assert_eq!(row.cell_count(), 2);
         assert!(row.height.is_none());
     }
 
     #[test]
     fn test_row_with_height() {
-        let row = TableRow::new(vec![TableCell::new("A")])
-            .with_height(500000);
+        let row = TableRow::new(vec![TableCell::new("A")]).with_height(500000);
         assert_eq!(row.height, Some(500000));
     }
 }

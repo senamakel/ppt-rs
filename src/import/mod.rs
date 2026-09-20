@@ -1,29 +1,29 @@
 pub mod html;
 
 use crate::api::Presentation;
-use crate::oxml::presentation::PresentationReader;
-use crate::generator::{SlideContent, Shape, ShapeType, TableBuilder, TableRow, TableCell};
 use crate::exc::Result;
+use crate::generator::{Shape, ShapeType, SlideContent, TableBuilder, TableCell, TableRow};
+use crate::oxml::presentation::PresentationReader;
 
-pub use html::{parse_html, parse_html_with_options, HtmlParseOptions, Html2Ppt};
+pub use html::{Html2Ppt, HtmlParseOptions, parse_html, parse_html_with_options};
 
 /// Import a presentation from a file path
 pub fn import_pptx(path: &str) -> Result<Presentation> {
     let reader = PresentationReader::open(path)?;
     let mut presentation = Presentation::new();
-    
+
     if let Some(title) = &reader.info().title {
         presentation = presentation.title(title);
     }
-    
+
     for parsed_slide in reader.get_all_slides()? {
         let mut content = SlideContent::new(parsed_slide.title.as_deref().unwrap_or(""));
-        
+
         // Add body text as bullets
         for text in parsed_slide.body_text {
             content = content.add_bullet(&text);
         }
-        
+
         // Add shapes (skip title and body)
         for parsed_shape in parsed_slide.shapes {
             if !parsed_shape.is_title && !parsed_shape.is_body {
@@ -32,47 +32,50 @@ pub fn import_pptx(path: &str) -> Result<Presentation> {
                     parsed_shape.x.max(0) as u32,
                     parsed_shape.y.max(0) as u32,
                     parsed_shape.width.max(0) as u32,
-                    parsed_shape.height.max(0) as u32
+                    parsed_shape.height.max(0) as u32,
                 );
-                
+
                 // Set text
                 let text = parsed_shape.text();
                 if !text.is_empty() {
                     shape = shape.with_text(&text);
                 }
-                
+
                 content.shapes.push(shape);
             }
         }
-        
+
         // Add tables
         for parsed_table in parsed_slide.tables {
-             // Determine column count from first row
-             let col_count = parsed_table.rows.first().map(|r| r.len()).unwrap_or(0);
-             if col_count == 0 { continue; }
-             
-             // Default column width (approx 2 inches)
-             let col_widths = vec![1828800; col_count];
-             
-             let mut table_builder = TableBuilder::new(col_widths);
-             for row in parsed_table.rows {
-                 let cells: Vec<TableCell> = row.into_iter()
-                     .map(|cell| TableCell::new(&cell.text))
-                     .collect();
-                 let table_row = TableRow::new(cells);
-                 table_builder = table_builder.add_row(table_row);
-             }
-             
-             // SlideContent currently supports only one table via 'table' field
-             if content.table.is_none() {
-                 content.table = Some(table_builder.build());
-                 content.has_table = true;
-             }
+            // Determine column count from first row
+            let col_count = parsed_table.rows.first().map(|r| r.len()).unwrap_or(0);
+            if col_count == 0 {
+                continue;
+            }
+
+            // Default column width (approx 2 inches)
+            let col_widths = vec![1828800; col_count];
+
+            let mut table_builder = TableBuilder::new(col_widths);
+            for row in parsed_table.rows {
+                let cells: Vec<TableCell> = row
+                    .into_iter()
+                    .map(|cell| TableCell::new(&cell.text))
+                    .collect();
+                let table_row = TableRow::new(cells);
+                table_builder = table_builder.add_row(table_row);
+            }
+
+            // SlideContent currently supports only one table via 'table' field
+            if content.table.is_none() {
+                content.table = Some(table_builder.build());
+                content.has_table = true;
+            }
         }
-        
+
         presentation = presentation.add_slide(content);
     }
-    
+
     Ok(presentation)
 }
 

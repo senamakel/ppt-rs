@@ -8,7 +8,10 @@
 //! Note: Full integration testing requires manual verification in the target applications.
 //! These tests focus on structural validation and schema compliance.
 
-use ppt_rs::generator::{SlideContent, create_pptx_with_content, create_pptx_to_writer, create_pptx_lazy_to_writer, LazySlideSource};
+use ppt_rs::generator::{
+    LazySlideSource, SlideContent, create_pptx_lazy_to_writer, create_pptx_to_writer,
+    create_pptx_with_content,
+};
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -32,19 +35,15 @@ impl PptxValidator {
 
     /// Validate the ZIP structure
     pub fn validate_zip_structure(&self) -> Result<Vec<String>, String> {
-        let file = File::open(&self.path)
-            .map_err(|e| format!("Cannot open file: {}", e))?;
-        let mut archive = ZipArchive::new(file)
-            .map_err(|e| format!("Not a valid ZIP file: {}", e))?;
+        let file = File::open(&self.path).map_err(|e| format!("Cannot open file: {}", e))?;
+        let mut archive =
+            ZipArchive::new(file).map_err(|e| format!("Not a valid ZIP file: {}", e))?;
 
         let mut issues = Vec::new();
         let mut found_files = Vec::new();
 
         // Required root files
-        let required_root = [
-            "[Content_Types].xml",
-            "_rels/.rels",
-        ];
+        let required_root = ["[Content_Types].xml", "_rels/.rels"];
 
         // Required ppt files
         let required_ppt = [
@@ -62,7 +61,8 @@ impl PptxValidator {
 
         // Collect all files
         for i in 0..archive.len() {
-            let file = archive.by_index(i)
+            let file = archive
+                .by_index(i)
                 .map_err(|e| format!("Cannot read file index {}: {}", i, e))?;
             if !file.is_dir() {
                 found_files.push(file.name().to_string());
@@ -77,7 +77,9 @@ impl PptxValidator {
         }
 
         // Check for at least one slide
-        let has_slides = found_files.iter().any(|f| f.starts_with("ppt/slides/slide"));
+        let has_slides = found_files
+            .iter()
+            .any(|f| f.starts_with("ppt/slides/slide"));
         if !has_slides {
             issues.push("No slide files found".to_string());
         }
@@ -91,16 +93,17 @@ impl PptxValidator {
 
     /// Validate Content_Types.xml structure
     pub fn validate_content_types(&self) -> Result<(), String> {
-        let file = File::open(&self.path)
-            .map_err(|e| format!("Cannot open file: {}", e))?;
-        let mut archive = ZipArchive::new(file)
-            .map_err(|e| format!("Not a valid ZIP file: {}", e))?;
+        let file = File::open(&self.path).map_err(|e| format!("Cannot open file: {}", e))?;
+        let mut archive =
+            ZipArchive::new(file).map_err(|e| format!("Not a valid ZIP file: {}", e))?;
 
-        let mut content_types = archive.by_name("[Content_Types].xml")
+        let mut content_types = archive
+            .by_name("[Content_Types].xml")
             .map_err(|_| "Content_Types.xml not found".to_string())?;
 
         let mut content = String::new();
-        content_types.read_to_string(&mut content)
+        content_types
+            .read_to_string(&mut content)
             .map_err(|e| format!("Cannot read Content_Types.xml: {}", e))?;
 
         // Basic XML validation
@@ -126,16 +129,17 @@ impl PptxValidator {
 
     /// Validate presentation XML structure
     pub fn validate_presentation(&self) -> Result<(), String> {
-        let file = File::open(&self.path)
-            .map_err(|e| format!("Cannot open file: {}", e))?;
-        let mut archive = ZipArchive::new(file)
-            .map_err(|e| format!("Not a valid ZIP file: {}", e))?;
+        let file = File::open(&self.path).map_err(|e| format!("Cannot open file: {}", e))?;
+        let mut archive =
+            ZipArchive::new(file).map_err(|e| format!("Not a valid ZIP file: {}", e))?;
 
-        let mut presentation = archive.by_name("ppt/presentation.xml")
+        let mut presentation = archive
+            .by_name("ppt/presentation.xml")
             .map_err(|_| "presentation.xml not found".to_string())?;
 
         let mut content = String::new();
-        presentation.read_to_string(&mut content)
+        presentation
+            .read_to_string(&mut content)
             .map_err(|e| format!("Cannot read presentation.xml: {}", e))?;
 
         // Check for required namespaces
@@ -160,14 +164,14 @@ impl PptxValidator {
 
     /// Get all slide file names
     pub fn get_slide_files(&self) -> Result<Vec<String>, String> {
-        let file = File::open(&self.path)
-            .map_err(|e| format!("Cannot open file: {}", e))?;
-        let mut archive = ZipArchive::new(file)
-            .map_err(|e| format!("Not a valid ZIP file: {}", e))?;
+        let file = File::open(&self.path).map_err(|e| format!("Cannot open file: {}", e))?;
+        let mut archive =
+            ZipArchive::new(file).map_err(|e| format!("Not a valid ZIP file: {}", e))?;
 
         let mut slides = Vec::new();
         for i in 0..archive.len() {
-            let file = archive.by_index(i)
+            let file = archive
+                .by_index(i)
                 .map_err(|e| format!("Cannot read file index {}: {}", i, e))?;
             let name = file.name().to_string();
             if name.starts_with("ppt/slides/slide") && name.ends_with(".xml") {
@@ -181,16 +185,17 @@ impl PptxValidator {
 
     /// Validate slide XML structure
     pub fn validate_slide(&self, slide_path: &str) -> Result<(), String> {
-        let file = File::open(&self.path)
-            .map_err(|e| format!("Cannot open file: {}", e))?;
-        let mut archive = ZipArchive::new(file)
-            .map_err(|e| format!("Not a valid ZIP file: {}", e))?;
+        let file = File::open(&self.path).map_err(|e| format!("Cannot open file: {}", e))?;
+        let mut archive =
+            ZipArchive::new(file).map_err(|e| format!("Not a valid ZIP file: {}", e))?;
 
-        let mut slide = archive.by_name(slide_path)
+        let mut slide = archive
+            .by_name(slide_path)
             .map_err(|_| format!("Slide not found: {}", slide_path))?;
 
         let mut content = String::new();
-        slide.read_to_string(&mut content)
+        slide
+            .read_to_string(&mut content)
             .map_err(|e| format!("Cannot read {}: {}", slide_path, e))?;
 
         // Check for required namespaces
@@ -259,8 +264,7 @@ impl CompatibilityTestSuite {
             .map_err(|e| format!("Failed to create presentation: {}", e))?;
 
         let path = self.output_dir.join("01_basic.pptx");
-        let mut file = File::create(&path)
-            .map_err(|e| format!("Cannot create file: {}", e))?;
+        let mut file = File::create(&path).map_err(|e| format!("Cannot create file: {}", e))?;
         file.write_all(&data)
             .map_err(|e| format!("Cannot write file: {}", e))?;
         file.flush()
@@ -271,7 +275,7 @@ impl CompatibilityTestSuite {
 
     /// Generate a presentation with various shapes
     pub fn generate_shapes_presentation(&self) -> Result<PathBuf, String> {
-        use ppt_rs::generator::{Shape, ShapeType, ShapeFill, ShapeLine};
+        use ppt_rs::generator::{Shape, ShapeFill, ShapeLine, ShapeType};
 
         let mut slides = vec![
             SlideContent::new("Shapes Demo")
@@ -296,8 +300,7 @@ impl CompatibilityTestSuite {
             .map_err(|e| format!("Failed to create presentation: {}", e))?;
 
         let path = self.output_dir.join("02_shapes.pptx");
-        let mut file = File::create(&path)
-            .map_err(|e| format!("Cannot create file: {}", e))?;
+        let mut file = File::create(&path).map_err(|e| format!("Cannot create file: {}", e))?;
         file.write_all(&data)
             .map_err(|e| format!("Cannot write file: {}", e))?;
 
@@ -306,7 +309,7 @@ impl CompatibilityTestSuite {
 
     /// Generate a presentation with charts
     pub fn generate_chart_presentation(&self) -> Result<PathBuf, String> {
-        use ppt_rs::generator::{ChartType, ChartSeries, ChartBuilder};
+        use ppt_rs::generator::{ChartBuilder, ChartSeries, ChartType};
 
         let mut slides = vec![
             SlideContent::new("Chart Demo")
@@ -331,8 +334,7 @@ impl CompatibilityTestSuite {
             .map_err(|e| format!("Failed to create presentation: {}", e))?;
 
         let path = self.output_dir.join("03_charts.pptx");
-        let mut file = File::create(&path)
-            .map_err(|e| format!("Cannot create file: {}", e))?;
+        let mut file = File::create(&path).map_err(|e| format!("Cannot create file: {}", e))?;
         file.write_all(&data)
             .map_err(|e| format!("Cannot write file: {}", e))?;
 
@@ -352,8 +354,7 @@ impl CompatibilityTestSuite {
             .map_err(|e| format!("Failed to create presentation: {}", e))?;
 
         let path = self.output_dir.join("04_images.pptx");
-        let mut file = File::create(&path)
-            .map_err(|e| format!("Cannot create file: {}", e))?;
+        let mut file = File::create(&path).map_err(|e| format!("Cannot create file: {}", e))?;
         file.write_all(&data)
             .map_err(|e| format!("Cannot write file: {}", e))?;
 
@@ -363,19 +364,25 @@ impl CompatibilityTestSuite {
     /// Generate a large presentation (for performance testing)
     pub fn generate_large_presentation(&self, slide_count: usize) -> Result<PathBuf, String> {
         let slides = (0..slide_count)
-            .map(|i| SlideContent::new(&format!("Slide {}", i + 1))
-                .add_bullet(&format!("Point {}", i + 1))
-                .add_bullet(&format!("Point {}", i + 2))
-                .add_bullet(&format!("Point {}", i + 3))
-                .add_sub_bullet(&format!("Sub-point {}", i + 1)))
+            .map(|i| {
+                SlideContent::new(&format!("Slide {}", i + 1))
+                    .add_bullet(&format!("Point {}", i + 1))
+                    .add_bullet(&format!("Point {}", i + 2))
+                    .add_bullet(&format!("Point {}", i + 3))
+                    .add_sub_bullet(&format!("Sub-point {}", i + 1))
+            })
             .collect();
 
-        let data = create_pptx_with_content(&format!("Large Presentation ({} slides)", slide_count), slides)
-            .map_err(|e| format!("Failed to create presentation: {}", e))?;
+        let data = create_pptx_with_content(
+            &format!("Large Presentation ({} slides)", slide_count),
+            slides,
+        )
+        .map_err(|e| format!("Failed to create presentation: {}", e))?;
 
-        let path = self.output_dir.join(format!("05_large_{}slides.pptx", slide_count));
-        let mut file = File::create(&path)
-            .map_err(|e| format!("Cannot create file: {}", e))?;
+        let path = self
+            .output_dir
+            .join(format!("05_large_{}slides.pptx", slide_count));
+        let mut file = File::create(&path).map_err(|e| format!("Cannot create file: {}", e))?;
         file.write_all(&data)
             .map_err(|e| format!("Cannot write file: {}", e))?;
 
@@ -385,8 +392,7 @@ impl CompatibilityTestSuite {
     /// Generate a presentation using streaming API
     pub fn generate_streaming_presentation(&self) -> Result<PathBuf, String> {
         let path = self.output_dir.join("06_streaming.pptx");
-        let file = File::create(&path)
-            .map_err(|e| format!("Cannot create file: {}", e))?;
+        let file = File::create(&path).map_err(|e| format!("Cannot create file: {}", e))?;
 
         create_pptx_to_writer(file, "Streaming API Test", 10)
             .map_err(|e| format!("Failed to create presentation: {}", e))?;
@@ -396,14 +402,20 @@ impl CompatibilityTestSuite {
 
     /// Generate a presentation using lazy slide generation
     pub fn generate_lazy_presentation(&self) -> Result<PathBuf, String> {
-        struct LazyTestSource { count: usize }
+        struct LazyTestSource {
+            count: usize,
+        }
         impl LazySlideSource for LazyTestSource {
-            fn slide_count(&self) -> usize { self.count }
+            fn slide_count(&self) -> usize {
+                self.count
+            }
             fn generate_slide(&self, index: usize) -> Option<SlideContent> {
                 if index < self.count {
-                    Some(SlideContent::new(&format!("Lazy Slide {}", index + 1))
-                        .add_bullet(&format!("Content {}", index + 1))
-                        .add_bullet(&format!("More content {}", index + 2)))
+                    Some(
+                        SlideContent::new(&format!("Lazy Slide {}", index + 1))
+                            .add_bullet(&format!("Content {}", index + 1))
+                            .add_bullet(&format!("More content {}", index + 2)),
+                    )
                 } else {
                     None
                 }
@@ -411,11 +423,15 @@ impl CompatibilityTestSuite {
         }
 
         let path = self.output_dir.join("07_lazy.pptx");
-        let file = File::create(&path)
-            .map_err(|e| format!("Cannot create file: {}", e))?;
+        let file = File::create(&path).map_err(|e| format!("Cannot create file: {}", e))?;
 
-        create_pptx_lazy_to_writer(file, "Lazy Loading Test", Box::new(LazyTestSource { count: 20 }), None)
-            .map_err(|e| format!("Failed to create presentation: {}", e))?;
+        create_pptx_lazy_to_writer(
+            file,
+            "Lazy Loading Test",
+            Box::new(LazyTestSource { count: 20 }),
+            None,
+        )
+        .map_err(|e| format!("Failed to create presentation: {}", e))?;
 
         Ok(path)
     }
@@ -447,7 +463,11 @@ impl CompatibilityTestSuite {
         results.push(self.generate_lazy_presentation()?);
         println!("✓ Lazy loading presentation (20 slides)");
 
-        println!("\nGenerated {} test files in: {}", results.len(), self.output_dir.display());
+        println!(
+            "\nGenerated {} test files in: {}",
+            results.len(),
+            self.output_dir.display()
+        );
         println!("\nTo verify compatibility:");
         println!("1. Microsoft PowerPoint 2007+ - Open each .pptx file and verify rendering");
         println!("2. LibreOffice Impress - Open each file and check for compatibility issues");
@@ -486,8 +506,11 @@ mod tests {
         let path = suite.generate_streaming_presentation().unwrap();
 
         let validator = PptxValidator::new(&path);
-        assert!(validator.validate_content_types().is_ok(),
-            "Content types validation failed for: {:?}", path);
+        assert!(
+            validator.validate_content_types().is_ok(),
+            "Content types validation failed for: {:?}",
+            path
+        );
     }
 
     #[test]
@@ -496,8 +519,11 @@ mod tests {
         let path = suite.generate_chart_presentation().unwrap();
 
         let validator = PptxValidator::new(&path);
-        assert!(validator.validate_presentation().is_ok(),
-            "Presentation validation failed for: {:?}", path);
+        assert!(
+            validator.validate_presentation().is_ok(),
+            "Presentation validation failed for: {:?}",
+            path
+        );
     }
 
     #[test]
@@ -527,8 +553,11 @@ mod tests {
 
         assert_eq!(slides.len(), 1);
         for slide_path in slides {
-            assert!(validator.validate_slide(&slide_path).is_ok(),
-                "Failed to validate: {}", slide_path);
+            assert!(
+                validator.validate_slide(&slide_path).is_ok(),
+                "Failed to validate: {}",
+                slide_path
+            );
         }
     }
 
@@ -542,12 +571,21 @@ mod tests {
         // Validate each generated file
         for path in &paths {
             let validator = PptxValidator::new(path);
-            assert!(validator.validate_zip_structure().is_ok(),
-                "ZIP structure validation failed for: {:?}", path);
-            assert!(validator.validate_content_types().is_ok(),
-                "Content Types validation failed for: {:?}", path);
-            assert!(validator.validate_presentation().is_ok(),
-                "Presentation validation failed for: {:?}", path);
+            assert!(
+                validator.validate_zip_structure().is_ok(),
+                "ZIP structure validation failed for: {:?}",
+                path
+            );
+            assert!(
+                validator.validate_content_types().is_ok(),
+                "Content Types validation failed for: {:?}",
+                path
+            );
+            assert!(
+                validator.validate_presentation().is_ok(),
+                "Presentation validation failed for: {:?}",
+                path
+            );
         }
     }
 }

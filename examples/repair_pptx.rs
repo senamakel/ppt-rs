@@ -14,14 +14,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("==================\n");
 
     // First, create a sample PPTX file to repair
-    use ppt_rs::generator::{create_pptx_with_content, SlideContent};
+    use ppt_rs::generator::{SlideContent, create_pptx_with_content};
 
     let slides = vec![
         SlideContent::new("Sample Presentation")
             .add_bullet("This is a sample slide")
             .add_bullet("Created for repair demonstration"),
-        SlideContent::new("Second Slide")
-            .add_bullet("More content here"),
+        SlideContent::new("Second Slide").add_bullet("More content here"),
     ];
 
     let pptx_data = create_pptx_with_content("Sample", slides)?;
@@ -35,18 +34,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Validate and find issues
     println!("--- Validation ---");
     let issues = repair.validate();
-    
+
     if issues.is_empty() {
         println!("No issues found! File is valid.\n");
     } else {
         println!("Found {} issue(s):\n", issues.len());
         for (i, issue) in issues.iter().enumerate() {
-            println!("  {}. [Severity {}] {}", 
-                i + 1, 
+            println!(
+                "  {}. [Severity {}] {}",
+                i + 1,
                 issue.severity(),
                 issue.description()
             );
-            println!("     Repairable: {}", if issue.is_repairable() { "Yes" } else { "No" });
+            println!(
+                "     Repairable: {}",
+                if issue.is_repairable() { "Yes" } else { "No" }
+            );
         }
         println!();
     }
@@ -54,7 +57,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Perform repair
     println!("--- Repair ---");
     let result = repair.repair();
-    
+
     println!("Issues found: {}", result.total_issues());
     println!("Critical issues: {}", result.critical_issues());
     println!("Issues repaired: {}", result.issues_repaired.len());
@@ -70,7 +73,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("--- Verification ---");
     let mut verify = PptxRepair::open("repaired.pptx")?;
     let verify_issues = verify.validate();
-    
+
     if verify_issues.is_empty() {
         println!("Repaired file is valid!");
     } else {
@@ -113,7 +116,8 @@ fn demonstrate_issue_types() {
     ];
 
     for issue in issue_examples {
-        println!("  - {} (Severity: {}, Repairable: {})",
+        println!(
+            "  - {} (Severity: {}, Repairable: {})",
             match &issue {
                 RepairIssue::MissingPart { .. } => "MissingPart",
                 RepairIssue::InvalidXml { .. } => "InvalidXml",

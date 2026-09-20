@@ -3,10 +3,12 @@
 //! Aggregates slide show settings, print settings, embedded fonts,
 //! and digital signatures into a single struct passed to the builder.
 
-use super::slide_show_settings::SlideShowSettings;
-use super::print_settings::PrintSettings;
-use super::embedded_fonts::EmbeddedFontList;
+use super::comments::CommentAuthorList;
 use super::digital_signature::DigitalSignature;
+use super::embedded_fonts::EmbeddedFontList;
+use super::print_settings::PrintSettings;
+use super::sections::SectionManager;
+use super::slide_show_settings::SlideShowSettings;
 use crate::generator::PresentationTheme;
 
 /// Presentation-level settings for the PPTX package
@@ -22,6 +24,12 @@ pub struct PresentationSettings {
     pub embedded_fonts: Option<EmbeddedFontList>,
     /// Digital signature (generates `_xmlsignatures/` parts in package)
     pub digital_signature: Option<DigitalSignature>,
+    /// Comment authors (generates `ppt/commentAuthors.xml`; slide comments
+    /// reference these authors by id)
+    pub comment_authors: CommentAuthorList,
+    /// Slide sections (emitted as `<p14:sectionLst>` in `presentation.xml`
+    /// and available to section-aware export)
+    pub sections: SectionManager,
     /// Optional `.pptx` template path — clones masters/theme/layouts from an existing deck.
     pub template_path: Option<String>,
 }
@@ -68,6 +76,8 @@ impl PresentationSettings {
             || self.print.is_some()
             || self.embedded_fonts.is_some()
             || self.digital_signature.is_some()
+            || !self.comment_authors.is_empty()
+            || !self.sections.is_empty()
             || self.template_path.is_some()
     }
 }
@@ -91,25 +101,38 @@ mod tests {
 
     #[test]
     fn test_with_slide_show() {
-        let settings = PresentationSettings::new()
-            .slide_show(SlideShowSettings::new());
+        let settings = PresentationSettings::new().slide_show(SlideShowSettings::new());
         assert!(settings.has_settings());
         assert!(settings.slide_show.is_some());
     }
 
     #[test]
     fn test_with_print() {
-        let settings = PresentationSettings::new()
-            .print(PrintSettings::new());
+        let settings = PresentationSettings::new().print(PrintSettings::new());
         assert!(settings.has_settings());
         assert!(settings.print.is_some());
     }
 
     #[test]
     fn test_with_embedded_fonts() {
-        let settings = PresentationSettings::new()
-            .embedded_fonts(EmbeddedFontList::new());
+        let settings = PresentationSettings::new().embedded_fonts(EmbeddedFontList::new());
         assert!(settings.has_settings());
         assert!(settings.embedded_fonts.is_some());
+    }
+
+    #[test]
+    fn test_comment_authors_enable_settings() {
+        let mut settings = PresentationSettings::new();
+        assert!(!settings.has_settings());
+        settings.comment_authors.get_or_add("Alice", "A");
+        assert!(settings.has_settings());
+    }
+
+    #[test]
+    fn test_sections_enable_settings() {
+        let mut settings = PresentationSettings::new();
+        assert!(!settings.has_settings());
+        settings.sections.add_section("Intro", 0, 1).unwrap();
+        assert!(settings.has_settings());
     }
 }

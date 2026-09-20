@@ -55,7 +55,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     fs::write(output_file, presentation)?;
 
     println!("✓ Report generated: {}", output_file);
-    println!("  Title: {} {} Business Report", report.quarter, report.year);
+    println!(
+        "  Title: {} {} Business Report",
+        report.quarter, report.year
+    );
     println!("  Generated: {}", current_timestamp());
     println!("  Size: {} bytes", fs::metadata(output_file)?.len());
 

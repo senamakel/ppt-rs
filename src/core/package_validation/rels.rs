@@ -53,10 +53,7 @@ mod tests {
 
     #[test]
     fn presentation_rels_resolve_under_ppt() {
-        assert_eq!(
-            rels_source_dir("ppt/_rels/presentation.xml.rels"),
-            "ppt"
-        );
+        assert_eq!(rels_source_dir("ppt/_rels/presentation.xml.rels"), "ppt");
         assert_eq!(
             resolve_rel_target("ppt", "slides/slide1.xml"),
             "ppt/slides/slide1.xml"

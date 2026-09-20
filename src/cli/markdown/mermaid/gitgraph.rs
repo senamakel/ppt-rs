@@ -1,6 +1,6 @@
 //! Git graph diagram rendering
 
-use super::types::{create_labeled_dot, LabelPosition};
+use super::types::{LabelPosition, create_labeled_dot};
 use crate::generator::{Shape, ShapeFill, ShapeLine, ShapeType};
 
 /// Generate shapes for a git graph

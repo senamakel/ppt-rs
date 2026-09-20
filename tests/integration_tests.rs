@@ -6,14 +6,11 @@
 //! - File structure validation
 //! - Alignment with standards
 
-use ppt_rs::generator::{
-    SlideContent, create_pptx_with_content, create_pptx,
-};
 use ppt_rs::generator::constants::{
-    SLIDE_WIDTH, SLIDE_HEIGHT, TITLE_X, TITLE_Y, TITLE_WIDTH, TITLE_HEIGHT,
-    CONTENT_X, CONTENT_Y_START, CONTENT_WIDTH,
-    TITLE_FONT_SIZE, CONTENT_FONT_SIZE,
+    CONTENT_FONT_SIZE, CONTENT_WIDTH, CONTENT_X, CONTENT_Y_START, SLIDE_HEIGHT, SLIDE_WIDTH,
+    TITLE_FONT_SIZE, TITLE_HEIGHT, TITLE_WIDTH, TITLE_X, TITLE_Y,
 };
+use ppt_rs::generator::{SlideContent, create_pptx, create_pptx_with_content};
 use std::fs;
 use std::io::{Cursor, Read};
 use zip::ZipArchive;
@@ -24,25 +21,25 @@ use zip::ZipArchive;
 
 #[test]
 fn test_generated_pptx_passes_validation() {
-    let slides = vec![
-        SlideContent::new("Test Slide")
-            .add_bullet("Content"),
-    ];
+    let slides = vec![SlideContent::new("Test Slide").add_bullet("Content")];
 
     let result = create_pptx_with_content("Test Presentation", slides);
     assert!(result.is_ok());
 
     let pptx_data = result.unwrap();
-    
+
     // Write to temporary file
     let test_file = "target/test_validation.pptx";
     fs::create_dir_all("target").ok();
     fs::write(test_file, &pptx_data).expect("Failed to write test file");
-    
+
     // Validate using the validation logic (simulating validate command)
     let validation_result = validate_pptx_structure(&pptx_data);
-    assert!(validation_result.is_ok(), "Generated PPTX should pass validation");
-    
+    assert!(
+        validation_result.is_ok(),
+        "Generated PPTX should pass validation"
+    );
+
     // Cleanup
     let _ = fs::remove_file(test_file);
 }
@@ -56,24 +53,21 @@ fn test_validation_detects_invalid_zip() {
 
 #[test]
 fn test_validation_checks_required_files() {
-    let slides = vec![
-        SlideContent::new("Test")
-            .add_bullet("Content"),
-    ];
+    let slides = vec![SlideContent::new("Test").add_bullet("Content")];
 
     let pptx_data = create_pptx_with_content("Test", slides).unwrap();
-    
+
     // Verify required files exist
     let cursor = Cursor::new(&pptx_data);
     let mut archive = ZipArchive::new(cursor).unwrap();
-    
+
     let required_files = vec![
         "[Content_Types].xml",
         "_rels/.rels",
         "ppt/presentation.xml",
         "docProps/core.xml",
     ];
-    
+
     for file in required_files {
         assert!(
             archive.by_name(file).is_ok(),
@@ -89,26 +83,23 @@ fn test_validation_checks_required_files() {
 
 #[test]
 fn test_constants_are_used_in_generated_xml() {
-    let slides = vec![
-        SlideContent::new("Test Title")
-            .add_bullet("Test Content"),
-    ];
+    let slides = vec![SlideContent::new("Test Title").add_bullet("Test Content")];
 
     let pptx_data = create_pptx_with_content("Test", slides).unwrap();
-    
+
     // Check that slide dimensions match constants
     let cursor = Cursor::new(&pptx_data);
     let mut archive = ZipArchive::new(cursor).unwrap();
-    
+
     // Read presentation.xml to check dimensions
     if let Ok(mut file) = archive.by_name("ppt/presentation.xml") {
         let mut content = String::new();
         file.read_to_string(&mut content).ok();
-        
+
         // Check for slide dimensions in XML
         assert!(
-            content.contains(&format!("cx=\"{}\"", SLIDE_WIDTH)) ||
-            content.contains(&SLIDE_WIDTH.to_string()),
+            content.contains(&format!("cx=\"{}\"", SLIDE_WIDTH))
+                || content.contains(&SLIDE_WIDTH.to_string()),
             "Slide width constant should be used"
         );
     }
@@ -118,29 +109,65 @@ fn test_constants_are_used_in_generated_xml() {
 fn test_constants_have_valid_emu_values() {
     // Verify EMU conversions are correct
     // 1 inch = 914400 EMU
-    assert_eq!(SLIDE_WIDTH, 9144000, "SLIDE_WIDTH should be 10 inches (9144000 EMU)");
-    assert_eq!(SLIDE_HEIGHT, 6858000, "SLIDE_HEIGHT should be 7.5 inches (6858000 EMU)");
-    
+    assert_eq!(
+        SLIDE_WIDTH, 9144000,
+        "SLIDE_WIDTH should be 10 inches (9144000 EMU)"
+    );
+    assert_eq!(
+        SLIDE_HEIGHT, 6858000,
+        "SLIDE_HEIGHT should be 7.5 inches (6858000 EMU)"
+    );
+
     // Title positioning
     assert_eq!(TITLE_X, 457200, "TITLE_X should be 0.5 inches (457200 EMU)");
     const { assert!(TITLE_Y > 0, "TITLE_Y should be positive") };
-    
+
     // Content positioning
     assert_eq!(CONTENT_X, TITLE_X, "CONTENT_X should match TITLE_X");
-    const { assert!(CONTENT_Y_START > TITLE_Y, "CONTENT_Y_START should be below TITLE_Y") };
-    
+    const {
+        assert!(
+            CONTENT_Y_START > TITLE_Y,
+            "CONTENT_Y_START should be below TITLE_Y"
+        )
+    };
+
     // Font sizes (in 100ths of points)
     const { assert!(TITLE_FONT_SIZE > 0, "TITLE_FONT_SIZE should be positive") };
-    const { assert!(CONTENT_FONT_SIZE > 0, "CONTENT_FONT_SIZE should be positive") };
-    const { assert!(TITLE_FONT_SIZE > CONTENT_FONT_SIZE, "Title font should be larger than content") };
+    const {
+        assert!(
+            CONTENT_FONT_SIZE > 0,
+            "CONTENT_FONT_SIZE should be positive"
+        )
+    };
+    const {
+        assert!(
+            TITLE_FONT_SIZE > CONTENT_FONT_SIZE,
+            "Title font should be larger than content"
+        )
+    };
 }
 
 #[test]
 fn test_constants_positioning_consistency() {
     // Verify positioning makes sense
-    const { assert!(TITLE_X + TITLE_WIDTH <= SLIDE_WIDTH, "Title should fit within slide width") };
-    const { assert!(CONTENT_X + CONTENT_WIDTH <= SLIDE_WIDTH, "Content should fit within slide width") };
-    const { assert!(TITLE_Y + TITLE_HEIGHT < CONTENT_Y_START, "Content should start below title") };
+    const {
+        assert!(
+            TITLE_X + TITLE_WIDTH <= SLIDE_WIDTH,
+            "Title should fit within slide width"
+        )
+    };
+    const {
+        assert!(
+            CONTENT_X + CONTENT_WIDTH <= SLIDE_WIDTH,
+            "Content should fit within slide width"
+        )
+    };
+    const {
+        assert!(
+            TITLE_Y + TITLE_HEIGHT < CONTENT_Y_START,
+            "Content should start below title"
+        )
+    };
 }
 
 // ============================================================================
@@ -163,39 +190,43 @@ fn test_alignment_test_example_generates_valid_pptx() {
             .add_bullet("Shape creation and positioning")
             .add_bullet("Multiple slides and layouts"),
     ];
-    
+
     let result = create_pptx_with_content("Alignment Test Presentation", slides);
     assert!(result.is_ok());
-    
+
     let pptx_data = result.unwrap();
-    
+
     // Verify it's a valid ZIP
     let cursor = Cursor::new(&pptx_data);
     let zip_result = ZipArchive::new(cursor);
-    assert!(zip_result.is_ok(), "Alignment test PPTX should be valid ZIP");
-    
+    assert!(
+        zip_result.is_ok(),
+        "Alignment test PPTX should be valid ZIP"
+    );
+
     // Verify structure
     let validation_result = validate_pptx_structure(&pptx_data);
-    assert!(validation_result.is_ok(), "Alignment test PPTX should pass validation");
+    assert!(
+        validation_result.is_ok(),
+        "Alignment test PPTX should pass validation"
+    );
 }
 
 #[test]
 fn test_generated_pptx_has_correct_metadata() {
-    let slides = vec![
-        SlideContent::new("Test Slide"),
-    ];
-    
+    let slides = vec![SlideContent::new("Test Slide")];
+
     let title = "Test Presentation";
     let pptx_data = create_pptx_with_content(title, slides).unwrap();
-    
+
     // Check metadata in core.xml
     let cursor = Cursor::new(&pptx_data);
     let mut archive = ZipArchive::new(cursor).unwrap();
-    
+
     if let Ok(mut file) = archive.by_name("docProps/core.xml") {
         let mut content = String::new();
         file.read_to_string(&mut content).ok();
-        
+
         // Should contain title
         assert!(
             content.contains(title) || content.contains("dc:title"),
@@ -213,16 +244,18 @@ fn test_create_and_validate_multiple_slides() {
     let slides = vec![
         SlideContent::new("Slide 1"),
         SlideContent::new("Slide 2").add_bullet("Content"),
-        SlideContent::new("Slide 3").add_bullet("Point 1").add_bullet("Point 2"),
+        SlideContent::new("Slide 3")
+            .add_bullet("Point 1")
+            .add_bullet("Point 2"),
     ];
-    
+
     let result = create_pptx_with_content("Multi-Slide Test", slides);
     assert!(result.is_ok());
-    
+
     let pptx_data = result.unwrap();
     let cursor = Cursor::new(&pptx_data);
     let mut archive = ZipArchive::new(cursor).unwrap();
-    
+
     // Verify all slides exist
     for i in 1..=3 {
         let slide_path = format!("ppt/slides/slide{}.xml", i);
@@ -238,16 +271,19 @@ fn test_create_and_validate_multiple_slides() {
 fn test_create_empty_presentation() {
     let result = create_pptx("Empty Presentation", 0);
     assert!(result.is_ok());
-    
+
     let pptx_data = result.unwrap();
     let validation_result = validate_pptx_structure(&pptx_data);
-    assert!(validation_result.is_ok(), "Empty presentation should be valid");
+    assert!(
+        validation_result.is_ok(),
+        "Empty presentation should be valid"
+    );
 }
 
 #[test]
 fn test_create_presentation_with_all_layouts() {
     use ppt_rs::generator::SlideLayout;
-    
+
     let layouts = vec![
         SlideLayout::TitleOnly,
         SlideLayout::CenteredTitle,
@@ -257,22 +293,25 @@ fn test_create_presentation_with_all_layouts() {
         SlideLayout::SectionHeader,
         SlideLayout::Blank,
     ];
-    
+
     let mut slides = Vec::new();
     for layout in layouts {
         slides.push(
             SlideContent::new("Test")
                 .add_bullet("Content")
-                .layout(layout)
+                .layout(layout),
         );
     }
-    
+
     let result = create_pptx_with_content("All Layouts", slides);
     assert!(result.is_ok());
-    
+
     let pptx_data = result.unwrap();
     let validation_result = validate_pptx_structure(&pptx_data);
-    assert!(validation_result.is_ok(), "All layouts should generate valid PPTX");
+    assert!(
+        validation_result.is_ok(),
+        "All layouts should generate valid PPTX"
+    );
 }
 
 // ============================================================================
@@ -281,12 +320,11 @@ fn test_create_presentation_with_all_layouts() {
 
 /// Validate PPTX structure (simulates validation command logic)
 fn validate_pptx_structure(data: &[u8]) -> Result<(), String> {
-    use ppt_rs::core::{check_required_parts, validate_well_formed_xml, REQUIRED_PARTS_MINIMAL};
+    use ppt_rs::core::{REQUIRED_PARTS_MINIMAL, check_required_parts, validate_well_formed_xml};
     use std::collections::HashSet;
 
     let cursor = Cursor::new(data);
-    let mut archive = ZipArchive::new(cursor)
-        .map_err(|e| format!("Invalid ZIP archive: {}", e))?;
+    let mut archive = ZipArchive::new(cursor).map_err(|e| format!("Invalid ZIP archive: {}", e))?;
 
     let mut found = HashSet::new();
     for i in 0..archive.len() {
@@ -296,7 +334,10 @@ fn validate_pptx_structure(data: &[u8]) -> Result<(), String> {
         found.insert(file.name().to_string());
     }
 
-    if let Some(issue) = check_required_parts(&found, REQUIRED_PARTS_MINIMAL).into_iter().next() {
+    if let Some(issue) = check_required_parts(&found, REQUIRED_PARTS_MINIMAL)
+        .into_iter()
+        .next()
+    {
         return Err(issue.message());
     }
 
@@ -311,11 +352,9 @@ fn validate_pptx_structure(data: &[u8]) -> Result<(), String> {
             file.read_to_string(&mut content)
                 .map_err(|e| format!("Failed to read XML file {}: {}", name, e))?;
 
-            validate_well_formed_xml(&content)
-                .map_err(|e| format!("{}: {}", name, e))?;
+            validate_well_formed_xml(&content).map_err(|e| format!("{}: {}", name, e))?;
         }
     }
 
     Ok(())
 }
-

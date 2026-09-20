@@ -18,8 +18,8 @@
 //!
 //! See docs/HTML_PARSERS.md for detailed comparison and migration guide.
 
-use super::{Web2PptError, Result, Web2PptConfig};
-use scraper::{Html, Selector, ElementRef};
+use super::{Result, Web2PptConfig, Web2PptError};
+use scraper::{ElementRef, Html, Selector};
 
 /// Type of content block
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -73,7 +73,10 @@ impl ContentBlock {
 
     /// Check if this is a heading
     pub fn is_heading(&self) -> bool {
-        matches!(self.content_type, ContentType::Title | ContentType::Heading(_))
+        matches!(
+            self.content_type,
+            ContentType::Title | ContentType::Heading(_)
+        )
     }
 
     /// Get heading level (1 for title, 2-6 for headings)
@@ -299,7 +302,10 @@ impl WebParser {
     fn walk_element(&self, element: &ElementRef, content: &mut WebContent, depth: u8) {
         // Skip script, style, nav, footer, aside, header elements
         let tag_name = element.value().name();
-        let skip_tags = ["script", "style", "noscript", "svg", "form", "button", "input", "select", "textarea", "iframe"];
+        let skip_tags = [
+            "script", "style", "noscript", "svg", "form", "button", "input", "select", "textarea",
+            "iframe",
+        ];
         if skip_tags.contains(&tag_name) {
             return;
         }
@@ -308,7 +314,12 @@ impl WebParser {
         if let Some(class) = element.value().attr("class") {
             let class_lower = class.to_lowercase();
             // Only skip if clearly navigation/ads
-            let skip_classes = ["advertisement", "ad-container", "social-share", "comment-section"];
+            let skip_classes = [
+                "advertisement",
+                "ad-container",
+                "social-share",
+                "comment-section",
+            ];
             if skip_classes.iter().any(|c| class_lower.contains(c)) {
                 return;
             }
@@ -318,33 +329,43 @@ impl WebParser {
             "h1" => {
                 let text = self.clean_text(element);
                 if !text.is_empty() && text.len() < 300 {
-                    content.blocks.push(ContentBlock::new(ContentType::Title, &text));
+                    content
+                        .blocks
+                        .push(ContentBlock::new(ContentType::Title, &text));
                 }
             }
             "h2" | "h3" | "h4" | "h5" | "h6" => {
                 let text = self.clean_text(element);
                 if !text.is_empty() && text.len() < 300 {
                     let level = tag_name.chars().last().unwrap().to_digit(10).unwrap() as u8;
-                    content.blocks.push(ContentBlock::new(ContentType::Heading(level), &text));
+                    content
+                        .blocks
+                        .push(ContentBlock::new(ContentType::Heading(level), &text));
                 }
             }
             "p" => {
                 let text = self.clean_text(element);
                 // Accept paragraphs with at least 10 chars
                 if text.len() >= 10 {
-                    content.blocks.push(ContentBlock::new(ContentType::Paragraph, &text));
+                    content
+                        .blocks
+                        .push(ContentBlock::new(ContentType::Paragraph, &text));
                 }
             }
             "li" => {
                 let text = self.clean_text(element);
                 if !text.is_empty() && text.len() < 500 {
-                    content.blocks.push(ContentBlock::new(ContentType::ListItem, &text).with_level(depth));
+                    content
+                        .blocks
+                        .push(ContentBlock::new(ContentType::ListItem, &text).with_level(depth));
                 }
             }
             "blockquote" => {
                 let text = self.clean_text(element);
                 if !text.is_empty() {
-                    content.blocks.push(ContentBlock::new(ContentType::Quote, &text));
+                    content
+                        .blocks
+                        .push(ContentBlock::new(ContentType::Quote, &text));
                 }
             }
             "pre" | "code" => {
@@ -352,7 +373,9 @@ impl WebParser {
                     let text = element.text().collect::<String>();
                     let text = text.trim();
                     if !text.is_empty() && text.len() <= 1000 {
-                        content.blocks.push(ContentBlock::new(ContentType::Code, text));
+                        content
+                            .blocks
+                            .push(ContentBlock::new(ContentType::Code, text));
                     }
                 }
                 return; // Don't recurse into code blocks
@@ -364,8 +387,11 @@ impl WebParser {
                         if !src.starts_with("data:") && !alt.is_empty() {
                             content.images.push((src.to_string(), alt.clone()));
                             content.blocks.push(ContentBlock::new(
-                                ContentType::Image { src: src.to_string(), alt },
-                                ""
+                                ContentType::Image {
+                                    src: src.to_string(),
+                                    alt,
+                                },
+                                "",
                             ));
                         }
                     }
@@ -393,7 +419,21 @@ impl WebParser {
         }
 
         // Always recurse into children (except for leaf elements we've already processed)
-        let no_recurse_tags = ["p", "li", "pre", "code", "img", "table", "blockquote", "h1", "h2", "h3", "h4", "h5", "h6"];
+        let no_recurse_tags = [
+            "p",
+            "li",
+            "pre",
+            "code",
+            "img",
+            "table",
+            "blockquote",
+            "h1",
+            "h2",
+            "h3",
+            "h4",
+            "h5",
+            "h6",
+        ];
         if !no_recurse_tags.contains(&tag_name) {
             for child in element.children() {
                 if let Some(child_elem) = ElementRef::wrap(child) {
@@ -433,10 +473,9 @@ impl WebParser {
         }
 
         if !rows.is_empty() && rows.len() <= 30 {
-            content.blocks.push(ContentBlock::new(
-                ContentType::Table(rows),
-                ""
-            ));
+            content
+                .blocks
+                .push(ContentBlock::new(ContentType::Table(rows), ""));
         }
     }
 }
@@ -486,10 +525,18 @@ mod tests {
     #[test]
     fn test_grouped_by_headings() {
         let mut content = WebContent::new("https://example.com");
-        content.blocks.push(ContentBlock::new(ContentType::Title, "Title"));
-        content.blocks.push(ContentBlock::new(ContentType::Paragraph, "Intro text"));
-        content.blocks.push(ContentBlock::new(ContentType::Heading(2), "Section 1"));
-        content.blocks.push(ContentBlock::new(ContentType::Paragraph, "Section 1 text"));
+        content
+            .blocks
+            .push(ContentBlock::new(ContentType::Title, "Title"));
+        content
+            .blocks
+            .push(ContentBlock::new(ContentType::Paragraph, "Intro text"));
+        content
+            .blocks
+            .push(ContentBlock::new(ContentType::Heading(2), "Section 1"));
+        content
+            .blocks
+            .push(ContentBlock::new(ContentType::Paragraph, "Section 1 text"));
 
         let groups = content.grouped_by_headings();
         assert_eq!(groups.len(), 2);

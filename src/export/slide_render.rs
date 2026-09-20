@@ -11,7 +11,7 @@
 
 use crate::api::Presentation;
 use crate::exc::{PptxError, Result};
-use crate::generator::slide_content::{BulletStyle, SlideLayout, SlideContent};
+use crate::generator::slide_content::{BulletStyle, SlideContent, SlideLayout};
 
 use pdfrs::pdf_generator::{PageLayout, PdfGenerator};
 
@@ -120,8 +120,12 @@ fn bullet_prefix(style: BulletStyle, index: u32) -> String {
     match style {
         BulletStyle::Bullet => "\u{2022}".to_string(),
         BulletStyle::Number => format!("{}.", index + 1),
-        BulletStyle::LetterLower => format!("{}.", char::from_u32(b'a' as u32 + index).unwrap_or('a')),
-        BulletStyle::LetterUpper => format!("{}.", char::from_u32(b'A' as u32 + index).unwrap_or('A')),
+        BulletStyle::LetterLower => {
+            format!("{}.", char::from_u32(b'a' as u32 + index).unwrap_or('a'))
+        }
+        BulletStyle::LetterUpper => {
+            format!("{}.", char::from_u32(b'A' as u32 + index).unwrap_or('A'))
+        }
         BulletStyle::RomanLower => to_roman(index + 1).to_lowercase(),
         BulletStyle::RomanUpper => to_roman(index + 1),
         BulletStyle::Custom(ch) => ch.to_string(),
@@ -130,7 +134,21 @@ fn bullet_prefix(style: BulletStyle, index: u32) -> String {
 }
 
 fn to_roman(mut num: u32) -> String {
-    let pairs = [(1000, "M"), (900, "CM"), (500, "D"), (400, "CD"), (100, "C"), (90, "XC"), (50, "L"), (40, "XL"), (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I")];
+    let pairs = [
+        (1000, "M"),
+        (900, "CM"),
+        (500, "D"),
+        (400, "CD"),
+        (100, "C"),
+        (90, "XC"),
+        (50, "L"),
+        (40, "XL"),
+        (10, "X"),
+        (9, "IX"),
+        (5, "V"),
+        (4, "IV"),
+        (1, "I"),
+    ];
     let mut result = String::new();
     for (val, sym) in pairs {
         while num >= val {
@@ -179,7 +197,9 @@ fn render_slide(
                 title_y,
                 font_name(title_bold, title_italic),
                 title_size,
-                tr, tg, tb,
+                tr,
+                tg,
+                tb,
             );
         }
         _ => {
@@ -190,13 +210,22 @@ fn render_slide(
                 title_y,
                 font_name(title_bold, title_italic),
                 title_size,
-                tr, tg, tb,
+                tr,
+                tg,
+                tb,
             );
             // Underline
             if slide.title_underline {
                 set_color(&mut cs, tr, tg, tb);
                 cs.extend_from_slice(
-                    format!("{:.1} {:.1} m\n{:.1} {:.1} l\n1 w\nS\n", margin, title_y - 4.0, page_w - margin, title_y - 4.0).as_bytes(),
+                    format!(
+                        "{:.1} {:.1} m\n{:.1} {:.1} l\n1 w\nS\n",
+                        margin,
+                        title_y - 4.0,
+                        page_w - margin,
+                        title_y - 4.0
+                    )
+                    .as_bytes(),
                 );
             }
         }
@@ -215,7 +244,10 @@ fn render_slide(
     let line_height = content_size * 1.5;
     let mut y = title_y - line_height * 1.5;
 
-    let is_centered = matches!(slide.layout, SlideLayout::CenteredTitle | SlideLayout::SectionHeader);
+    let is_centered = matches!(
+        slide.layout,
+        SlideLayout::CenteredTitle | SlideLayout::SectionHeader
+    );
 
     if !slide.bullets.is_empty() {
         let mut numbered = 0u32;
@@ -248,7 +280,9 @@ fn render_slide(
                     y,
                     font_name(b_bold, b_italic),
                     b_size,
-                    btr, btg, btb,
+                    btr,
+                    btg,
+                    btb,
                 );
             }
 
@@ -261,11 +295,20 @@ fn render_slide(
                 y,
                 font_name(b_bold, b_italic),
                 b_size,
-                btr, btg, btb,
+                btr,
+                btg,
+                btb,
             );
 
             y -= line_height;
-            if matches!(bp.style, BulletStyle::Number | BulletStyle::LetterLower | BulletStyle::LetterUpper | BulletStyle::RomanLower | BulletStyle::RomanUpper) {
+            if matches!(
+                bp.style,
+                BulletStyle::Number
+                    | BulletStyle::LetterLower
+                    | BulletStyle::LetterUpper
+                    | BulletStyle::RomanLower
+                    | BulletStyle::RomanUpper
+            ) {
                 numbered += 1;
             }
         }
@@ -277,9 +320,29 @@ fn render_slide(
             if is_centered {
                 let tw = approx_text_width(line, content_size);
                 let tx = (page_w - tw) / 2.0;
-                draw_text_line(&mut cs, line, tx, y, font_name(content_bold, content_italic), content_size, cr, cg, cb);
+                draw_text_line(
+                    &mut cs,
+                    line,
+                    tx,
+                    y,
+                    font_name(content_bold, content_italic),
+                    content_size,
+                    cr,
+                    cg,
+                    cb,
+                );
             } else {
-                draw_text_line(&mut cs, line, margin, y, font_name(content_bold, content_italic), content_size, cr, cg, cb);
+                draw_text_line(
+                    &mut cs,
+                    line,
+                    margin,
+                    y,
+                    font_name(content_bold, content_italic),
+                    content_size,
+                    cr,
+                    cg,
+                    cb,
+                );
             }
             y -= line_height;
         }
@@ -296,7 +359,13 @@ fn render_slide(
 
         // Background
         set_color(&mut cs, 0.95, 0.95, 0.95);
-        draw_rect(&mut cs, margin, y - code_bg_h, page_w - 2.0 * margin, code_bg_h);
+        draw_rect(
+            &mut cs,
+            margin,
+            y - code_bg_h,
+            page_w - 2.0 * margin,
+            code_bg_h,
+        );
 
         // Code text
         y -= code_line_h;
@@ -304,7 +373,17 @@ fn render_slide(
             if y < margin {
                 break;
             }
-            draw_text_line(&mut cs, line, margin + 8.0, y, "Courier", code_size, 0.1, 0.1, 0.1);
+            draw_text_line(
+                &mut cs,
+                line,
+                margin + 8.0,
+                y,
+                "Courier",
+                code_size,
+                0.1,
+                0.1,
+                0.1,
+            );
             y -= code_line_h;
         }
         y -= line_height * 0.5;
@@ -320,7 +399,9 @@ fn render_slide(
         margin / 2.0,
         FONT_HELVETICA,
         10.0,
-        0.5, 0.5, 0.5,
+        0.5,
+        0.5,
+        0.5,
     );
 
     cs
@@ -352,10 +433,14 @@ fn add_page(
         layout.width,
         layout.height,
         content_id,
-        FONT_HELVETICA, font_ids.helvetica,
-        FONT_HELVETICA_BOLD, font_ids.helvetica_bold,
-        FONT_HELVETICA_OBLIQUE, font_ids.helvetica_oblique,
-        FONT_HELVETICA_BOLD_OBLIQUE, font_ids.helvetica_bold_oblique,
+        FONT_HELVETICA,
+        font_ids.helvetica,
+        FONT_HELVETICA_BOLD,
+        font_ids.helvetica_bold,
+        FONT_HELVETICA_OBLIQUE,
+        font_ids.helvetica_oblique,
+        FONT_HELVETICA_BOLD_OBLIQUE,
+        font_ids.helvetica_bold_oblique,
     );
     generator.add_object(page_dict)
 }
@@ -445,12 +530,11 @@ mod tests {
 
     #[test]
     fn test_render_with_styled_bullets() {
-        let pres = Presentation::with_title("Styled")
-            .add_slide(
-                SlideContent::new("Styled Slide")
-                    .add_styled_bullet("Bold item", BulletStyle::Number)
-                    .add_styled_bullet("Another", BulletStyle::Bullet),
-            );
+        let pres = Presentation::with_title("Styled").add_slide(
+            SlideContent::new("Styled Slide")
+                .add_styled_bullet("Bold item", BulletStyle::Number)
+                .add_styled_bullet("Another", BulletStyle::Bullet),
+        );
 
         let bytes = render_to_pdf_bytes(&pres).unwrap();
         assert_eq!(&bytes[..5], b"%PDF-");
@@ -458,12 +542,11 @@ mod tests {
 
     #[test]
     fn test_render_centered_title_layout() {
-        let pres = Presentation::with_title("Centered")
-            .add_slide(
-                SlideContent::new("Centered Title")
-                    .with_layout(SlideLayout::CenteredTitle)
-                    .add_bullet("Subtitle text"),
-            );
+        let pres = Presentation::with_title("Centered").add_slide(
+            SlideContent::new("Centered Title")
+                .with_layout(SlideLayout::CenteredTitle)
+                .add_bullet("Subtitle text"),
+        );
 
         let bytes = render_to_pdf_bytes(&pres).unwrap();
         assert_eq!(&bytes[..5], b"%PDF-");
@@ -506,10 +589,8 @@ mod tests {
         let pres = Presentation::with_title("File Test")
             .add_slide(SlideContent::new("Slide 1").add_bullet("Content"));
 
-        let path = std::env::temp_dir().join(format!(
-            "ppt_rs_vector_pdf_{}.pdf",
-            uuid::Uuid::new_v4()
-        ));
+        let path =
+            std::env::temp_dir().join(format!("ppt_rs_vector_pdf_{}.pdf", uuid::Uuid::new_v4()));
         render_to_pdf(&pres, &path).unwrap();
         let read_back = std::fs::read(&path).unwrap();
         assert_eq!(&read_back[..5], b"%PDF-");

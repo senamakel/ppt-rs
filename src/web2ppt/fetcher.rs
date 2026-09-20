@@ -1,8 +1,8 @@
 //! Web page fetcher for Web2PPT
 
-use super::{Web2PptError, Result, Web2PptConfig};
+use super::{Result, Web2PptConfig, Web2PptError};
 use reqwest::blocking::Client;
-use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, ACCEPT_LANGUAGE, CACHE_CONTROL};
+use reqwest::header::{ACCEPT, ACCEPT_LANGUAGE, CACHE_CONTROL, HeaderMap, HeaderValue};
 use std::time::Duration;
 
 /// Fetches web pages
@@ -21,10 +21,15 @@ impl WebFetcher {
     pub fn with_config(config: Web2PptConfig) -> Result<Self> {
         // Build headers to look like a real browser
         let mut headers = HeaderMap::new();
-        headers.insert(ACCEPT, HeaderValue::from_static("text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"));
+        headers.insert(
+            ACCEPT,
+            HeaderValue::from_static(
+                "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            ),
+        );
         headers.insert(ACCEPT_LANGUAGE, HeaderValue::from_static("en-US,en;q=0.5"));
         headers.insert(CACHE_CONTROL, HeaderValue::from_static("no-cache"));
-        
+
         let client = Client::builder()
             .user_agent(&config.user_agent)
             .timeout(Duration::from_secs(config.timeout_secs))
@@ -41,12 +46,13 @@ impl WebFetcher {
         // Only allow http/https (reqwest validates the rest)
         if !url.starts_with("http://") && !url.starts_with("https://") {
             return Err(Web2PptError::InvalidUrl(
-                "Only HTTP and HTTPS URLs are supported".to_string()
+                "Only HTTP and HTTPS URLs are supported".to_string(),
             ));
         }
 
         // Fetch the page with referer header
-        let response = self.client
+        let response = self
+            .client
             .get(url)
             .header("Referer", url)
             .send()
@@ -54,13 +60,16 @@ impl WebFetcher {
 
         // Check status
         if !response.status().is_success() {
-            return Err(Web2PptError::FetchError(
-                format!("HTTP {}: {}", response.status().as_u16(), response.status().as_str())
-            ));
+            return Err(Web2PptError::FetchError(format!(
+                "HTTP {}: {}",
+                response.status().as_u16(),
+                response.status().as_str()
+            )));
         }
 
         // Get text content
-        response.text()
+        response
+            .text()
             .map_err(|e| Web2PptError::FetchError(e.to_string()))
     }
 

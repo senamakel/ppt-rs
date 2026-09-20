@@ -1,8 +1,8 @@
 //! Integration tests for PPTX compression functionality
 
 use ppt_rs::api::Presentation;
-use ppt_rs::opc::compress::{CompressionOptions, CompressionLevel, compress_pptx};
 use ppt_rs::generator::SlideContent;
+use ppt_rs::opc::compress::{CompressionLevel, CompressionOptions, compress_pptx};
 use std::fs;
 use std::path::Path;
 
@@ -11,8 +11,16 @@ fn test_compression_api() {
     // Create a presentation with some content
     let pres = Presentation::new()
         .title("Compression Test")
-        .add_slide(SlideContent::new("Slide 1").add_bullet("Point 1").add_bullet("Point 2"))
-        .add_slide(SlideContent::new("Slide 2").add_bullet("Point A").add_bullet("Point B"));
+        .add_slide(
+            SlideContent::new("Slide 1")
+                .add_bullet("Point 1")
+                .add_bullet("Point 2"),
+        )
+        .add_slide(
+            SlideContent::new("Slide 2")
+                .add_bullet("Point A")
+                .add_bullet("Point B"),
+        );
 
     let input_path = "test_compression_input.pptx";
     let output_path = "test_compression_output.pptx";
@@ -20,8 +28,7 @@ fn test_compression_api() {
     pres.save(input_path).unwrap();
 
     // Compress with default options
-    let options = CompressionOptions::new()
-        .with_level(CompressionLevel::Light);
+    let options = CompressionOptions::new().with_level(CompressionLevel::Light);
 
     let result = pres.compress(output_path, &options).unwrap();
 
@@ -132,8 +139,7 @@ fn test_compression_removes_unused_media() {
     pres.save(input_path).unwrap();
 
     // Compress with media removal enabled
-    let options = CompressionOptions::new()
-        .with_unused_media_removal(true);
+    let options = CompressionOptions::new().with_unused_media_removal(true);
 
     let result = compress_pptx(input_path, output_path, &options).unwrap();
 
@@ -157,8 +163,7 @@ fn test_compression_with_properties_removal() {
 
     pres.save(input_path).unwrap();
 
-    let options = CompressionOptions::new()
-        .with_properties_removal(true);
+    let options = CompressionOptions::new().with_properties_removal(true);
 
     let result = compress_pptx(input_path, output_path, &options).unwrap();
 
@@ -182,8 +187,7 @@ fn test_compression_target_size() {
     pres.save(input_path).unwrap();
 
     // Set a very large target (should always achieve)
-    let options = CompressionOptions::new()
-        .with_target_size(100 * 1024 * 1024); // 100MB target
+    let options = CompressionOptions::new().with_target_size(100 * 1024 * 1024); // 100MB target
 
     let result = compress_pptx(input_path, output_path, &options).unwrap();
 
@@ -197,17 +201,18 @@ fn test_compression_target_size() {
 
 #[test]
 fn test_compression_xml_optimization() {
-    let pres = Presentation::new()
-        .title("XML Optimization")
-        .add_slide(SlideContent::new("Slide with content").add_bullet("Point 1").add_bullet("Point 2"));
+    let pres = Presentation::new().title("XML Optimization").add_slide(
+        SlideContent::new("Slide with content")
+            .add_bullet("Point 1")
+            .add_bullet("Point 2"),
+    );
 
     let input_path = "test_xml_opt.pptx";
     let output_path = "test_xml_opt_compressed.pptx";
 
     pres.save(input_path).unwrap();
 
-    let options = CompressionOptions::new()
-        .with_xml_optimization(true);
+    let options = CompressionOptions::new().with_xml_optimization(true);
 
     let result = compress_pptx(input_path, output_path, &options).unwrap();
 
@@ -270,7 +275,7 @@ fn test_compression_multiple_slides() {
         pres = pres.add_slide(
             SlideContent::new(&format!("Slide {}", i))
                 .add_bullet(&format!("Bullet {}A", i))
-                .add_bullet(&format!("Bullet {}B", i))
+                .add_bullet(&format!("Bullet {}B", i)),
         );
     }
 

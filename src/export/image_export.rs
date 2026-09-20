@@ -3,16 +3,23 @@
 //! Provides functionality to export presentations and individual slides
 //! to image formats (PNG, JPEG).
 //!
-//! Uses LibreOffice for rendering (same approach as PDF export).
+//! **No LibreOffice dependency.** Slides are rendered to PDF with the
+//! pure-Rust `pdfrs` engine (see [`crate::export::slide_render`]), then
+//! rasterized to images with `pdftoppm` (poppler):
+//!
+//! 1. `slide_render::render_to_pdf_bytes` — all slides, one PDF page each
+//! 2. `pdftoppm -png|-jpeg` — one image per page
+//!
+//! The only external requirement is `pdftoppm`. Each export uses a unique
+//! temp working directory, so concurrent exports never collide.
 
 use crate::api::Presentation;
 use crate::exc::{PptxError, Result};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 /// Image format for export
-#[derive(Debug, Clone, Copy, PartialEq)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum ImageFormat {
     /// PNG format (lossless, good for graphics)
     #[default]
@@ -38,7 +45,6 @@ impl ImageFormat {
         }
     }
 }
-
 
 /// Options for image export
 #[derive(Debug, Clone)]
@@ -134,7 +140,12 @@ impl ImageExportOptions {
 
 /// Export presentation to images
 ///
-/// Uses LibreOffice for rendering. Requires LibreOffice to be installed.
+/// Slides are rendered to PDF with the pure-Rust `pdfrs` engine and
+/// rasterized with `pdftoppm` (poppler). Requires `pdftoppm` to be
+/// installed; LibreOffice is not needed.
+///
+/// Images are written to `output_dir` as `Slide1.png`, `Slide2.png`, …
+/// (sorted by slide number) and the returned paths are in slide order.
 ///
 /// # Arguments
 /// * `presentation` - The presentation to export
@@ -147,22 +158,60 @@ pub fn export_to_images<P: AsRef<Path>>(
     presentation: &Presentation,
     output_dir: P,
     options: &ImageExportOptions,
-) -> Result<Vec<std::path::PathBuf>> {
-    // First save presentation to temporary PPTX file
-    let temp_dir = std::env::temp_dir();
-    let temp_pptx = temp_dir.join("temp_export.pptx");
-    presentation.save(&temp_pptx)?;
+) -> Result<Vec<PathBuf>> {
+    if presentation.slide_count() == 0 {
+        return Err(PptxError::InvalidState(
+            crate::exc::messages::must_not_be_empty("presentation slides for image export"),
+        ));
+    }
+
+    if !is_pdftoppm_available() {
+        return Err(PptxError::Generic(String::from(
+            "pdftoppm not found (install poppler)",
+        )));
+    }
 
     let output_dir = output_dir.as_ref();
     std::fs::create_dir_all(output_dir)?;
 
-    // Use LibreOffice to convert to images
-    let result = export_pptx_to_images(&temp_pptx, output_dir, options);
+    // Unique working directory: prevents temp-file collisions between
+    // concurrent exports and stale-output collection.
+    let work_dir = std::env::temp_dir().join(format!("ppt_rs_img_{}", uuid::Uuid::new_v4()));
+    std::fs::create_dir_all(&work_dir)?;
 
-    // Cleanup temp file
-    let _ = std::fs::remove_file(&temp_pptx);
+    let result = export_to_images_in(&work_dir, output_dir, presentation, options);
 
+    let _ = std::fs::remove_dir_all(&work_dir);
     result
+}
+
+fn export_to_images_in(
+    work_dir: &Path,
+    output_dir: &Path,
+    presentation: &Presentation,
+    options: &ImageExportOptions,
+) -> Result<Vec<PathBuf>> {
+    // Pure-Rust vector render: one PDF page per slide (no LibreOffice)
+    let pdf = work_dir.join("deck.pdf");
+    let bytes = crate::export::slide_render::render_to_pdf_bytes(presentation)?;
+    std::fs::write(&pdf, bytes)?;
+
+    let prefix = work_dir.join("Slide");
+    let args = pdftoppm_args(options, &pdf, &prefix);
+    let output = Command::new("pdftoppm")
+        .args(&args)
+        .output()
+        .map_err(|e| PptxError::Generic(format!("Failed to execute pdftoppm: {}", e)))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(PptxError::Generic(format!(
+            "pdftoppm conversion failed: {}",
+            stderr.trim()
+        )));
+    }
+
+    collect_output_images(work_dir, output_dir, options.format)
 }
 
 /// Export a specific slide to an image
@@ -171,7 +220,7 @@ pub fn export_slide_to_image<P: AsRef<Path>>(
     slide_number: usize,
     output_path: P,
     options: &ImageExportOptions,
-) -> Result<std::path::PathBuf> {
+) -> Result<PathBuf> {
     if slide_number == 0 || slide_number > presentation.slide_count() {
         return Err(PptxError::InvalidOperation(format!(
             "Invalid slide number: {} (presentation has {} slides)",
@@ -183,113 +232,126 @@ pub fn export_slide_to_image<P: AsRef<Path>>(
     let mut slide_options = options.clone();
     slide_options.slide_number = slide_number;
 
-    let output_dir = output_path
-        .as_ref()
-        .parent()
-        .unwrap_or(std::path::Path::new("."));
+    let output_dir = output_path.as_ref().parent().unwrap_or(Path::new("."));
 
     let paths = export_to_images(presentation, output_dir, &slide_options)?;
 
-    // Find the specific slide file
-    let expected_name = format!("Slide{}.{}", slide_number, slide_options.format.extension());
-    for path in paths {
-        if let Some(name) = path.file_name().and_then(|n| n.to_str())
-            && (name == expected_name || name.contains(&format!("Slide{}", slide_number))) {
-                // Rename to requested output path if different
-                if path != output_path.as_ref() {
-                    std::fs::rename(&path, &output_path)?;
-                    return Ok(output_path.as_ref().to_path_buf());
-                }
-                return Ok(path);
-            }
-    }
+    let rendered = paths
+        .first()
+        .ok_or_else(|| PptxError::Generic(format!("Slide {} was not rendered", slide_number)))?;
 
-    Err(PptxError::Generic(String::from("Export failed")))
+    // Rename to requested output path if different
+    if rendered != output_path.as_ref() {
+        std::fs::rename(rendered, output_path.as_ref())?;
+    }
+    Ok(output_path.as_ref().to_path_buf())
 }
 
-/// Internal function to export PPTX file to images using LibreOffice
-fn export_pptx_to_images<P: AsRef<Path>, Q: AsRef<Path>>(
-    pptx_path: P,
-    output_dir: Q,
-    options: &ImageExportOptions,
-) -> Result<Vec<std::path::PathBuf>> {
-    let pptx_path = pptx_path.as_ref();
-    let output_dir = output_dir.as_ref();
-
-    // Check if LibreOffice is available
-    if !is_libreoffice_available() {
-        return Err(PptxError::Generic(String::from(
-            "LibreOffice not found"
-        )));
-    }
-
-    // Build LibreOffice command
-    let ext = options.format.extension();
-    let convert_opt = format!("{}:ExportNotesPages=false", ext);
-    
-    let mut cmd = Command::new("soffice");
-    cmd.arg("--headless")
-        .arg("--convert-to")
-        .arg(&convert_opt)
-        .arg("--outdir")
-        .arg(output_dir)
-        .arg(pptx_path);
-
-    // Execute conversion
-    let output = cmd.output().map_err(|e| {
-        PptxError::Generic(format!("Failed to execute LibreOffice: {}", e))
-    })?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(PptxError::Generic(format!(
-            "LibreOffice conversion failed: {}",
-            stderr
-        )));
-    }
-
-    // Collect output files
-    let mut image_files = Vec::new();
-    let file_stem = pptx_path.file_stem().and_then(|s| s.to_str()).unwrap_or("slide");
-
-    for entry in std::fs::read_dir(output_dir)? {
-        let entry = entry?;
-        let path = entry.path();
-        if let Some(file_ext) = path.extension().and_then(|e| e.to_str())
-            && file_ext.eq_ignore_ascii_case(ext) {
-                // Check if it is from our conversion
-                if let Some(name) = path.file_stem().and_then(|s| s.to_str())
-                    && (name.starts_with(file_stem) || name.starts_with("Slide")) {
-                        image_files.push(path);
-                    }
-            }
-    }
-
-    // Sort by slide number
-    image_files.sort_by(|a, b| {
-        let a_num = extract_slide_number(a);
-        let b_num = extract_slide_number(b);
-        a_num.cmp(&b_num)
-    });
-
-    Ok(image_files)
+/// Check if `pdftoppm` (poppler) is available
+fn is_pdftoppm_available() -> bool {
+    Command::new("pdftoppm")
+        .arg("-v")
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .output()
+        .is_ok()
 }
 
-/// Check if LibreOffice is available
-fn is_libreoffice_available() -> bool {
-    Command::new("soffice").arg("--version").output().is_ok()
+/// Build the `pdftoppm` argument list for the given options.
+///
+/// Output files are named `<prefix>-<page>.<ext>` where `<page>` is
+/// zero-padded to the digit width of the last page (e.g. `Slide-01.png`).
+fn pdftoppm_args(options: &ImageExportOptions, pdf: &Path, prefix: &Path) -> Vec<String> {
+    let mut args = Vec::new();
+
+    match options.format {
+        ImageFormat::Png => args.push(String::from("-png")),
+        ImageFormat::Jpeg => args.push(String::from("-jpeg")),
+    }
+
+    if options.width > 0 || options.height > 0 {
+        // Explicit pixel size; a -1 dimension preserves the aspect ratio.
+        args.push(String::from("-scale-to-x"));
+        if options.width > 0 {
+            args.push(options.width.to_string());
+        } else {
+            args.push(String::from("-1"));
+        }
+        args.push(String::from("-scale-to-y"));
+        if options.height > 0 {
+            args.push(options.height.to_string());
+        } else {
+            args.push(String::from("-1"));
+        }
+    } else {
+        args.push(String::from("-r"));
+        args.push(options.dpi.to_string());
+    }
+
+    if options.format == ImageFormat::Jpeg {
+        args.push(String::from("-jpegopt"));
+        args.push(format!("quality={}", options.jpeg_quality));
+    }
+
+    if options.slide_number > 0 {
+        args.push(String::from("-f"));
+        args.push(options.slide_number.to_string());
+        args.push(String::from("-l"));
+        args.push(options.slide_number.to_string());
+    }
+
+    args.push(pdf.display().to_string());
+    args.push(prefix.display().to_string());
+    args
 }
 
-/// Extract slide number from filename
-fn extract_slide_number(path: &std::path::Path) -> usize {
-    path.file_stem()
-        .and_then(|s| s.to_str())
-        .and_then(|name| {
-            // Extract number from "Slide1" or "slide1" or "temp_export1"
-            let digits: String = name.chars().filter(|c| c.is_ascii_digit()).collect();
-            digits.parse().ok()
-        })
-        .unwrap_or(0)
+/// Move rasterized pages from the working directory into `output_dir`,
+/// renamed to `Slide{n}.{ext}`, sorted by slide number.
+fn collect_output_images(
+    work_dir: &Path,
+    output_dir: &Path,
+    format: ImageFormat,
+) -> Result<Vec<PathBuf>> {
+    let ext = format.extension();
+    let mut named: Vec<(usize, PathBuf)> = Vec::new();
+
+    for entry in std::fs::read_dir(work_dir)? {
+        let path = entry?.path();
+        if !path.is_file() {
+            continue;
+        }
+        let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+            continue;
+        };
+        if !name.starts_with("Slide-") {
+            continue;
+        }
+        if Path::new(name)
+            .extension()
+            .and_then(|e| e.to_str())
+            .is_none_or(|e| !e.eq_ignore_ascii_case(ext))
+        {
+            continue;
+        }
+        let Some(page) = parse_page_number(name) else {
+            continue;
+        };
+
+        let final_path = output_dir.join(format!("Slide{}.{}", page, ext));
+        std::fs::rename(&path, &final_path)?;
+        named.push((page, final_path));
+    }
+
+    named.sort_by_key(|(page, _)| *page);
+    Ok(named.into_iter().map(|(_, p)| p).collect())
+}
+
+/// Extract the page number from a pdftoppm output file name
+/// (e.g. `Slide-01.png` → 1, `Slide3.jpg` → 3).
+fn parse_page_number(file_name: &str) -> Option<usize> {
+    let stem = file_name.rsplit_once('.')?.0;
+    let digits: String = stem.chars().filter(|c| c.is_ascii_digit()).collect();
+    digits.parse().ok()
 }
 
 /// Render presentation thumbnail (first slide only)
@@ -297,7 +359,7 @@ pub fn render_thumbnail<P: AsRef<Path>>(
     presentation: &Presentation,
     output_path: P,
     width: u32,
-) -> Result<std::path::PathBuf> {
+) -> Result<PathBuf> {
     let options = ImageExportOptions::new()
         .with_format(ImageFormat::Png)
         .with_slide(1);
@@ -305,10 +367,7 @@ pub fn render_thumbnail<P: AsRef<Path>>(
     // Calculate DPI based on desired width
     let dpi = (width as f32 / 10.0) as u32;
 
-    let options = ImageExportOptions {
-        dpi,
-        ..options
-    };
+    let options = ImageExportOptions { dpi, ..options };
 
     export_slide_to_image(presentation, 1, output_path, &options)
 }
@@ -351,14 +410,133 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_slide_number() {
-        let path = std::path::Path::new("Slide1.png");
-        assert_eq!(extract_slide_number(path), 1);
+    fn test_parse_page_number() {
+        assert_eq!(parse_page_number("Slide-1.png"), Some(1));
+        assert_eq!(parse_page_number("Slide-01.png"), Some(1));
+        assert_eq!(parse_page_number("Slide-44.png"), Some(44));
+        assert_eq!(parse_page_number("Slide3.jpg"), Some(3));
+        assert_eq!(parse_page_number("other.png"), None);
+        assert_eq!(parse_page_number("Slide-.png"), None);
+    }
 
-        let path = std::path::Path::new("slide12.jpg");
-        assert_eq!(extract_slide_number(path), 12);
+    #[test]
+    fn test_pdftoppm_args_png_dpi() {
+        let options = ImageExportOptions::new().with_dpi(150);
+        let args = pdftoppm_args(
+            &options,
+            Path::new("/tmp/deck.pdf"),
+            Path::new("/tmp/Slide"),
+        );
+        assert_eq!(
+            args,
+            vec!["-png", "-r", "150", "/tmp/deck.pdf", "/tmp/Slide"]
+        );
+    }
 
-        let path = std::path::Path::new("temp_export5.png");
-        assert_eq!(extract_slide_number(path), 5);
+    #[test]
+    fn test_pdftoppm_args_jpeg_quality() {
+        let options = ImageExportOptions::new()
+            .with_format(ImageFormat::Jpeg)
+            .with_dpi(96)
+            .with_jpeg_quality(85);
+        let args = pdftoppm_args(
+            &options,
+            Path::new("/tmp/deck.pdf"),
+            Path::new("/tmp/Slide"),
+        );
+        assert_eq!(
+            args,
+            vec![
+                "-jpeg",
+                "-r",
+                "96",
+                "-jpegopt",
+                "quality=85",
+                "/tmp/deck.pdf",
+                "/tmp/Slide"
+            ]
+        );
+    }
+
+    #[test]
+    fn test_pdftoppm_args_dimensions_override_dpi() {
+        let options = ImageExportOptions::new().with_dimensions(640, 0);
+        let args = pdftoppm_args(
+            &options,
+            Path::new("/tmp/deck.pdf"),
+            Path::new("/tmp/Slide"),
+        );
+        assert_eq!(
+            args,
+            vec![
+                "-png",
+                "-scale-to-x",
+                "640",
+                "-scale-to-y",
+                "-1",
+                "/tmp/deck.pdf",
+                "/tmp/Slide"
+            ]
+        );
+    }
+
+    #[test]
+    fn test_pdftoppm_args_page_selection() {
+        let options = ImageExportOptions::new().with_slide(2);
+        let args = pdftoppm_args(
+            &options,
+            Path::new("/tmp/deck.pdf"),
+            Path::new("/tmp/Slide"),
+        );
+        assert_eq!(
+            args,
+            vec![
+                "-png",
+                "-r",
+                "150",
+                "-f",
+                "2",
+                "-l",
+                "2",
+                "/tmp/deck.pdf",
+                "/tmp/Slide"
+            ]
+        );
+    }
+
+    #[test]
+    fn test_collect_output_images_renames_and_sorts() {
+        let work = std::env::temp_dir().join(format!("ppt_rs_collect_{}", uuid::Uuid::new_v4()));
+        let out = std::env::temp_dir().join(format!("ppt_rs_collect_out_{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&work).unwrap();
+        std::fs::create_dir_all(&out).unwrap();
+
+        // pdftoppm zero-pads page numbers to the digit width of the last page
+        for name in [
+            "Slide-3.png",
+            "Slide-01.png",
+            "Slide-2.png",
+            "deck.pdf",
+            "Slide-x.png",
+        ] {
+            std::fs::write(work.join(name), b"").unwrap();
+        }
+
+        let paths = collect_output_images(&work, &out, ImageFormat::Png).unwrap();
+        assert_eq!(
+            paths
+                .iter()
+                .map(|p| p.file_name().unwrap().to_string_lossy().to_string())
+                .collect::<Vec<_>>(),
+            vec!["Slide1.png", "Slide2.png", "Slide3.png"]
+        );
+        for p in &paths {
+            assert!(p.exists());
+        }
+        // Non-page files stay behind; work dir only holds deck.pdf now
+        assert!(work.join("deck.pdf").exists());
+
+        let _ = std::fs::remove_dir_all(&work);
+        let _ = std::fs::remove_dir_all(&out);
     }
 }

@@ -5,7 +5,7 @@ use std::fs;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // First, create a sample PPTX file to read
-    use ppt_rs::generator::{create_pptx_with_content, SlideContent};
+    use ppt_rs::generator::{SlideContent, create_pptx_with_content};
 
     let slides = vec![
         SlideContent::new("Sample Presentation")
@@ -42,9 +42,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(pres_content) = package.get_part("ppt/presentation.xml") {
         println!("\n✓ presentation.xml found ({} bytes)", pres_content.len());
         if let Ok(content_str) = std::str::from_utf8(pres_content)
-            && content_str.contains("<p:sldIdLst>") {
-                println!("  - Contains slide list");
-            }
+            && content_str.contains("<p:sldIdLst>")
+        {
+            println!("  - Contains slide list");
+        }
     }
 
     // Check for slides
@@ -63,9 +64,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(core_content) = package.get_part("docProps/core.xml") {
         println!("\n✓ docProps/core.xml found ({} bytes)", core_content.len());
         if let Ok(content_str) = std::str::from_utf8(core_content)
-            && content_str.contains("<dc:title>") {
-                println!("  - Contains title metadata");
-            }
+            && content_str.contains("<dc:title>")
+        {
+            println!("  - Contains title metadata");
+        }
     }
 
     // Check for relationships
@@ -90,7 +92,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Summary
     println!("\n--- Summary ---");
-    println!("Successfully read PPTX package with {} parts", package.part_count());
+    println!(
+        "Successfully read PPTX package with {} parts",
+        package.part_count()
+    );
     println!("Package structure is valid and can be modified");
 
     Ok(())

@@ -9,32 +9,31 @@
 //! - `CodeBlock` - Code block with syntax highlighting
 
 mod bullet;
-mod layout;
 mod code_block;
-mod content;
-pub mod transition;
 pub mod comments;
-pub mod sections;
+mod content;
 pub mod digital_signature;
-pub mod ink_annotations;
-pub mod slide_show_settings;
-pub mod print_settings;
-pub mod table_merge;
 pub mod embedded_fonts;
+pub mod ink_annotations;
+mod layout;
 pub mod presentation_settings;
+pub mod print_settings;
+pub mod sections;
+pub mod slide_show_settings;
+pub mod table_merge;
+pub mod transition;
 
-pub use bullet::{BulletStyle, BulletPoint, BulletTextFormat};
-pub use layout::SlideLayout;
+pub use bullet::{BulletPoint, BulletStyle, BulletTextFormat};
 pub use code_block::CodeBlock;
-pub use content::SlideContent;
-pub use transition::TransitionType;
 pub use comments::{Comment, CommentAuthor, CommentAuthorList, SlideComments};
-pub use sections::{SlideSection, SectionManager};
-pub use digital_signature::{DigitalSignature, SignerInfo, HashAlgorithm, SignatureCommitment};
-pub use ink_annotations::{InkAnnotations, InkStroke, InkPen, InkPoint, PenTip};
-pub use slide_show_settings::{SlideShowSettings, ShowType, PenColor, SlideRange};
-pub use print_settings::{PrintSettings, HandoutLayout, PrintColorMode, PrintWhat, Orientation};
-pub use table_merge::{TableMergeMap, MergeRegion, CellMergeState};
-pub use embedded_fonts::{EmbeddedFontList, EmbeddedFont, FontStyle, FontCharset};
+pub use content::SlideContent;
+pub use digital_signature::{DigitalSignature, HashAlgorithm, SignatureCommitment, SignerInfo};
+pub use embedded_fonts::{EmbeddedFont, EmbeddedFontList, FontCharset, FontStyle};
+pub use ink_annotations::{InkAnnotations, InkPen, InkPoint, InkStroke, PenTip};
+pub use layout::SlideLayout;
 pub use presentation_settings::PresentationSettings;
-
+pub use print_settings::{HandoutLayout, Orientation, PrintColorMode, PrintSettings, PrintWhat};
+pub use sections::{SectionManager, SlideSection};
+pub use slide_show_settings::{PenColor, ShowType, SlideRange, SlideShowSettings};
+pub use table_merge::{CellMergeState, MergeRegion, TableMergeMap};
+pub use transition::TransitionType;

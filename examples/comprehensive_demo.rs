@@ -20,10 +20,10 @@
 //! 17. NEW: Print settings, Advanced table merging, Embedded fonts
 //! 18. NEW: Flexible Dimension API (EMU/inches/cm/pt/ratio/percent)
 
-use ppt_rs::elements::{Color, Position, RgbColor, SchemeColor, Size, Transform, EMU_PER_INCH};
+use ppt_rs::ToXml;
+use ppt_rs::elements::{Color, EMU_PER_INCH, Position, RgbColor, SchemeColor, Size, Transform};
 use ppt_rs::generator::shapes::{GradientDirection, GradientFill};
 use ppt_rs::generator::{
-    create_pptx_with_settings,
     ArrowSize,
     ArrowType,
     BulletPoint,
@@ -52,6 +52,7 @@ use ppt_rs::generator::{
     TableCell,
     TableMergeMap,
     TableRow,
+    create_pptx_with_settings,
 };
 use ppt_rs::opc::Package;
 use ppt_rs::parts::{
@@ -60,6 +61,10 @@ use ppt_rs::parts::{
     ThemePart, VerticalAlign,
 };
 use ppt_rs::prelude::{
+    // Color utilities
+    ColorValue,
+    Dimension,
+    ShapeExt,
     circle,
     colors,
     diamond,
@@ -73,12 +78,7 @@ use ppt_rs::prelude::{
     shapes,
     themes,
     triangle,
-    // Color utilities
-    ColorValue,
-    Dimension,
-    ShapeExt,
 };
-use ppt_rs::ToXml;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -1999,11 +1999,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // =========================================================================
     println!("\n📦 Generating PPTX with integrated features...");
     let slide_count = slides.len();
-    let pptx_data = create_pptx_with_settings(
-        "PPTX-RS Element Showcase",
-        &slides,
-        Some(pres_settings),
-    )?;
+    let pptx_data =
+        create_pptx_with_settings("PPTX-RS Element Showcase", &slides, Some(pres_settings))?;
     let output_path = project_path("comprehensive_demo.pptx");
     fs::write(&output_path, &pptx_data)?;
     println!(
@@ -2217,16 +2214,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example 1: Financial Report Table
     println!("   │   ┌── Financial Report Table (5x4 with formatting):");
     let financial_table = TablePart::new()
-        .add_row(TableRowPart::new(vec![TableCellPart::new(
-            "Q1 2024 Financial Summary",
-        )
-        .col_span(4)
-        .bold()
-        .center()
-        .background("1F4E79")
-        .color("FFFFFF")
-        .font_size(14)
-        .font("Arial Black")]))
+        .add_row(TableRowPart::new(vec![
+            TableCellPart::new("Q1 2024 Financial Summary")
+                .col_span(4)
+                .bold()
+                .center()
+                .background("1F4E79")
+                .color("FFFFFF")
+                .font_size(14)
+                .font("Arial Black"),
+        ]))
         .add_row(TableRowPart::new(vec![
             TableCellPart::new("Category")
                 .bold()
@@ -2406,7 +2403,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ]));
     println!("   │       └── Row spans for multi-hour events");
 
-    println!("   ├── (Animation/SmartArt/3D/VBA/CustomXml/EmbeddedFont/Handout removed in lean refactor)");
+    println!(
+        "   ├── (Animation/SmartArt/3D/VBA/CustomXml/EmbeddedFont/Handout removed in lean refactor)"
+    );
 
     // -------------------------------------------------------------------------
     // Theme + Master + Layout Combination

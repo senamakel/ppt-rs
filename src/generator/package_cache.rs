@@ -18,10 +18,7 @@ static DEFAULT_LAYOUTS: OnceLock<Vec<String>> = OnceLock::new();
 /// Whether print settings change layout/master placeholder XML.
 pub fn print_affects_theme_parts(print: Option<&PrintSettings>) -> bool {
     print.is_some_and(|p| {
-        p.header.is_some()
-            || p.footer.is_some()
-            || p.print_date
-            || p.print_page_numbers
+        p.header.is_some() || p.footer.is_some() || p.print_date || p.print_page_numbers
     })
 }
 

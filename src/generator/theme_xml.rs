@@ -4,10 +4,12 @@ use crate::core::append_usize;
 use crate::generator::presentation_theme::PresentationTheme;
 use crate::generator::slide_content::print_settings::PrintSettings;
 
-use super::layout_parts::{self, slide_master_footer_shapes, STANDARD_LAYOUT_COUNT};
+use super::layout_parts::{self, STANDARD_LAYOUT_COUNT, slide_master_footer_shapes};
 use crate::generator::package_xml::SLIDE_LAYOUT_ID;
 
-pub use super::layout_parts::{append_layout_content_type_overrides, layout_rel_target, STANDARD_LAYOUT_COUNT as LAYOUT_COUNT};
+pub use super::layout_parts::{
+    STANDARD_LAYOUT_COUNT as LAYOUT_COUNT, append_layout_content_type_overrides, layout_rel_target,
+};
 
 /// Create theme XML (Office default when no custom theme is provided)
 pub fn create_theme_xml(theme: Option<&PresentationTheme>) -> String {

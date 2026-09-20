@@ -1,7 +1,7 @@
 //! TextFrame - container for paragraphs
 
-use super::paragraph::Paragraph;
 use super::TextAnchor;
+use super::paragraph::Paragraph;
 use crate::core::ToXml;
 
 /// A text frame containing paragraphs
@@ -23,9 +23,9 @@ impl TextFrame {
             paragraphs: Vec::new(),
             anchor: TextAnchor::Top,
             wrap: true,
-            margin_left: 91440,   // 0.1 inch
+            margin_left: 91440, // 0.1 inch
             margin_right: 91440,
-            margin_top: 45720,    // 0.05 inch
+            margin_top: 45720, // 0.05 inch
             margin_bottom: 45720,
         }
     }
@@ -67,21 +67,26 @@ impl TextFrame {
     /// Generate XML for this text frame
     pub fn to_xml(&self) -> String {
         let wrap = if self.wrap { "square" } else { "none" };
-        
+
         let mut xml = format!(
             r#"<p:txBody><a:bodyPr wrap="{}" lIns="{}" rIns="{}" tIns="{}" bIns="{}" anchor="{}"/><a:lstStyle/>"#,
-            wrap, self.margin_left, self.margin_right, self.margin_top, self.margin_bottom, self.anchor.to_xml()
+            wrap,
+            self.margin_left,
+            self.margin_right,
+            self.margin_top,
+            self.margin_bottom,
+            self.anchor.to_xml()
         );
-        
+
         for para in &self.paragraphs {
             xml.push_str(&para.to_xml());
         }
-        
+
         // Add empty paragraph if none
         if self.paragraphs.is_empty() {
             xml.push_str("<a:p><a:endParaRPr/></a:p>");
         }
-        
+
         xml.push_str("</p:txBody>");
         xml
     }
@@ -110,9 +115,9 @@ mod tests {
             .add_paragraph(Paragraph::with_text("Title").align(TextAlign::Center))
             .add_paragraph(Paragraph::with_text("Content"))
             .anchor(TextAnchor::Middle);
-        
+
         let xml = tf.to_xml();
-        
+
         assert!(xml.contains("<p:txBody>"));
         assert!(xml.contains("anchor=\"ctr\""));
         assert!(xml.contains("Title"));

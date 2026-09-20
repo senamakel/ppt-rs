@@ -22,17 +22,16 @@ impl CodeBlock {
             height: 4000000,
         }
     }
-    
+
     pub fn position(mut self, x: i64, y: i64) -> Self {
         self.x = x;
         self.y = y;
         self
     }
-    
+
     pub fn size(mut self, width: i64, height: i64) -> Self {
         self.width = width;
         self.height = height;
         self
     }
 }
-

@@ -22,7 +22,7 @@ pub fn parse_inline_formatting(text: &str) -> Vec<TextSegment> {
     let mut bold = false;
     let mut italic = false;
     let mut code = false;
-    
+
     while let Some(c) = chars.next() {
         match c {
             '`' if !code => {
@@ -78,7 +78,7 @@ pub fn parse_inline_formatting(text: &str) -> Vec<TextSegment> {
             }
         }
     }
-    
+
     if !current_text.is_empty() {
         segments.push(TextSegment {
             text: current_text,
@@ -87,7 +87,7 @@ pub fn parse_inline_formatting(text: &str) -> Vec<TextSegment> {
             code,
         });
     }
-    
+
     if segments.is_empty() {
         segments.push(TextSegment {
             text: text.to_string(),
@@ -96,7 +96,7 @@ pub fn parse_inline_formatting(text: &str) -> Vec<TextSegment> {
             code: false,
         });
     }
-    
+
     segments
 }
 
@@ -110,13 +110,13 @@ pub fn generate_rich_text_runs(
 ) -> String {
     let segments = parse_inline_formatting(text);
     let mut xml = String::new();
-    
+
     for segment in segments {
         let size = base_size;
         let bold = base_bold || segment.bold;
         let italic = base_italic || segment.italic;
         let escaped_text = escape_xml(&segment.text);
-        
+
         if segment.code {
             xml.push_str(&format!(
                 r#"<a:r><a:rPr lang="en-US" sz="{}" dirty="0"><a:latin typeface="Consolas"/><a:solidFill><a:srgbClr val="C7254E"/></a:solidFill></a:rPr><a:t>{}</a:t></a:r>"#,
@@ -129,20 +129,26 @@ pub fn generate_rich_text_runs(
                 if bold { "1" } else { "0" },
                 if italic { "1" } else { "0" }
             );
-            
+
             if let Some(color) = base_color {
                 props.push('>');
                 let clean_color = color.trim_start_matches('#').to_uppercase();
-                props.push_str(&format!(r#"<a:solidFill><a:srgbClr val="{}"/></a:solidFill>"#, clean_color));
+                props.push_str(&format!(
+                    r#"<a:solidFill><a:srgbClr val="{}"/></a:solidFill>"#,
+                    clean_color
+                ));
                 props.push_str("</a:rPr>");
             } else {
                 props.push_str("/>");
             }
-            
-            xml.push_str(&format!(r#"<a:r>{}<a:t>{}</a:t></a:r>"#, props, escaped_text));
+
+            xml.push_str(&format!(
+                r#"<a:r>{}<a:t>{}</a:t></a:r>"#,
+                props, escaped_text
+            ));
         }
     }
-    
+
     xml
 }
 

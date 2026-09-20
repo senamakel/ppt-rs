@@ -56,8 +56,12 @@ impl RtlLanguage {
     /// Get the recommended default font for this language
     pub fn default_font(&self) -> &'static str {
         match self {
-            RtlLanguage::Arabic | RtlLanguage::Urdu | RtlLanguage::Persian
-            | RtlLanguage::Pashto | RtlLanguage::Sindhi | RtlLanguage::Kurdish => "Arial",
+            RtlLanguage::Arabic
+            | RtlLanguage::Urdu
+            | RtlLanguage::Persian
+            | RtlLanguage::Pashto
+            | RtlLanguage::Sindhi
+            | RtlLanguage::Kurdish => "Arial",
             RtlLanguage::Hebrew | RtlLanguage::Yiddish => "Arial",
         }
     }
@@ -184,9 +188,14 @@ mod tests {
     #[test]
     fn test_rtl_language_all_variants() {
         let languages = [
-            RtlLanguage::Arabic, RtlLanguage::Hebrew, RtlLanguage::Urdu,
-            RtlLanguage::Persian, RtlLanguage::Pashto, RtlLanguage::Sindhi,
-            RtlLanguage::Kurdish, RtlLanguage::Yiddish,
+            RtlLanguage::Arabic,
+            RtlLanguage::Hebrew,
+            RtlLanguage::Urdu,
+            RtlLanguage::Persian,
+            RtlLanguage::Pashto,
+            RtlLanguage::Sindhi,
+            RtlLanguage::Kurdish,
+            RtlLanguage::Yiddish,
         ];
         for lang in &languages {
             assert_eq!(lang.direction(), TextDirection::RTL);

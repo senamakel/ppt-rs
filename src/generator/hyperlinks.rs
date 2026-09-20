@@ -22,7 +22,10 @@ pub enum HyperlinkAction {
     /// Link to end show
     EndShow,
     /// Link to email address
-    Email { address: String, subject: Option<String> },
+    Email {
+        address: String,
+        subject: Option<String>,
+    },
     /// Link to file
     File(String),
 }
@@ -67,7 +70,9 @@ impl HyperlinkAction {
             HyperlinkAction::FirstSlide => "ppaction://hlinkshowjump?jump=firstslide".to_string(),
             HyperlinkAction::LastSlide => "ppaction://hlinkshowjump?jump=lastslide".to_string(),
             HyperlinkAction::NextSlide => "ppaction://hlinkshowjump?jump=nextslide".to_string(),
-            HyperlinkAction::PreviousSlide => "ppaction://hlinkshowjump?jump=previousslide".to_string(),
+            HyperlinkAction::PreviousSlide => {
+                "ppaction://hlinkshowjump?jump=previousslide".to_string()
+            }
             HyperlinkAction::EndShow => "ppaction://hlinkshowjump?jump=endshow".to_string(),
             HyperlinkAction::Email { address, subject } => {
                 let mut mailto = format!("mailto:{}", address);
@@ -244,8 +249,7 @@ mod tests {
 
     #[test]
     fn test_hyperlink_with_tooltip() {
-        let link = Hyperlink::url("https://example.com")
-            .with_tooltip("Click here");
+        let link = Hyperlink::url("https://example.com").with_tooltip("Click here");
         assert_eq!(link.tooltip, Some("Click here".to_string()));
     }
 
@@ -261,8 +265,7 @@ mod tests {
 
     #[test]
     fn test_generate_text_hyperlink_xml() {
-        let link = Hyperlink::url("https://example.com")
-            .with_tooltip("Example");
+        let link = Hyperlink::url("https://example.com").with_tooltip("Example");
         let xml = generate_text_hyperlink_xml(&link, "rId1");
         assert!(xml.contains("hlinkClick"));
         assert!(xml.contains("rId1"));

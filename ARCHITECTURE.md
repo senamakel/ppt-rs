@@ -15,7 +15,7 @@ The project has completed several major phases:
 
 2. **Export & Compression** (v0.2.12) — Full round-trip capabilities
    - Markdown export with `MarkdownOptions`
-   - Image export (PNG/JPEG via LibreOffice)
+   - Image export (PNG/JPEG via pure-Rust PDF render + `pdftoppm`)
    - PPTX compression with `CompressionOptions`
 
 3. **MCP Server** (v0.2.13) — AI assistant integration
@@ -39,6 +39,7 @@ The project has completed several major phases:
    - `PresentationEditor` (`oxml/editor.rs`) — duplicate, reorder, insert slide at index, batch replace
    - Core validation integrated into `pptcli validate`; rmcp upgraded
    - Embedded fonts + ink annotations wired into the generator; digital signatures packaged
+   - Review comments packaged (`ppt/comments/commentN.xml`, `ppt/commentAuthors.xml`) from `SlideContent::add_comment` + presentation comment authors
 
 7. **Lean Audit & Structured Validate** (v0.2.21) — Quality pass
    - Dead code removal, `escape_xml` hot-path, `XmlWriter` cleanup
@@ -48,7 +49,7 @@ The project has completed several major phases:
    - Pure-Rust PDF export via `pdfrs` (`pdf-native` feature) — no LibreOffice dependency
    - `web2md` bridge — HTML→Markdown→Slides pipeline with `--web2md` CLI flag
 
-Future work focuses on the open items in `TODO.md` (comments round-trip, video/audio embedding, section-aware export, WASM target, batch/pipeline API, MCP tool expansion) and performance optimization.
+Future work focuses on the open items in `TODO.md` (PPTX semantic diff, WASM target, batch/pipeline API) and performance optimization. Comments round-trip, video/audio embedding, and section-aware export shipped in v0.2.27.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -207,8 +208,8 @@ shape.fill(red()).stroke(black(), 12700).text("Hello");
 - **Modules**:
   - `html` - HTML export with CSS styling
   - `md` - Markdown export with GFM tables and frontmatter
-  - `image_export` - Image export via LibreOffice (PNG, JPEG)
-  - `slide_render` - Slide rendering helpers (PDF bytes via LibreOffice path)
+  - `image_export` - Image export (PNG, JPEG) via pure-Rust PDF render + `pdftoppm` rasterization
+  - `slide_render` - Pure-Rust slide-to-PDF vector rendering via `pdfrs`
   - `pdf_export` - Pure-Rust PDF export via `pdfrs` (`pdf-native` feature, no LibreOffice)
 - **Key Types**:
   - `MarkdownOptions` - Configure markdown output
@@ -276,7 +277,7 @@ shape.fill(red()).stroke(black(), 12700).text("Hello");
 
 ## Testing Architecture
 
-The project employs a layered testing strategy with 1100+ tests:
+The project employs a layered testing strategy with 1200+ tests:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐

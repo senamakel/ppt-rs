@@ -6,11 +6,11 @@
 //! - Hyperlink support and preservation
 //! - Advanced HTML export with navigation and notes
 
-use ppt_rs::generator::create_pptx_with_content;
-use ppt_rs::import::{parse_html, parse_html_with_options, HtmlParseOptions};
-use ppt_rs::export::html::{export_to_html_with_options, HtmlExportOptions};
 use ppt_rs::api::Presentation;
+use ppt_rs::export::html::{HtmlExportOptions, export_to_html_with_options};
 use ppt_rs::generator::SlideContent;
+use ppt_rs::generator::create_pptx_with_content;
+use ppt_rs::import::{HtmlParseOptions, parse_html, parse_html_with_options};
 use std::fs;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

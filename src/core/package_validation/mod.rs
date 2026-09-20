@@ -11,4 +11,4 @@ mod rules;
 pub use report::{
     PackageValidationIssue, PackageValidationReport, ValidationCategory, ValidationSeverity,
 };
-pub use rules::{validate_package, validate_package_bytes, REQUIRED_PACKAGE_PARTS};
+pub use rules::{REQUIRED_PACKAGE_PARTS, validate_package, validate_package_bytes};

@@ -146,9 +146,7 @@ impl CommentAuthorList {
 
     /// Generate `commentAuthors.xml` content
     pub fn to_xml(&self) -> String {
-        let mut xml = String::from(
-            r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>"#,
-        );
+        let mut xml = String::from(r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>"#);
         xml.push_str(
             r#"<p:cmAuthorLst xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">"#,
         );
@@ -179,11 +177,8 @@ impl SlideComments {
     /// Add a comment with auto-incrementing index
     pub fn add_comment(&mut self, author_id: u32, text: &str, x: u32, y: u32) {
         let idx = self.comments.len() as u32 + 1;
-        self.comments.push(
-            Comment::new(author_id, text)
-                .position(x, y)
-                .index(idx),
-        );
+        self.comments
+            .push(Comment::new(author_id, text).position(x, y).index(idx));
     }
 
     /// Get all comments
@@ -203,9 +198,7 @@ impl SlideComments {
 
     /// Generate `commentN.xml` content for a slide
     pub fn to_xml(&self) -> String {
-        let mut xml = String::from(
-            r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>"#,
-        );
+        let mut xml = String::from(r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>"#);
         xml.push_str(
             r#"<p:cmLst xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">"#,
         );

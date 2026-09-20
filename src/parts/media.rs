@@ -3,7 +3,7 @@
 //! Represents embedded media (video/audio) in the presentation.
 
 use super::base::{ContentType, Part, PartType};
-use crate::exc::{messages, PptxError};
+use crate::exc::{PptxError, messages};
 
 /// Media format
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

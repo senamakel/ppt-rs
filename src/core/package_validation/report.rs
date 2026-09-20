@@ -111,9 +111,7 @@ impl PackageValidationReport {
         &self,
         category: ValidationCategory,
     ) -> impl Iterator<Item = &PackageValidationIssue> {
-        self.issues
-            .iter()
-            .filter(move |i| i.category == category)
+        self.issues.iter().filter(move |i| i.category == category)
     }
 }
 

@@ -6,7 +6,7 @@
 
 use ppt_rs::api::Presentation;
 use ppt_rs::export::pdf_export::{
-    export_to_pdf, export_to_pdf_bytes, PdfExportOptions, PdfOrientation,
+    PdfExportOptions, PdfOrientation, export_to_pdf, export_to_pdf_bytes,
 };
 use ppt_rs::generator::SlideContent;
 use std::fs;
@@ -102,7 +102,11 @@ fn test_export_module_custom_font() {
 fn test_export_module_multi_slide_round_trip() {
     let pres = Presentation::with_title("Multi-Slide")
         .add_slide(SlideContent::new("Title Slide").add_bullet("Sub"))
-        .add_slide(SlideContent::new("Agenda").add_bullet("One").add_bullet("Two"))
+        .add_slide(
+            SlideContent::new("Agenda")
+                .add_bullet("One")
+                .add_bullet("Two"),
+        )
         .add_slide(SlideContent::new("Closing"));
 
     let opts = PdfExportOptions::new().with_frontmatter(false);

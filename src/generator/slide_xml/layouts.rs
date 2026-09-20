@@ -1,11 +1,12 @@
 //! Slide layout implementations
 
-use crate::generator::slide_content::{SlideContent, BulletPoint, BulletTextFormat};
-use crate::core::escape_xml;
-use crate::generator::slide::formatting::generate_text_props;
-use super::common::{SLIDE_HEADER, SLIDE_FOOTER, generate_title_shape};
-use crate::generator::layouts::ExtendedTextProps;
+use super::common::{SLIDE_FOOTER, SLIDE_HEADER, generate_title_shape};
 use super::content::render_additional_content;
+use crate::core::escape_xml;
+use crate::generator::layouts::ExtendedTextProps;
+use crate::generator::media::MediaRelIds;
+use crate::generator::slide::formatting::generate_text_props;
+use crate::generator::slide_content::{BulletPoint, BulletTextFormat, SlideContent};
 
 /// Generate text properties XML for a bullet, merging slide defaults with bullet-specific format
 fn generate_bullet_text_props(
@@ -23,7 +24,10 @@ fn generate_bullet_text_props(
             superscript: fmt.superscript,
             color: fmt.color.clone().or_else(|| default_props.color.clone()),
             highlight: fmt.highlight.clone(),
-            font_family: fmt.font_family.clone().or_else(|| default_props.font_family.clone()),
+            font_family: fmt
+                .font_family
+                .clone()
+                .or_else(|| default_props.font_family.clone()),
         };
         props.to_xml()
     } else {
@@ -40,7 +44,7 @@ fn generate_bullet_paragraph_from_point(
     let margin_left = bullet.level * 457200 + indent;
     let bullet_xml = bullet.style.to_xml();
     let text_props = generate_bullet_text_props(default_props, bullet.format.as_ref());
-    
+
     format!(
         r#"
 <a:p>
@@ -52,7 +56,12 @@ fn generate_bullet_paragraph_from_point(
 <a:t>{}</a:t>
 </a:r>
 </a:p>"#,
-        bullet.level, margin_left, indent, bullet_xml, text_props, escape_xml(&bullet.text)
+        bullet.level,
+        margin_left,
+        indent,
+        bullet_xml,
+        text_props,
+        escape_xml(&bullet.text)
     )
 }
 
@@ -61,9 +70,10 @@ pub fn create_blank_slide(
     content: &SlideContent,
     chart_rids: &[String],
     ink_rel_id: Option<&str>,
+    media_rids: &[MediaRelIds],
 ) -> String {
     let mut xml = String::from(SLIDE_HEADER);
-    render_additional_content(&mut xml, content, chart_rids, ink_rel_id);
+    render_additional_content(&mut xml, content, chart_rids, ink_rel_id, media_rids);
     xml.push_str(SLIDE_FOOTER);
     xml
 }
@@ -73,6 +83,7 @@ pub fn create_title_only_slide(
     content: &SlideContent,
     chart_rids: &[String],
     ink_rel_id: Option<&str>,
+    media_rids: &[MediaRelIds],
 ) -> String {
     let title_size = content.title_size.unwrap_or(44) * 100;
     let title_props = generate_text_props(
@@ -87,15 +98,15 @@ pub fn create_title_only_slide(
     let title_shape = generate_title_shape(
         &title_text,
         &title_props,
-        457200,   // x
-        274638,   // y
-        8230200,  // width
-        1143000,  // height
-        "l",      // align left
+        457200,  // x
+        274638,  // y
+        8230200, // width
+        1143000, // height
+        "l",     // align left
     );
 
     let mut xml = format!("{}\n{}", SLIDE_HEADER, title_shape);
-    render_additional_content(&mut xml, content, chart_rids, ink_rel_id);
+    render_additional_content(&mut xml, content, chart_rids, ink_rel_id, media_rids);
     xml.push_str(SLIDE_FOOTER);
     xml
 }
@@ -105,6 +116,7 @@ pub fn create_section_header_slide(
     content: &SlideContent,
     chart_rids: &[String],
     ink_rel_id: Option<&str>,
+    media_rids: &[MediaRelIds],
 ) -> String {
     let title_size = content.title_size.unwrap_or(48) * 100;
     let title_props = generate_text_props(
@@ -127,7 +139,7 @@ pub fn create_section_header_slide(
     );
 
     let mut xml = format!("{}\n{}", SLIDE_HEADER, title_shape);
-    render_additional_content(&mut xml, content, chart_rids, ink_rel_id);
+    render_additional_content(&mut xml, content, chart_rids, ink_rel_id, media_rids);
     xml.push_str(SLIDE_FOOTER);
     xml
 }
@@ -137,6 +149,7 @@ pub fn create_centered_title_slide(
     content: &SlideContent,
     chart_rids: &[String],
     ink_rel_id: Option<&str>,
+    media_rids: &[MediaRelIds],
 ) -> String {
     let title_size = content.title_size.unwrap_or(54) * 100;
     let title_props = generate_text_props(
@@ -151,15 +164,15 @@ pub fn create_centered_title_slide(
     let title_shape = generate_title_shape(
         &title_text,
         &title_props,
-        457200,   // x
-        2743200,  // y (centered vertically)
-        8230200,  // width
-        1371600,  // height
-        "ctr",    // align center
+        457200,  // x
+        2743200, // y (centered vertically)
+        8230200, // width
+        1371600, // height
+        "ctr",   // align center
     );
 
     let mut xml = format!("{}\n{}", SLIDE_HEADER, title_shape);
-    render_additional_content(&mut xml, content, chart_rids, ink_rel_id);
+    render_additional_content(&mut xml, content, chart_rids, ink_rel_id, media_rids);
     xml.push_str(SLIDE_FOOTER);
     xml
 }
@@ -169,6 +182,7 @@ pub fn create_title_and_big_content_slide(
     content: &SlideContent,
     chart_rids: &[String],
     ink_rel_id: Option<&str>,
+    media_rids: &[MediaRelIds],
 ) -> String {
     let title_size = content.title_size.unwrap_or(44) * 100;
     let content_size = content.content_size.unwrap_or(28) * 100;
@@ -183,7 +197,7 @@ pub fn create_title_and_big_content_slide(
     let title_text = escape_xml(&content.title);
 
     let mut xml = String::from(SLIDE_HEADER);
-    
+
     // Title shape
     xml.push_str(&format!(
         r#"
@@ -235,7 +249,7 @@ pub fn create_title_and_big_content_slide(
 </p:spPr>
 <p:txBody>
 <a:bodyPr wrap="square" rtlCol="0"/>
-<a:lstStyle/>"#
+<a:lstStyle/>"#,
         );
 
         let default_props = ExtendedTextProps::with_basic(
@@ -249,7 +263,10 @@ pub fn create_title_and_big_content_slide(
         // Use styled bullets if available, otherwise use plain content
         if !content.bullets.is_empty() {
             for bullet in &content.bullets {
-                xml.push_str(&generate_bullet_paragraph_from_point(bullet, &default_props));
+                xml.push_str(&generate_bullet_paragraph_from_point(
+                    bullet,
+                    &default_props,
+                ));
             }
         } else {
             for bullet in &content.content {
@@ -261,11 +278,11 @@ pub fn create_title_and_big_content_slide(
         xml.push_str(
             r#"
 </p:txBody>
-</p:sp>"#
+</p:sp>"#,
         );
     }
 
-    render_additional_content(&mut xml, content, chart_rids, ink_rel_id);
+    render_additional_content(&mut xml, content, chart_rids, ink_rel_id, media_rids);
     xml.push_str(SLIDE_FOOTER);
     xml
 }
@@ -275,6 +292,7 @@ pub fn create_two_column_slide(
     content: &SlideContent,
     chart_rids: &[String],
     ink_rel_id: Option<&str>,
+    media_rids: &[MediaRelIds],
 ) -> String {
     let title_size = content.title_size.unwrap_or(44) * 100;
     let content_size = content.content_size.unwrap_or(24) * 100;
@@ -289,7 +307,7 @@ pub fn create_two_column_slide(
     let title_text = escape_xml(&content.title);
 
     let mut xml = String::from(SLIDE_HEADER);
-    
+
     // Title
     xml.push_str(&format!(
         r#"
@@ -331,7 +349,11 @@ pub fn create_two_column_slide(
 
     // Determine which bullets to use
     let use_styled_bullets = !content.bullets.is_empty();
-    let bullet_count = if use_styled_bullets { content.bullets.len() } else { content.content.len() };
+    let bullet_count = if use_styled_bullets {
+        content.bullets.len()
+    } else {
+        content.content.len()
+    };
 
     if bullet_count > 0 {
         let mid = bullet_count.div_ceil(2);
@@ -355,12 +377,15 @@ pub fn create_two_column_slide(
 </p:spPr>
 <p:txBody>
 <a:bodyPr wrap="square" rtlCol="0"/>
-<a:lstStyle/>"#
+<a:lstStyle/>"#,
         );
 
         if use_styled_bullets {
             for bullet in &content.bullets[..mid] {
-                xml.push_str(&generate_bullet_paragraph_from_point(bullet, &default_props));
+                xml.push_str(&generate_bullet_paragraph_from_point(
+                    bullet,
+                    &default_props,
+                ));
             }
         } else {
             for bullet in &content.content[..mid] {
@@ -372,7 +397,7 @@ pub fn create_two_column_slide(
         xml.push_str(
             r#"
 </p:txBody>
-</p:sp>"#
+</p:sp>"#,
         );
 
         // Right column
@@ -395,12 +420,15 @@ pub fn create_two_column_slide(
 </p:spPr>
 <p:txBody>
 <a:bodyPr wrap="square" rtlCol="0"/>
-<a:lstStyle/>"#
+<a:lstStyle/>"#,
             );
 
             if use_styled_bullets {
                 for bullet in &content.bullets[mid..] {
-                    xml.push_str(&generate_bullet_paragraph_from_point(bullet, &default_props));
+                    xml.push_str(&generate_bullet_paragraph_from_point(
+                        bullet,
+                        &default_props,
+                    ));
                 }
             } else {
                 for bullet in &content.content[mid..] {
@@ -412,12 +440,12 @@ pub fn create_two_column_slide(
             xml.push_str(
                 r#"
 </p:txBody>
-</p:sp>"#
+</p:sp>"#,
             );
         }
     }
 
-    render_additional_content(&mut xml, content, chart_rids, ink_rel_id);
+    render_additional_content(&mut xml, content, chart_rids, ink_rel_id, media_rids);
     xml.push_str(SLIDE_FOOTER);
     xml
 }
@@ -427,6 +455,7 @@ pub fn create_title_and_content_slide(
     content: &SlideContent,
     chart_rids: &[String],
     ink_rel_id: Option<&str>,
+    media_rids: &[MediaRelIds],
 ) -> String {
     let title_size = content.title_size.unwrap_or(44) * 100;
     let content_size = content.content_size.unwrap_or(28) * 100;
@@ -441,7 +470,7 @@ pub fn create_title_and_content_slide(
     let title_text = escape_xml(&content.title);
 
     let mut xml = String::from(SLIDE_HEADER);
-    
+
     // Title
     xml.push_str(&format!(
         r#"
@@ -497,7 +526,7 @@ pub fn create_title_and_content_slide(
 </p:spPr>
 <p:txBody>
 <a:bodyPr wrap="square" rtlCol="0"/>
-<a:lstStyle/>"#
+<a:lstStyle/>"#,
         );
 
         let default_props = ExtendedTextProps::with_basic(
@@ -511,7 +540,10 @@ pub fn create_title_and_content_slide(
         // Use styled bullets if available, otherwise use plain content
         if !content.bullets.is_empty() {
             for bullet in &content.bullets {
-                xml.push_str(&generate_bullet_paragraph_from_point(bullet, &default_props));
+                xml.push_str(&generate_bullet_paragraph_from_point(
+                    bullet,
+                    &default_props,
+                ));
             }
         } else {
             for bullet in &content.content {
@@ -523,12 +555,12 @@ pub fn create_title_and_content_slide(
         xml.push_str(
             r#"
 </p:txBody>
-</p:sp>"#
+</p:sp>"#,
         );
     }
 
     // Render additional content (shapes, images, code blocks, connectors)
-    render_additional_content(&mut xml, content, chart_rids, ink_rel_id);
+    render_additional_content(&mut xml, content, chart_rids, ink_rel_id, media_rids);
 
     xml.push_str(SLIDE_FOOTER);
     xml

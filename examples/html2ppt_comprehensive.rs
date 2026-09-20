@@ -15,7 +15,7 @@ use std::path::Path;
 
 use ppt_rs::api::Presentation;
 use ppt_rs::generator::create_pptx_with_content;
-use ppt_rs::import::{parse_html, parse_html_with_options, Html2Ppt, HtmlParseOptions};
+use ppt_rs::import::{Html2Ppt, HtmlParseOptions, parse_html, parse_html_with_options};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     fs::create_dir_all("examples/output")?;
@@ -102,7 +102,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Count bullets with inline styles
             let styled = slide.bullets.iter().filter(|b| b.format.is_some()).count();
             if styled > 0 {
-                println!("         bullets with inline styles: {}/{}", styled, slide.bullets.len());
+                println!(
+                    "         bullets with inline styles: {}/{}",
+                    styled,
+                    slide.bullets.len()
+                );
             }
         }
 
@@ -155,7 +159,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let imported = Presentation::from_path(path)?;
     assert_eq!(imported.slide_count(), pres.slide_count());
     assert_eq!(imported.slides()[0].title, "API Builder");
-    println!("  ✓ Round-trip verified: {} slides preserved", imported.slide_count());
+    println!(
+        "  ✓ Round-trip verified: {} slides preserved",
+        imported.slide_count()
+    );
 
     // ---------------------------------------------------------------
     // 5. Error handling
@@ -218,7 +225,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let custom_opts = HtmlParseOptions::new().max_slides(1);
     let custom_converter = Html2Ppt::with_options(custom_opts);
     let slides_custom = custom_converter.parse("<h1>A</h1><h1>B</h1>")?;
-    println!("  Html2Ppt::with_options(max_slides=1): {} slides (limited to 1)", slides_custom.len());
+    println!(
+        "  Html2Ppt::with_options(max_slides=1): {} slides (limited to 1)",
+        slides_custom.len()
+    );
 
     println!("\n=== All examples completed ===");
     println!("Output files in examples/output/:");

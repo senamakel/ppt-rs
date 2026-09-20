@@ -9,8 +9,7 @@ use rmcp::{
         CallToolResult, ContentBlock, Implementation, ProtocolVersion, ServerCapabilities,
         ServerInfo,
     },
-    schemars,
-    tool, tool_handler, tool_router,
+    schemars, tool, tool_handler, tool_router,
 };
 use serde::Deserialize;
 use serde_json::json;
@@ -202,7 +201,10 @@ impl PptMcp {
         name = "get_pptx_info",
         description = "Read a PowerPoint file and return its metadata: title, slide count, slide titles, and content summary."
     )]
-    fn get_pptx_info(&self, Parameters(args): Parameters<PathArg>) -> Result<CallToolResult, McpError> {
+    fn get_pptx_info(
+        &self,
+        Parameters(args): Parameters<PathArg>,
+    ) -> Result<CallToolResult, McpError> {
         Ok(handle_get_pptx_info(&args.path))
     }
 
@@ -210,7 +212,10 @@ impl PptMcp {
         name = "export_pptx",
         description = "Export a PowerPoint file to another format: HTML, PDF, Markdown, or PNG images."
     )]
-    fn export_pptx(&self, Parameters(args): Parameters<ExportPptxArgs>) -> Result<CallToolResult, McpError> {
+    fn export_pptx(
+        &self,
+        Parameters(args): Parameters<ExportPptxArgs>,
+    ) -> Result<CallToolResult, McpError> {
         Ok(handle_export_pptx(args))
     }
 
@@ -218,7 +223,10 @@ impl PptMcp {
         name = "merge_pptx",
         description = "Merge multiple PowerPoint files into a single presentation."
     )]
-    fn merge_pptx(&self, Parameters(args): Parameters<MergePptxArgs>) -> Result<CallToolResult, McpError> {
+    fn merge_pptx(
+        &self,
+        Parameters(args): Parameters<MergePptxArgs>,
+    ) -> Result<CallToolResult, McpError> {
         Ok(handle_merge_pptx(args))
     }
 
@@ -226,7 +234,10 @@ impl PptMcp {
         name = "validate_pptx",
         description = "Validate a PowerPoint file for structural integrity and ECMA-376 compliance. Reports any issues found."
     )]
-    fn validate_pptx(&self, Parameters(args): Parameters<PathArg>) -> Result<CallToolResult, McpError> {
+    fn validate_pptx(
+        &self,
+        Parameters(args): Parameters<PathArg>,
+    ) -> Result<CallToolResult, McpError> {
         Ok(handle_validate_pptx(&args.path))
     }
 
@@ -289,16 +300,9 @@ impl PptMcp {
 #[tool_handler]
 impl ServerHandler for PptMcp {
     fn get_info(&self) -> ServerInfo {
-        ServerInfo::new(
-            ServerCapabilities::builder()
-                .enable_tools()
-                .build(),
-        )
-        .with_server_info(Implementation::new(
-            "ppt-rs",
-            env!("CARGO_PKG_VERSION"),
-        ))
-        .with_protocol_version(ProtocolVersion::V_2024_11_05)
+        ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
+            .with_server_info(Implementation::new("ppt-rs", env!("CARGO_PKG_VERSION")))
+            .with_protocol_version(ProtocolVersion::V_2024_11_05)
     }
 }
 
@@ -680,7 +684,11 @@ fn handle_repair_pptx(args: RepairPptxArgs) -> CallToolResult {
     };
     tool_text(format!(
         "Found {} issue(s) in '{}'; {}: {} critical. Saved to '{}'.",
-        issue_count, input_path, status, result.critical_issues(), output_path
+        issue_count,
+        input_path,
+        status,
+        result.critical_issues(),
+        output_path
     ))
 }
 

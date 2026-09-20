@@ -222,10 +222,7 @@ impl ValidateCommand {
                 ValidationSeverity::Warning => "WARNING",
             };
             let path = issue.path.as_deref().unwrap_or("-");
-            println!(
-                "[{severity}] {:?}  {path}",
-                issue.category
-            );
+            println!("[{severity}] {:?}  {path}", issue.category);
             println!("  {}", issue.message);
         }
 

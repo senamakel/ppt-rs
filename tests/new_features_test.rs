@@ -11,10 +11,10 @@
 #![cfg(feature = "cli")]
 
 use ppt_rs::api::Presentation;
-use ppt_rs::generator::SlideContent;
 use ppt_rs::cli::markdown::parse;
-use ppt_rs::import::{parse_html, parse_html_with_options, HtmlParseOptions};
-use ppt_rs::export::html::{export_to_html_with_options, HtmlExportOptions};
+use ppt_rs::export::html::{HtmlExportOptions, export_to_html_with_options};
+use ppt_rs::generator::SlideContent;
+use ppt_rs::import::{HtmlParseOptions, parse_html, parse_html_with_options};
 
 #[test]
 fn test_markdown_image_handling() {
@@ -158,8 +158,7 @@ fn test_html_real_images() {
 </html>
 "#;
 
-    let options = HtmlParseOptions::new()
-        .include_images(true);
+    let options = HtmlParseOptions::new().include_images(true);
 
     let slides = parse_html_with_options(html, options).unwrap();
 
@@ -270,8 +269,7 @@ fn test_html_export_with_navigation() {
         .add_slide(SlideContent::new("Slide 1").add_bullet("Point 1"))
         .add_slide(SlideContent::new("Slide 2").add_bullet("Point 2"));
 
-    let options = HtmlExportOptions::new()
-        .with_navigation(true);
+    let options = HtmlExportOptions::new().with_navigation(true);
 
     let html = export_to_html_with_options(&pres, &options).unwrap();
 
@@ -289,11 +287,9 @@ fn test_html_export_with_notes() {
         .add_bullet("Point 2");
     slide1.notes = Some("These are speaker notes".to_string());
 
-    let pres = Presentation::with_title("Notes Test")
-        .add_slide(slide1);
+    let pres = Presentation::with_title("Notes Test").add_slide(slide1);
 
-    let options = HtmlExportOptions::new()
-        .with_notes(true);
+    let options = HtmlExportOptions::new().with_notes(true);
 
     let html = export_to_html_with_options(&pres, &options).unwrap();
 
@@ -305,13 +301,9 @@ fn test_html_export_with_notes() {
 #[test]
 fn test_html_export_with_syntax_highlighting() {
     let pres = Presentation::with_title("Code Test")
-        .add_slide(
-            SlideContent::new("Code Slide")
-                .add_bullet("Regular bullet")
-        );
+        .add_slide(SlideContent::new("Code Slide").add_bullet("Regular bullet"));
 
-    let options = HtmlExportOptions::new()
-        .with_syntax_highlight(true);
+    let options = HtmlExportOptions::new().with_syntax_highlight(true);
 
     let html = export_to_html_with_options(&pres, &options).unwrap();
 
@@ -365,9 +357,7 @@ fn example() {
     assert!(slides.len() >= 1);
 
     // Check that different content types are present
-    let total_bullets: usize = slides.iter()
-        .map(|s| s.bullets.len())
-        .sum();
+    let total_bullets: usize = slides.iter().map(|s| s.bullets.len()).sum();
 
     assert!(total_bullets > 0, "Should have bullet points");
 }
@@ -406,12 +396,10 @@ fn test_html_parse_options() {
 
 #[test]
 fn test_html_export_options_combinations() {
-    let mut slide = SlideContent::new("Test Slide")
-        .add_bullet("Point 1");
+    let mut slide = SlideContent::new("Test Slide").add_bullet("Point 1");
     slide.notes = Some("Notes here".to_string());
 
-    let pres = Presentation::with_title("Options Test")
-        .add_slide(slide);
+    let pres = Presentation::with_title("Options Test").add_slide(slide);
 
     // Test all options enabled
     let options = HtmlExportOptions::new()
@@ -512,7 +500,8 @@ More content here with additional formatting options.
     assert_eq!(slides[0].title, "Comprehensive Feature Test");
 
     // Should have substantial content
-    let total_content: usize = slides.iter()
+    let total_content: usize = slides
+        .iter()
         .map(|s| s.content.len() + s.bullets.len())
         .sum();
 

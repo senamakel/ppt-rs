@@ -18,7 +18,12 @@ impl MergeRegion {
         if row_span == 0 || col_span == 0 {
             return Err("Span must be at least 1".to_string());
         }
-        Ok(Self { row, col, row_span, col_span })
+        Ok(Self {
+            row,
+            col,
+            row_span,
+            col_span,
+        })
     }
 
     /// Last row index (inclusive)
@@ -99,7 +104,11 @@ pub struct TableMergeMap {
 impl TableMergeMap {
     /// Create a merge map for a table of given dimensions
     pub fn new(rows: usize, cols: usize) -> Self {
-        Self { regions: Vec::new(), rows, cols }
+        Self {
+            regions: Vec::new(),
+            rows,
+            cols,
+        }
     }
 
     /// Add a merge region. Returns error if out of bounds or overlapping.
@@ -107,21 +116,31 @@ impl TableMergeMap {
         if region.last_row() >= self.rows {
             return Err(format!(
                 "Merge region row {}-{} exceeds table rows {}",
-                region.row, region.last_row(), self.rows
+                region.row,
+                region.last_row(),
+                self.rows
             ));
         }
         if region.last_col() >= self.cols {
             return Err(format!(
                 "Merge region col {}-{} exceeds table cols {}",
-                region.col, region.last_col(), self.cols
+                region.col,
+                region.last_col(),
+                self.cols
             ));
         }
         for existing in &self.regions {
             if existing.overlaps(&region) {
                 return Err(format!(
                     "Merge region ({},{}) {}x{} overlaps with ({},{}) {}x{}",
-                    region.row, region.col, region.row_span, region.col_span,
-                    existing.row, existing.col, existing.row_span, existing.col_span,
+                    region.row,
+                    region.col,
+                    region.row_span,
+                    region.col_span,
+                    existing.row,
+                    existing.col,
+                    existing.row_span,
+                    existing.col_span,
                 ));
             }
         }
@@ -130,7 +149,13 @@ impl TableMergeMap {
     }
 
     /// Merge a rectangular range (convenience method)
-    pub fn merge_cells(&mut self, row: usize, col: usize, row_span: usize, col_span: usize) -> Result<(), String> {
+    pub fn merge_cells(
+        &mut self,
+        row: usize,
+        col: usize,
+        row_span: usize,
+        col_span: usize,
+    ) -> Result<(), String> {
         let region = MergeRegion::new(row, col, row_span, col_span)?;
         self.add_merge(region)
     }
@@ -246,7 +271,10 @@ mod tests {
 
     #[test]
     fn test_cell_merge_state_anchor() {
-        let s = CellMergeState::Anchor { row_span: 2, col_span: 3 };
+        let s = CellMergeState::Anchor {
+            row_span: 2,
+            col_span: 3,
+        };
         let xml = s.to_xml_attrs();
         assert!(xml.contains(r#"gridSpan="3""#));
         assert!(xml.contains(r#"rowSpan="2""#));
@@ -255,7 +283,10 @@ mod tests {
 
     #[test]
     fn test_cell_merge_state_anchor_col_only() {
-        let s = CellMergeState::Anchor { row_span: 1, col_span: 3 };
+        let s = CellMergeState::Anchor {
+            row_span: 1,
+            col_span: 3,
+        };
         let xml = s.to_xml_attrs();
         assert!(xml.contains(r#"gridSpan="3""#));
         assert!(!xml.contains("rowSpan"));
@@ -319,7 +350,10 @@ mod tests {
         // Anchor
         assert_eq!(
             m.cell_state(0, 0),
-            CellMergeState::Anchor { row_span: 2, col_span: 3 }
+            CellMergeState::Anchor {
+                row_span: 2,
+                col_span: 3
+            }
         );
         // hMerge (same row as anchor, different col)
         assert_eq!(m.cell_state(0, 1), CellMergeState::HMerge);
@@ -341,12 +375,18 @@ mod tests {
 
         assert_eq!(
             m.cell_state(0, 0),
-            CellMergeState::Anchor { row_span: 1, col_span: 2 }
+            CellMergeState::Anchor {
+                row_span: 1,
+                col_span: 2
+            }
         );
         assert_eq!(m.cell_state(0, 1), CellMergeState::HMerge);
         assert_eq!(
             m.cell_state(2, 2),
-            CellMergeState::Anchor { row_span: 2, col_span: 2 }
+            CellMergeState::Anchor {
+                row_span: 2,
+                col_span: 2
+            }
         );
         assert_eq!(m.cell_state(3, 3), CellMergeState::VMerge);
         assert_eq!(m.cell_state(1, 1), CellMergeState::Normal);

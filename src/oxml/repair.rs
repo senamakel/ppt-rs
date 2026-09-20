@@ -8,8 +8,8 @@
 //! - Corrupted package structure
 
 use crate::core::{
-    check_required_parts_with_descriptions, validate_well_formed_xml, ValidationIssue,
-    REQUIRED_PARTS_REPAIR,
+    REQUIRED_PARTS_REPAIR, ValidationIssue, check_required_parts_with_descriptions,
+    validate_well_formed_xml,
 };
 use crate::exc::{PptxError, Result};
 use crate::opc::Package;
@@ -327,26 +327,28 @@ impl PptxRepair {
 
             // Parse relationships and check targets exist
             for line in xml_str.lines() {
-                if line.contains("Relationship") && line.contains("Target=")
-                    && let Some(target) = self.extract_attribute(line, "Target") {
-                        let rel_id = self.extract_attribute(line, "Id").unwrap_or_default();
+                if line.contains("Relationship")
+                    && line.contains("Target=")
+                    && let Some(target) = self.extract_attribute(line, "Target")
+                {
+                    let rel_id = self.extract_attribute(line, "Id").unwrap_or_default();
 
-                        // Skip external relationships
-                        if target.starts_with("http://") || target.starts_with("https://") {
-                            continue;
-                        }
-
-                        // Resolve relative path
-                        let full_path = self.resolve_path(rels_path, &target);
-
-                        if !self.package.has_part(&full_path) && !target.contains("..") {
-                            self.issues.push(RepairIssue::BrokenRelationship {
-                                source: rels_path.to_string(),
-                                target: full_path,
-                                rel_id,
-                            });
-                        }
+                    // Skip external relationships
+                    if target.starts_with("http://") || target.starts_with("https://") {
+                        continue;
                     }
+
+                    // Resolve relative path
+                    let full_path = self.resolve_path(rels_path, &target);
+
+                    if !self.package.has_part(&full_path) && !target.contains("..") {
+                        self.issues.push(RepairIssue::BrokenRelationship {
+                            source: rels_path.to_string(),
+                            target: full_path,
+                            rel_id,
+                        });
+                    }
+                }
             }
         }
     }
@@ -504,7 +506,7 @@ impl PptxRepair {
                 return Err(PptxError::Generic(format!(
                     "Cannot generate part: {}",
                     path
-                )))
+                )));
             }
         };
 
@@ -791,17 +793,20 @@ impl PptxRepair {
             let ns_decl = match namespace {
                 "p" => "xmlns:p=\"http://schemas.openxmlformats.org/presentationml/2006/main\"",
                 "a" => "xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\"",
-                "r" => "xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"",
+                "r" => {
+                    "xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\""
+                }
                 _ => return Ok(()),
             };
 
             // Find first element and add namespace
             if let Some(pos) = xml_str.find('>')
-                && !xml_str[..pos].contains(ns_decl) {
-                    let repaired = format!("{} {}{}", &xml_str[..pos], ns_decl, &xml_str[pos..]);
-                    self.package
-                        .add_part(path.to_string(), repaired.into_bytes());
-                }
+                && !xml_str[..pos].contains(ns_decl)
+            {
+                let repaired = format!("{} {}{}", &xml_str[..pos], ns_decl, &xml_str[pos..]);
+                self.package
+                    .add_part(path.to_string(), repaired.into_bytes());
+            }
         }
         Ok(())
     }

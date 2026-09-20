@@ -11,8 +11,8 @@
 //!         `examples/output/from_template.pptx`
 
 use ppt_rs::generator::{
+    PptxTemplate, PresentationSettings, PrintSettings, SlideContent, SlideLayout,
     create_pptx_with_content, create_pptx_with_settings, create_pptx_with_template,
-    PresentationSettings, PrintSettings, PptxTemplate, SlideContent, SlideLayout,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -38,8 +38,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .title_size(48)
             .title_bold(true)
             .with_layout(SlideLayout::SectionHeader),
-        SlideContent::new("")
-            .with_layout(SlideLayout::Blank),
+        SlideContent::new("").with_layout(SlideLayout::Blank),
         SlideContent::new("Title Only Slide")
             .title_size(44)
             .with_layout(SlideLayout::TitleOnly),
@@ -64,11 +63,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .print_page_numbers(true);
     let settings = PresentationSettings::new().print(print);
 
-    let full_deck = create_pptx_with_settings(
-        "Layout Template Features",
-        &slides,
-        Some(settings),
-    )?;
+    let full_deck = create_pptx_with_settings("Layout Template Features", &slides, Some(settings))?;
 
     let template_path = "examples/output/layout_template_base.pptx";
     std::fs::write(template_path, &full_deck)?;
@@ -93,12 +88,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .with_layout(SlideLayout::TitleAndContent),
     ];
 
-    let from_template = create_pptx_with_template(
-        "From Template",
-        &follow_up,
-        template_path,
-        None,
-    )?;
+    let from_template =
+        create_pptx_with_template("From Template", &follow_up, template_path, None)?;
     std::fs::write("examples/output/from_template.pptx", &from_template)?;
     println!("   ✓ examples/output/from_template.pptx (2 slides)");
 

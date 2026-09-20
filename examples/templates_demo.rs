@@ -7,11 +7,9 @@
 //! - Technical documentation template
 //! - Theme colors and layout helpers
 
-use ppt_rs::templates::{
-    self, ProposalContent, StatusContent, TrainingContent, TechnicalContent,
-};
-use ppt_rs::prelude::*;
 use ppt_rs::pptx;
+use ppt_rs::prelude::*;
+use ppt_rs::templates::{self, ProposalContent, StatusContent, TechnicalContent, TrainingContent};
 
 fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     // 1. Business Proposal Template
@@ -80,9 +78,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
                 "Export functionality",
                 "Integration testing",
             ],
-            blocked: vec![
-                "Third-party API access pending approval",
-            ],
+            blocked: vec!["Third-party API access pending approval"],
             next_week: vec![
                 "Complete mobile layouts",
                 "Begin UAT testing",
@@ -112,24 +108,33 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
                 "Integrate Rust with existing systems",
             ],
             modules: vec![
-                ("Module 1: Getting Started", vec![
-                    "Installing Rust toolchain",
-                    "Hello World program",
-                    "Cargo basics",
-                    "VS Code setup",
-                ]),
-                ("Module 2: Ownership & Borrowing", vec![
-                    "Stack vs Heap",
-                    "Move semantics",
-                    "References and borrowing",
-                    "Lifetimes basics",
-                ]),
-                ("Module 3: Error Handling", vec![
-                    "Result and Option types",
-                    "Pattern matching",
-                    "The ? operator",
-                    "Custom error types",
-                ]),
+                (
+                    "Module 1: Getting Started",
+                    vec![
+                        "Installing Rust toolchain",
+                        "Hello World program",
+                        "Cargo basics",
+                        "VS Code setup",
+                    ],
+                ),
+                (
+                    "Module 2: Ownership & Borrowing",
+                    vec![
+                        "Stack vs Heap",
+                        "Move semantics",
+                        "References and borrowing",
+                        "Lifetimes basics",
+                    ],
+                ),
+                (
+                    "Module 3: Error Handling",
+                    vec![
+                        "Result and Option types",
+                        "Pattern matching",
+                        "The ? operator",
+                        "Custom error types",
+                    ],
+                ),
             ],
             exercises: vec![
                 "Build a CLI calculator",
@@ -167,23 +172,32 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
                 "Modular components for maintainability",
             ],
             components: vec![
-                ("Generator Module", vec![
-                    "SlideContent - Slide builder",
-                    "Shape - Shape creation",
-                    "Table - Table builder",
-                    "Chart - Chart builder",
-                ]),
-                ("Parts Module", vec![
-                    "SlidePart - Individual slides",
-                    "ImagePart - Embedded images",
-                    "ChartPart - Embedded charts",
-                    "MediaPart - Video/audio",
-                ]),
-                ("CLI Module", vec![
-                    "md2ppt - Markdown conversion",
-                    "validate - PPTX validation",
-                    "create - Quick presentation",
-                ]),
+                (
+                    "Generator Module",
+                    vec![
+                        "SlideContent - Slide builder",
+                        "Shape - Shape creation",
+                        "Table - Table builder",
+                        "Chart - Chart builder",
+                    ],
+                ),
+                (
+                    "Parts Module",
+                    vec![
+                        "SlidePart - Individual slides",
+                        "ImagePart - Embedded images",
+                        "ChartPart - Embedded charts",
+                        "MediaPart - Video/audio",
+                    ],
+                ),
+                (
+                    "CLI Module",
+                    vec![
+                        "md2ppt - Markdown conversion",
+                        "validate - PPTX validation",
+                        "create - Quick presentation",
+                    ],
+                ),
             ],
             api_examples: vec![
                 ("create_pptx()", "Create basic presentation"),
@@ -204,51 +218,80 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     // 5. Simple Template
     println!("Creating simple presentation...");
-    let simple = templates::simple("Quick Presentation", &[
-        ("Welcome", &[
-            "Hello, World!",
-            "This is a simple presentation",
-            "Created with ppt-rs templates",
-        ]),
-        ("Features", &[
-            "Easy to use API",
-            "Multiple templates",
-            "Theme support",
-        ]),
-        ("Conclusion", &[
-            "Try ppt-rs today!",
-            "Visit github.com/yingkitw/ppt-rs",
-        ]),
-    ])?;
+    let simple = templates::simple(
+        "Quick Presentation",
+        &[
+            (
+                "Welcome",
+                &[
+                    "Hello, World!",
+                    "This is a simple presentation",
+                    "Created with ppt-rs templates",
+                ],
+            ),
+            (
+                "Features",
+                &["Easy to use API", "Multiple templates", "Theme support"],
+            ),
+            (
+                "Conclusion",
+                &["Try ppt-rs today!", "Visit github.com/yingkitw/ppt-rs"],
+            ),
+        ],
+    )?;
     std::fs::write("examples/output/simple.pptx", simple)?;
     println!("  ✓ Created examples/output/simple.pptx");
 
     // 6. Theme showcase using prelude
     println!("Creating theme showcase...");
     let theme_pptx = pptx!("Theme Showcase")
-        .slide("Available Themes", &[
-            &format!("Corporate: Primary {} / Accent {}", 
-                themes::CORPORATE.primary, themes::CORPORATE.accent),
-            &format!("Modern: Primary {} / Accent {}",
-                themes::MODERN.primary, themes::MODERN.accent),
-            &format!("Vibrant: Primary {} / Accent {}",
-                themes::VIBRANT.primary, themes::VIBRANT.accent),
-            &format!("Dark: Primary {} / Accent {}",
-                themes::DARK.primary, themes::DARK.accent),
-            &format!("Carbon: Primary {} / Accent {}",
-                themes::CARBON.primary, themes::CARBON.accent),
-        ])
-        .slide("Material Colors", &[
-            &format!("Red: {}", colors::MATERIAL_RED),
-            &format!("Blue: {}", colors::MATERIAL_BLUE),
-            &format!("Green: {}", colors::MATERIAL_GREEN),
-            &format!("Orange: {}", colors::MATERIAL_ORANGE),
-        ])
-        .slide("Carbon Colors", &[
-            &format!("Blue 60: {}", colors::CARBON_BLUE_60),
-            &format!("Green 50: {}", colors::CARBON_GREEN_50),
-            &format!("Gray 100: {}", colors::CARBON_GRAY_100),
-        ])
+        .slide(
+            "Available Themes",
+            &[
+                &format!(
+                    "Corporate: Primary {} / Accent {}",
+                    themes::CORPORATE.primary,
+                    themes::CORPORATE.accent
+                ),
+                &format!(
+                    "Modern: Primary {} / Accent {}",
+                    themes::MODERN.primary,
+                    themes::MODERN.accent
+                ),
+                &format!(
+                    "Vibrant: Primary {} / Accent {}",
+                    themes::VIBRANT.primary,
+                    themes::VIBRANT.accent
+                ),
+                &format!(
+                    "Dark: Primary {} / Accent {}",
+                    themes::DARK.primary,
+                    themes::DARK.accent
+                ),
+                &format!(
+                    "Carbon: Primary {} / Accent {}",
+                    themes::CARBON.primary,
+                    themes::CARBON.accent
+                ),
+            ],
+        )
+        .slide(
+            "Material Colors",
+            &[
+                &format!("Red: {}", colors::MATERIAL_RED),
+                &format!("Blue: {}", colors::MATERIAL_BLUE),
+                &format!("Green: {}", colors::MATERIAL_GREEN),
+                &format!("Orange: {}", colors::MATERIAL_ORANGE),
+            ],
+        )
+        .slide(
+            "Carbon Colors",
+            &[
+                &format!("Blue 60: {}", colors::CARBON_BLUE_60),
+                &format!("Green 50: {}", colors::CARBON_GREEN_50),
+                &format!("Gray 100: {}", colors::CARBON_GRAY_100),
+            ],
+        )
         .build()?;
     std::fs::write("examples/output/themes.pptx", theme_pptx)?;
     println!("  ✓ Created examples/output/themes.pptx");
@@ -265,30 +308,32 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         themes::NATURE.primary,
         themes::TECH.primary,
     ];
-    
+
     for (i, (x, y)) in grid_positions.iter().enumerate() {
         grid_shapes.push(
             shapes::rect_emu(*x, *y, 1400000, 900000)
                 .fill(hex(theme_colors[i]))
-                .text(&format!("Theme {}", i + 1))
+                .text(&format!("Theme {}", i + 1)),
         );
     }
 
     let layout_pptx = pptx!("Layout Helpers Demo")
         .shapes_slide("Grid Layout (2x3)", grid_shapes)
-        .slide("Layout Features", &[
-            "layouts::grid() - Create grid positions",
-            "layouts::center() - Center shapes on slide",
-            "layouts::stack_horizontal() - Horizontal stacking",
-            "layouts::distribute_horizontal() - Even distribution",
-        ])
+        .slide(
+            "Layout Features",
+            &[
+                "layouts::grid() - Create grid positions",
+                "layouts::center() - Center shapes on slide",
+                "layouts::stack_horizontal() - Horizontal stacking",
+                "layouts::distribute_horizontal() - Even distribution",
+            ],
+        )
         .build()?;
     std::fs::write("examples/output/layouts.pptx", layout_pptx)?;
     println!("  ✓ Created examples/output/layouts.pptx");
 
     println!("\n✅ All template demos created successfully!");
     println!("   Check examples/output/ for the generated files.");
-    
+
     Ok(())
 }
-

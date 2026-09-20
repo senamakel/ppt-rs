@@ -24,8 +24,8 @@
 //! assert!(!pptx.is_empty());
 //! ```
 
-use crate::generator::{SlideContent, SlideLayout, create_pptx_with_content};
 use crate::exc::Result;
+use crate::generator::{SlideContent, SlideLayout, create_pptx_with_content};
 
 /// Content for a business proposal presentation
 #[derive(Debug, Clone)]
@@ -140,7 +140,7 @@ pub fn business_proposal<'a>(
     slides.push(
         SlideContent::new(title)
             .add_bullet(author)
-            .layout(SlideLayout::CenteredTitle)
+            .layout(SlideLayout::CenteredTitle),
     );
 
     // Agenda
@@ -150,7 +150,7 @@ pub fn business_proposal<'a>(
             .add_bullet("Problem Statement")
             .add_bullet("Proposed Solution")
             .add_bullet("Timeline & Budget")
-            .add_bullet("Next Steps")
+            .add_bullet("Next Steps"),
     );
 
     // Executive Summary
@@ -199,10 +199,11 @@ pub fn business_proposal<'a>(
     slides.push(
         SlideContent::new("Questions?")
             .add_bullet("Discussion and Q&A")
-            .layout(SlideLayout::CenteredTitle)
+            .layout(SlideLayout::CenteredTitle),
     );
 
-    create_pptx_with_content(title, slides).map_err(|e| crate::exc::PptxError::InvalidOperation(e.to_string()))
+    create_pptx_with_content(title, slides)
+        .map_err(|e| crate::exc::PptxError::InvalidOperation(e.to_string()))
 }
 
 /// Create a training material presentation
@@ -225,7 +226,7 @@ pub fn training_material<'a>(
     slides.push(
         SlideContent::new(title)
             .add_bullet(author)
-            .layout(SlideLayout::CenteredTitle)
+            .layout(SlideLayout::CenteredTitle),
     );
 
     // Objectives
@@ -259,12 +260,10 @@ pub fn training_material<'a>(
     slides.push(summary);
 
     // Q&A
-    slides.push(
-        SlideContent::new("Questions?")
-            .layout(SlideLayout::CenteredTitle)
-    );
+    slides.push(SlideContent::new("Questions?").layout(SlideLayout::CenteredTitle));
 
-    create_pptx_with_content(title, slides).map_err(|e| crate::exc::PptxError::InvalidOperation(e.to_string()))
+    create_pptx_with_content(title, slides)
+        .map_err(|e| crate::exc::PptxError::InvalidOperation(e.to_string()))
 }
 
 /// Create a status report presentation
@@ -277,18 +276,14 @@ pub fn training_material<'a>(
 /// 5. Blocked/Risks
 /// 6. Next Week
 /// 7. Metrics
-pub fn status_report<'a>(
-    title: &str,
-    date: &str,
-    content: StatusContent<'a>,
-) -> Result<Vec<u8>> {
+pub fn status_report<'a>(title: &str, date: &str, content: StatusContent<'a>) -> Result<Vec<u8>> {
     let mut slides = Vec::new();
 
     // Title
     slides.push(
         SlideContent::new(title)
             .add_bullet(date)
-            .layout(SlideLayout::CenteredTitle)
+            .layout(SlideLayout::CenteredTitle),
     );
 
     // Summary
@@ -337,7 +332,8 @@ pub fn status_report<'a>(
         slides.push(metrics);
     }
 
-    create_pptx_with_content(title, slides).map_err(|e| crate::exc::PptxError::InvalidOperation(e.to_string()))
+    create_pptx_with_content(title, slides)
+        .map_err(|e| crate::exc::PptxError::InvalidOperation(e.to_string()))
 }
 
 /// Create a technical documentation presentation
@@ -360,7 +356,7 @@ pub fn technical_doc<'a>(
     slides.push(
         SlideContent::new(title)
             .add_bullet(&format!("Version {}", version))
-            .layout(SlideLayout::CenteredTitle)
+            .layout(SlideLayout::CenteredTitle),
     );
 
     // Overview
@@ -402,20 +398,25 @@ pub fn technical_doc<'a>(
     }
     slides.push(practices);
 
-    create_pptx_with_content(title, slides).map_err(|e| crate::exc::PptxError::InvalidOperation(e.to_string()))
+    create_pptx_with_content(title, slides)
+        .map_err(|e| crate::exc::PptxError::InvalidOperation(e.to_string()))
 }
 
 /// Create a simple presentation with just title and bullet slides
 pub fn simple(title: &str, slides: &[(&str, &[&str])]) -> Result<Vec<u8>> {
-    let slide_contents: Vec<SlideContent> = slides.iter().map(|(slide_title, bullets)| {
-        let mut slide = SlideContent::new(slide_title);
-        for bullet in *bullets {
-            slide = slide.add_bullet(bullet);
-        }
-        slide
-    }).collect();
+    let slide_contents: Vec<SlideContent> = slides
+        .iter()
+        .map(|(slide_title, bullets)| {
+            let mut slide = SlideContent::new(slide_title);
+            for bullet in *bullets {
+                slide = slide.add_bullet(bullet);
+            }
+            slide
+        })
+        .collect();
 
-    create_pptx_with_content(title, slide_contents).map_err(|e| crate::exc::PptxError::InvalidOperation(e.to_string()))
+    create_pptx_with_content(title, slide_contents)
+        .map_err(|e| crate::exc::PptxError::InvalidOperation(e.to_string()))
 }
 
 #[cfg(test)]
@@ -476,4 +477,3 @@ mod tests {
         assert!(result.is_ok());
     }
 }
-

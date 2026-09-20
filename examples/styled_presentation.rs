@@ -49,7 +49,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn create_large_title_example() -> Result<(), Box<dyn std::error::Error>> {
     let slides = vec![
         SlideContent::new("Large Title Slide")
-            .title_size(60)  // 60pt title
+            .title_size(60) // 60pt title
             .content_size(16) // 16pt content
             .add_bullet("Small bullet point 1")
             .add_bullet("Small bullet point 2")
@@ -69,13 +69,13 @@ fn create_bold_content_example() -> Result<(), Box<dyn std::error::Error>> {
     let slides = vec![
         SlideContent::new("Bold Content Slide")
             .title_bold(true)
-            .content_bold(true)  // Make bullets bold
+            .content_bold(true) // Make bullets bold
             .add_bullet("Bold bullet point 1")
             .add_bullet("Bold bullet point 2")
             .add_bullet("Bold bullet point 3"),
         SlideContent::new("Regular Content")
             .title_bold(true)
-            .content_bold(false)  // Regular bullets
+            .content_bold(false) // Regular bullets
             .add_bullet("Regular bullet point 1")
             .add_bullet("Regular bullet point 2"),
     ];

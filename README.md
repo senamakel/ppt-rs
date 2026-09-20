@@ -31,7 +31,7 @@ While other Rust crates for PPTX generation are incomplete, broken, or abandoned
 - 🧩 **Templates & layouts** - Clone masters/theme/layouts from an existing deck (`--template`) and pick from 7 slide layouts per slide (v0.2.19)
 - 🛡️ **PowerPoint compat gate** - Structured `validate_package_bytes()` report + debug assert on every generated deck so files open without repair (v0.2.19)
 - 📊 **Editable charts** - Charts embed an Excel workbook (`ppt/embeddings/*.xlsx`) so they're editable in PowerPoint (v0.2.19)
-- 🔄 **Round-trip capable** - Export to Markdown, HTML, images (PNG/JPEG), compress PPTX files
+- 🔄 **Round-trip capable** - Export to Markdown, HTML, images (PNG/JPEG), compress PPTX files — PDF and image export need no LibreOffice
 - ✅ **Actually works** - Generates valid PPTX files that open in all major presentation software
 - ✅ **Complete implementation** - Full ECMA-376 Office Open XML compliance
 - ✅ **Type-safe API** - Rust's type system ensures correctness
@@ -508,10 +508,10 @@ Add to `Cargo.toml`:
 
 ```toml
 [dependencies]
-ppt-rs = "0.2.26"
+ppt-rs = "0.2.27"
 
 # Optional: MCP server types / embedding (library module `ppt_rs::mcp`)
-# ppt-rs = { version = "0.2.26", features = ["mcp"] }
+# ppt-rs = { version = "0.2.27", features = ["mcp"] }
 ```
 
 ## Examples
@@ -826,7 +826,7 @@ Unlike other Rust PPTX crates that:
 
 `ppt-rs`:
 - ✅ Generates **valid PPTX files** from day one
-- ✅ **Actively maintained** with comprehensive test coverage (1100+ tests)
+- ✅ **Actively maintained** with comprehensive test coverage (1200+ tests)
 - ✅ **Complete XML structure** following ECMA-376 standard
 - ✅ **Validation tools** - Built-in validation command + structured `PackageValidationReport` API for quality assurance
 - ✅ **PowerPoint compat gate** - Every generated deck is self-validated in debug builds
@@ -839,7 +839,7 @@ Unlike other Rust PPTX crates that:
 - Built-in validation command for ECMA-376 compliance checking
 - Structured `core::package_validation` API (`validate_package_bytes` → `PackageValidationReport`)
 - Debug builds `debug_assert!` that every generated deck passes package validation
-- Comprehensive test suite (1100+ tests, including `package_validation_test`, `powerpoint_compat_test`, `layouts_packaging_test`, `repair_compare_test`)
+- Comprehensive test suite (1200+ tests, including `package_validation_test`, `powerpoint_compat_test`, `layouts_packaging_test`, `repair_compare_test`)
 - Integration tests for end-to-end validation
 
 ### Alignment Testing
@@ -849,12 +849,12 @@ Unlike other Rust PPTX crates that:
 
 ## Technical Details
 
-- **Version**: 0.2.26
+- **Version**: 0.2.27
 - **Format**: Microsoft PowerPoint 2007+ (.pptx)
 - **Standard**: ECMA-376 Office Open XML
 - **Compatibility**: PowerPoint, LibreOffice, Google Slides, Keynote
 - **Architecture**: Modular design with clear separation of concerns
-- **Test Coverage**: 1100+ tests covering all major features
+- **Test Coverage**: 1200+ tests covering all major features
 - **Performance**: ~1000 slides/sec; lazy loading for large decks; borrow-based `build()` API
 
 ## Templates

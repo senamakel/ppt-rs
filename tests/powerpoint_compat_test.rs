@@ -7,16 +7,14 @@ use std::io::{Cursor, Read, Write};
 
 use ppt_rs::core::REQUIRED_PACKAGE_PARTS;
 use ppt_rs::generator::package_xml::{
-    first_slide_rel_id, handout_master_rel_id, notes_master_rel_id, slide_id_value,
-    slide_rel_id,
-};
-use ppt_rs::generator::{
-    create_pptx, create_pptx_lazy_to_writer, create_pptx_to_writer,
-    create_pptx_with_content, create_pptx_with_settings, ChartBuilder, ChartSeries,
-    ChartType, LazySlideSource, PresentationSettings, PresentationTheme, PrintSettings,
-    PrintWhat, SlideContent,
+    first_slide_rel_id, handout_master_rel_id, notes_master_rel_id, slide_id_value, slide_rel_id,
 };
 use ppt_rs::generator::slide_content::print_settings::HandoutLayout;
+use ppt_rs::generator::{
+    ChartBuilder, ChartSeries, ChartType, LazySlideSource, PresentationSettings, PresentationTheme,
+    PrintSettings, PrintWhat, SlideContent, create_pptx, create_pptx_lazy_to_writer,
+    create_pptx_to_writer, create_pptx_with_content, create_pptx_with_settings,
+};
 use zip::ZipArchive;
 
 // ---------------------------------------------------------------------------
@@ -34,9 +32,10 @@ impl ArchiveParts {
         let mut names = Vec::new();
         for i in 0..archive.len() {
             if let Ok(f) = archive.by_index(i)
-                && !f.is_dir() {
-                    names.push(f.name().to_string());
-                }
+                && !f.is_dir()
+            {
+                names.push(f.name().to_string());
+            }
         }
         Self { names }
     }
@@ -125,27 +124,22 @@ fn lazy_api_passes_compat_gate() {
             self.count
         }
         fn generate_slide(&self, index: usize) -> Option<SlideContent> {
-            (index < self.count).then(|| {
-                SlideContent::new(&format!("Lazy {}", index + 1)).add_bullet("item")
-            })
+            (index < self.count)
+                .then(|| SlideContent::new(&format!("Lazy {}", index + 1)).add_bullet("item"))
         }
     }
 
     let cursor = Cursor::new(Vec::new());
-    let cursor = create_pptx_lazy_to_writer(cursor, "Lazy", Box::new(Src { count: 6 }), None)
-        .unwrap();
+    let cursor =
+        create_pptx_lazy_to_writer(cursor, "Lazy", Box::new(Src { count: 6 }), None).unwrap();
     assert_compat(&cursor.into_inner(), "lazy");
 }
 
 #[test]
 fn custom_theme_deck_passes_compat_gate() {
     let settings = PresentationSettings::new().theme(PresentationTheme::corporate());
-    let bytes = create_pptx_with_settings(
-        "Branded",
-        &[SlideContent::new("Title")],
-        Some(settings),
-    )
-    .unwrap();
+    let bytes = create_pptx_with_settings("Branded", &[SlideContent::new("Title")], Some(settings))
+        .unwrap();
     assert_compat(&bytes, "custom-theme");
     assert!(
         ArchiveParts::part_len(&bytes, "ppt/theme/theme1.xml") >= 4000,
@@ -353,12 +347,9 @@ fn handout_deck_includes_handout_master() {
         .print_what(PrintWhat::Handouts)
         .handout_layout(HandoutLayout::SlidesPerPage6);
     let settings = PresentationSettings::new().print(print);
-    let bytes = create_pptx_with_settings(
-        "Handouts",
-        &[SlideContent::new("Slide 1")],
-        Some(settings),
-    )
-    .unwrap();
+    let bytes =
+        create_pptx_with_settings("Handouts", &[SlideContent::new("Slide 1")], Some(settings))
+            .unwrap();
     assert_compat(&bytes, "handouts");
 
     let parts = ArchiveParts::from_bytes(&bytes);
@@ -431,10 +422,7 @@ fn notes_deck_wires_notes_master_and_shifts_slide_rids() {
     let pres = ArchiveParts::read_part(&bytes, "ppt/presentation.xml");
     assert!(pres.contains("<p:notesMasterIdLst>"));
     assert!(!pres.contains("<p:notesMasterId id="));
-    assert!(pres.contains(&format!(
-        r#"r:id="rId{}""#,
-        notes_master_rel_id(1)
-    )));
+    assert!(pres.contains(&format!(r#"r:id="rId{}""#, notes_master_rel_id(1))));
 
     let first_rid = slide_rel_id(1, true, false);
     assert!(pres.contains(&format!(r#"r:id="rId{first_rid}""#)));
@@ -442,7 +430,10 @@ fn notes_deck_wires_notes_master_and_shifts_slide_rids() {
 
     let notes_rels =
         ArchiveParts::read_part(&bytes, "ppt/notesMasters/_rels/notesMaster1.xml.rels");
-    assert!(notes_rels.contains("theme/theme2.xml"), "notes master uses dedicated theme2");
+    assert!(
+        notes_rels.contains("theme/theme2.xml"),
+        "notes master uses dedicated theme2"
+    );
 }
 
 #[test]

@@ -1,11 +1,11 @@
 //! Package-level XML generation (content types, relationships, presentation)
 
 use crate::core::{append_usize, escape_xml};
-use crate::generator::slide_content::presentation_settings::PresentationSettings;
-use crate::generator::slide_content::embedded_fonts::EmbeddedFontList;
 use crate::generator::charts::chart_embedding_filename;
-use crate::generator::layout_parts::append_layout_content_type_overrides;
 use crate::generator::layout_parts::STANDARD_LAYOUT_COUNT;
+use crate::generator::layout_parts::append_layout_content_type_overrides;
+use crate::generator::slide_content::embedded_fonts::EmbeddedFontList;
+use crate::generator::slide_content::presentation_settings::PresentationSettings;
 use crate::generator::theme_xml::layout_rel_target;
 
 /// First slide master id (`0x80000000`). Layout and notes master ids follow in the same id space.
@@ -79,10 +79,8 @@ const CONTENT_TYPES_FOOTER: &str = r#"
 <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
 </Types>"#;
 
-const SLIDE_OVERRIDE_PREFIX: &str =
-    "\n<Override PartName=\"/ppt/slides/slide";
-const SLIDE_OVERRIDE_SUFFIX: &str =
-    ".xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.slide+xml\"/>";
+const SLIDE_OVERRIDE_PREFIX: &str = "\n<Override PartName=\"/ppt/slides/slide";
+const SLIDE_OVERRIDE_SUFFIX: &str = ".xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.slide+xml\"/>";
 
 fn append_slide_overrides(xml: &mut String, slides: usize) {
     for i in 1..=slides {
@@ -133,6 +131,11 @@ pub fn theme_rel_id(slide_count: usize, has_notes: bool, has_handout: bool) -> u
 /// tableStyles relationship id.
 pub fn table_styles_rel_id(slide_count: usize, has_notes: bool, has_handout: bool) -> usize {
     pres_props_rel_id(slide_count, has_notes, has_handout) + 3
+}
+
+/// commentAuthors relationship id (first id after tableStyles).
+pub fn comment_authors_rel_id(slide_count: usize, has_notes: bool, has_handout: bool) -> usize {
+    table_styles_rel_id(slide_count, has_notes, has_handout) + 1
 }
 
 /// Slide id value for slide `slide_num` (1-based). PowerPoint starts at 256.
@@ -235,7 +238,10 @@ pub fn create_presentation_rels_xml_full(
     xml.push_str("\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme\" Target=\"theme/theme1.xml\"/>");
 
     xml.push_str("\n<Relationship Id=\"rId");
-    append_usize(&mut xml, table_styles_rel_id(slides, has_notes, has_handout));
+    append_usize(
+        &mut xml,
+        table_styles_rel_id(slides, has_notes, has_handout),
+    );
     xml.push_str("\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/tableStyles\" Target=\"tableStyles.xml\"/>");
 
     xml.push_str("\n</Relationships>");
@@ -279,12 +285,13 @@ pub fn create_pres_props_xml(settings: Option<&PresentationSettings>) -> String 
     );
 
     if let Some(s) = settings
-        && let Some(ref show) = s.slide_show {
-            xml.push_str(&show.to_xml());
-        }
-        // Handout print preferences are expressed via the handout master part.
-        // PowerPoint strips `<p:prnPr>` from presProps on repair when it is paired
-        // with a packaged handout master, so we do not emit it during generation.
+        && let Some(ref show) = s.slide_show
+    {
+        xml.push_str(&show.to_xml());
+    }
+    // Handout print preferences are expressed via the handout master part.
+    // PowerPoint strips `<p:prnPr>` from presProps on repair when it is paired
+    // with a packaged handout master, so we do not emit it during generation.
 
     xml.push_str(
         r#"<p:extLst><p:ext uri="{E76CE94A-603C-4142-B9EB-6D1370010A27}"><p14:discardImageEditData xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main" val="0"/></p:ext><p:ext uri="{D31A062A-798A-4329-ABDD-BBA856620510}"><p14:defaultImageDpi xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main" val="0"/></p:ext><p:ext uri="{FD5EFAAD-0ECE-453E-9831-46B23BE46B34}"><p15:chartTrackingRefBased xmlns:p15="http://schemas.microsoft.com/office/powerpoint/2012/main" val="0"/></p:ext></p:extLst></p:presentationPr>"#,
@@ -324,8 +331,10 @@ pub fn create_presentation_xml(
 <p:sldMasterId id=""#,
     );
     append_usize(&mut xml, SLIDE_MASTER_ID as usize);
-    xml.push_str(r#"" r:id="rId1"/>
-</p:sldMasterIdLst>"#);
+    xml.push_str(
+        r#"" r:id="rId1"/>
+</p:sldMasterIdLst>"#,
+    );
 
     if has_notes {
         xml.push_str("\n<p:notesMasterIdLst>\n<p:notesMasterId r:id=\"rId");
@@ -393,9 +402,15 @@ pub fn create_content_types_xml_with_notes_and_charts(
     media_exts: &[String],
 ) -> String {
     let notes_count = custom_slides
-        .map(|slides_slice| slides_slice.iter().filter(|slide| slide.notes.is_some()).count())
+        .map(|slides_slice| {
+            slides_slice
+                .iter()
+                .filter(|slide| slide.notes.is_some())
+                .count()
+        })
         .unwrap_or(0);
-    let mut xml = String::with_capacity(2048 + slides * 140 + notes_count * 140 + chart_count * 120);
+    let mut xml =
+        String::with_capacity(2048 + slides * 140 + notes_count * 140 + chart_count * 120);
     xml.push_str(&content_types_opening(media_exts, chart_count));
     append_slide_overrides(&mut xml, slides);
 
@@ -473,6 +488,104 @@ pub fn append_ink_content_types(xml: &mut String, ink_count: usize) {
     }
 }
 
+/// Append comment content type overrides to an existing `[Content_Types].xml`
+/// string (inserted before `</Types>`): one override per slide comment part,
+/// plus `ppt/commentAuthors.xml` when author data is present.
+pub fn append_comment_content_types(xml: &mut String, comment_count: usize, has_authors: bool) {
+    if comment_count == 0 && !has_authors {
+        return;
+    }
+    if let Some(pos) = xml.rfind("</Types>") {
+        let mut overrides = String::with_capacity(comment_count * 150 + 170);
+        for i in 1..=comment_count {
+            overrides.push_str(&format!(
+                "\n<Override PartName=\"/ppt/comments/comment{i}.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.comments+xml\"/>"
+            ));
+        }
+        if has_authors {
+            overrides.push_str("\n<Override PartName=\"/ppt/commentAuthors.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.commentAuthors+xml\"/>");
+        }
+        xml.insert_str(pos, &overrides);
+    }
+}
+
+/// Append the `commentAuthors` relationship to an existing
+/// `ppt/_rels/presentation.xml.rels` string (inserted before
+/// `</Relationships>`). Use [`comment_authors_rel_id`] for the id.
+pub fn append_comment_authors_relationship(xml: &mut String, rel_id: usize) {
+    if let Some(pos) = xml.rfind("</Relationships>") {
+        xml.insert_str(
+            pos,
+            &format!(
+                "<Relationship Id=\"rId{}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/commentAuthors\" Target=\"commentAuthors.xml\"/>",
+                rel_id
+            ),
+        );
+    }
+}
+
+/// `<Default Extension=… ContentType=…/>` entries for every registered
+/// non-image media extension (video/audio). Unknown extensions are skipped
+/// (media registration rejects them earlier).
+pub fn append_media_content_type_defaults(xml: &mut String, media_exts: &[String]) {
+    if media_exts.is_empty() {
+        return;
+    }
+    if let Some(pos) = xml.rfind("</Types>") {
+        let mut defaults = String::with_capacity(media_exts.len() * 80);
+        for ext in media_exts {
+            let mime = if let Some(video) = super::media::VideoFormat::from_extension(ext) {
+                video.mime_type()
+            } else if let Some(audio) = super::media::AudioFormat::from_extension(ext) {
+                audio.mime_type()
+            } else {
+                continue;
+            };
+            defaults.push_str(&format!(
+                "\n<Default Extension=\"{}\" ContentType=\"{}\"/>",
+                escape_xml(ext),
+                mime
+            ));
+        }
+        xml.insert_str(pos, &defaults);
+    }
+}
+
+/// Insert the sections `<p:ext>` into an existing `presentation.xml`
+/// `<p:extLst>` (before `</p:extLst>`). No-op when there are no sections.
+pub fn append_section_lst_ext(
+    xml: &mut String,
+    sections: &crate::generator::slide_content::SectionManager,
+    total_slides: usize,
+) {
+    let ext = sections.to_ext_xml(total_slides);
+    if ext.is_empty() {
+        return;
+    }
+    if let Some(pos) = xml.rfind("</p:extLst>") {
+        xml.insert_str(pos, &ext);
+    }
+}
+
+/// Relationship type URIs for embedded media.
+pub const MEDIA_REL_TYPE: &str =
+    "http://schemas.openxmlformats.org/officeDocument/2006/relationships/media";
+pub const VIDEO_REL_TYPE: &str =
+    "http://schemas.openxmlformats.org/officeDocument/2006/relationships/video";
+pub const AUDIO_REL_TYPE: &str =
+    "http://schemas.openxmlformats.org/officeDocument/2006/relationships/audio";
+
+/// Build one slide-level media relationship entry.
+pub fn media_relationship_xml(rid: &str, rel_type: &str, media_num: usize, ext: &str) -> String {
+    format!(
+        "<Relationship Id=\"{}\" Type=\"{}\" Target=\"../media/media{}.{}\"/>",
+        rid,
+        rel_type,
+        media_num,
+        escape_xml(ext)
+    )
+}
+
 /// Handout master relationship XML (theme link).
 pub fn create_handout_master_rels_xml() -> String {
     r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -516,7 +629,9 @@ pub fn create_slide_rels_xml_extended(
     xml
 }
 
-/// Create slide relationship XML with notes, charts, images, and optional ink.
+/// Create slide relationship XML with notes, charts, images, optional ink,
+/// optional comments, and media (video/audio) relationship entries.
+#[allow(clippy::too_many_arguments)]
 pub fn create_slide_rels_xml_with_images(
     layout_number: usize,
     has_notes: bool,
@@ -525,10 +640,16 @@ pub fn create_slide_rels_xml_with_images(
     images: &[(usize, String)],
     hyperlink_rels: &[String],
     ink_rel: Option<(usize, usize)>,
+    comment_rel: Option<(usize, usize)>,
+    media_rels: &[String],
 ) -> String {
     let layout_target = layout_rel_target(layout_number);
     let mut xml = String::with_capacity(
-        512 + images.len() * 96 + chart_rels.len() * 96 + hyperlink_rels.len() * 160 + 128,
+        512 + images.len() * 96
+            + chart_rels.len() * 96
+            + hyperlink_rels.len() * 160
+            + media_rels.len() * 160
+            + 128,
     );
     xml.push_str(
         r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -574,6 +695,19 @@ pub fn create_slide_rels_xml_with_images(
         xml.push_str(".xml\"/>");
     }
 
+    if let Some((rid, comment_num)) = comment_rel {
+        xml.push_str("\n<Relationship Id=\"rId");
+        append_usize(&mut xml, rid);
+        xml.push_str("\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments\" Target=\"../comments/comment");
+        append_usize(&mut xml, comment_num);
+        xml.push_str(".xml\"/>");
+    }
+
+    for rel in media_rels {
+        xml.push('\n');
+        xml.push_str(rel);
+    }
+
     for rel in hyperlink_rels {
         xml.push('\n');
         xml.push_str(rel);
@@ -581,4 +715,135 @@ pub fn create_slide_rels_xml_with_images(
 
     xml.push_str("\n</Relationships>");
     xml
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_comment_authors_rel_id_follows_table_styles() {
+        assert_eq!(
+            comment_authors_rel_id(3, false, false),
+            table_styles_rel_id(3, false, false) + 1
+        );
+        assert_eq!(
+            comment_authors_rel_id(2, true, true),
+            table_styles_rel_id(2, true, true) + 1
+        );
+    }
+
+    #[test]
+    fn test_append_comment_content_types() {
+        let mut xml = String::from("<Types><Override PartName=\"/x\"/></Types>");
+        append_comment_content_types(&mut xml, 2, true);
+        assert!(xml.contains("/ppt/comments/comment1.xml"));
+        assert!(xml.contains("/ppt/comments/comment2.xml"));
+        assert!(xml.contains("presentationml.comments+xml"));
+        assert!(xml.contains("/ppt/commentAuthors.xml"));
+        assert!(xml.contains("presentationml.commentAuthors+xml"));
+        assert!(xml.ends_with("</Types>"));
+    }
+
+    #[test]
+    fn test_append_comment_content_types_authors_only() {
+        let mut xml = String::from("<Types></Types>");
+        append_comment_content_types(&mut xml, 0, true);
+        assert!(!xml.contains("comments/comment"));
+        assert!(xml.contains("/ppt/commentAuthors.xml"));
+    }
+
+    #[test]
+    fn test_append_comment_content_types_noop() {
+        let original = String::from("<Types></Types>");
+        let mut xml = original.clone();
+        append_comment_content_types(&mut xml, 0, false);
+        assert_eq!(xml, original);
+    }
+
+    #[test]
+    fn test_append_comment_authors_relationship() {
+        let mut xml = create_presentation_rels_xml_full(2, false, false);
+        let rel_id = comment_authors_rel_id(2, false, false);
+        append_comment_authors_relationship(&mut xml, rel_id);
+        assert!(xml.contains("officeDocument/2006/relationships/commentAuthors"));
+        assert!(xml.contains("Target=\"commentAuthors.xml\""));
+        assert!(xml.contains(&format!("Id=\"rId{}\"", rel_id)));
+        // Must not collide with the tableStyles relationship
+        assert_eq!(xml.matches(&format!("Id=\"rId{}\"", rel_id)).count(), 1);
+    }
+
+    #[test]
+    fn test_slide_rels_with_comment_rel() {
+        let xml =
+            create_slide_rels_xml_with_images(2, false, 1, &[], &[], &[], None, Some((5, 1)), &[]);
+        assert!(xml.contains("officeDocument/2006/relationships/comments"));
+        assert!(xml.contains("Target=\"../comments/comment1.xml\""));
+        assert!(xml.contains("Id=\"rId5\""));
+
+        let none = create_slide_rels_xml_with_images(2, false, 1, &[], &[], &[], None, None, &[]);
+        assert!(!none.contains("comments/comment"));
+    }
+
+    #[test]
+    fn test_slide_rels_with_media_rels() {
+        let media = vec![
+            media_relationship_xml("rId7", VIDEO_REL_TYPE, 1, "mp4"),
+            media_relationship_xml("rId8", MEDIA_REL_TYPE, 1, "mp4"),
+        ];
+        let xml = create_slide_rels_xml_with_images(2, false, 1, &[], &[], &[], None, None, &media);
+        assert!(xml.contains("officeDocument/2006/relationships/video"));
+        assert!(xml.contains("Target=\"../media/media1.mp4\""));
+        assert!(xml.contains("Id=\"rId7\""));
+        assert!(xml.contains("Id=\"rId8\""));
+    }
+
+    #[test]
+    fn test_append_media_content_type_defaults() {
+        let mut xml = String::from("<Types></Types>");
+        append_media_content_type_defaults(
+            &mut xml,
+            &["mp4".to_string(), "mp3".to_string(), "bogus".to_string()],
+        );
+        assert!(xml.contains("Extension=\"mp4\" ContentType=\"video/mp4\""));
+        assert!(xml.contains("Extension=\"mp3\" ContentType=\"audio/mpeg\""));
+        assert!(!xml.contains("bogus"));
+        assert!(xml.ends_with("</Types>"));
+
+        let mut empty = String::from("<Types></Types>");
+        append_media_content_type_defaults(&mut empty, &[]);
+        assert_eq!(empty, "<Types></Types>");
+    }
+}
+
+#[cfg(test)]
+mod section_tests {
+    use super::*;
+
+    #[test]
+    fn test_append_section_lst_ext_inserts_into_existing_ext_lst() {
+        let mut xml = String::from(
+            r#"<p:presentation><p:extLst><p:ext uri="{GUID}"><p15:x/></p:ext></p:extLst></p:presentation>"#,
+        );
+        let mut sections = crate::generator::slide_content::SectionManager::new();
+        sections.add_section("Part One", 0, 2).unwrap();
+        append_section_lst_ext(&mut xml, &sections, 5);
+        assert_eq!(xml.matches("<p:extLst>").count(), 1);
+        assert!(xml.contains("p14:sectionLst"));
+        assert!(xml.contains("name=\"Part One\""));
+        assert!(xml.contains(r#"<p14:sldId id="256"/>"#));
+        assert!(xml.ends_with("</p:extLst></p:presentation>"));
+    }
+
+    #[test]
+    fn test_append_section_lst_ext_noop_when_empty() {
+        let original = String::from("<p:presentation><p:extLst></p:extLst></p:presentation>");
+        let mut xml = original.clone();
+        append_section_lst_ext(
+            &mut xml,
+            &crate::generator::slide_content::SectionManager::new(),
+            3,
+        );
+        assert_eq!(xml, original);
+    }
 }

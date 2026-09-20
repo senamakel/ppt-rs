@@ -190,7 +190,10 @@ impl EmbeddedFontList {
 
     /// Find fonts by typeface name
     pub fn find_by_typeface(&self, typeface: &str) -> Vec<&EmbeddedFont> {
-        self.fonts.iter().filter(|f| f.typeface == typeface).collect()
+        self.fonts
+            .iter()
+            .filter(|f| f.typeface == typeface)
+            .collect()
     }
 
     /// Generate `<p:embeddedFontLst>` XML for presentation.xml
@@ -210,7 +213,8 @@ impl EmbeddedFontList {
         }
 
         for typeface in &seen_typefaces {
-            let variants: Vec<&EmbeddedFont> = self.fonts
+            let variants: Vec<&EmbeddedFont> = self
+                .fonts
                 .iter()
                 .filter(|f| &f.typeface == typeface)
                 .collect();
@@ -219,7 +223,9 @@ impl EmbeddedFontList {
 
             // Font descriptor (from first variant)
             if let Some(first) = variants.first() {
-                let panose_attr = first.panose.as_ref()
+                let panose_attr = first
+                    .panose
+                    .as_ref()
                     .map(|p| format!(r#" panose="{}""#, p))
                     .unwrap_or_default();
                 xml.push_str(&format!(
@@ -317,7 +323,10 @@ mod tests {
     #[test]
     fn test_embedded_font_part_name() {
         let font = EmbeddedFont::new("Times New Roman", FontStyle::BoldItalic, vec![], "rId1");
-        assert_eq!(font.part_name(), "ppt/fonts/TimesNewRoman-boldItalic.fntdata");
+        assert_eq!(
+            font.part_name(),
+            "ppt/fonts/TimesNewRoman-boldItalic.fntdata"
+        );
     }
 
     #[test]
@@ -336,8 +345,18 @@ mod tests {
     #[test]
     fn test_embedded_font_list_add() {
         let mut list = EmbeddedFontList::new();
-        list.add(EmbeddedFont::new("Arial", FontStyle::Regular, vec![0; 50], "rId1"));
-        list.add(EmbeddedFont::new("Arial", FontStyle::Bold, vec![0; 60], "rId2"));
+        list.add(EmbeddedFont::new(
+            "Arial",
+            FontStyle::Regular,
+            vec![0; 50],
+            "rId1",
+        ));
+        list.add(EmbeddedFont::new(
+            "Arial",
+            FontStyle::Bold,
+            vec![0; 60],
+            "rId2",
+        ));
         assert_eq!(list.len(), 2);
         assert_eq!(list.total_size(), 110);
     }
@@ -345,8 +364,18 @@ mod tests {
     #[test]
     fn test_embedded_font_list_find() {
         let mut list = EmbeddedFontList::new();
-        list.add(EmbeddedFont::new("Arial", FontStyle::Regular, vec![], "rId1"));
-        list.add(EmbeddedFont::new("Calibri", FontStyle::Regular, vec![], "rId2"));
+        list.add(EmbeddedFont::new(
+            "Arial",
+            FontStyle::Regular,
+            vec![],
+            "rId1",
+        ));
+        list.add(EmbeddedFont::new(
+            "Calibri",
+            FontStyle::Regular,
+            vec![],
+            "rId2",
+        ));
         list.add(EmbeddedFont::new("Arial", FontStyle::Bold, vec![], "rId3"));
         assert_eq!(list.find_by_typeface("Arial").len(), 2);
         assert_eq!(list.find_by_typeface("Calibri").len(), 1);
@@ -362,8 +391,18 @@ mod tests {
     #[test]
     fn test_embedded_font_list_xml() {
         let mut list = EmbeddedFontList::new();
-        list.add(EmbeddedFont::new("Arial", FontStyle::Regular, vec![0; 10], "rId10"));
-        list.add(EmbeddedFont::new("Arial", FontStyle::Bold, vec![0; 10], "rId11"));
+        list.add(EmbeddedFont::new(
+            "Arial",
+            FontStyle::Regular,
+            vec![0; 10],
+            "rId10",
+        ));
+        list.add(EmbeddedFont::new(
+            "Arial",
+            FontStyle::Bold,
+            vec![0; 10],
+            "rId11",
+        ));
         let xml = list.to_xml();
         assert!(xml.contains("<p:embeddedFontLst>"));
         assert!(xml.contains("</p:embeddedFontLst>"));
@@ -379,8 +418,18 @@ mod tests {
     #[test]
     fn test_embedded_font_list_xml_multiple_typefaces() {
         let mut list = EmbeddedFontList::new();
-        list.add(EmbeddedFont::new("Arial", FontStyle::Regular, vec![], "rId1"));
-        list.add(EmbeddedFont::new("Calibri", FontStyle::Regular, vec![], "rId2"));
+        list.add(EmbeddedFont::new(
+            "Arial",
+            FontStyle::Regular,
+            vec![],
+            "rId1",
+        ));
+        list.add(EmbeddedFont::new(
+            "Calibri",
+            FontStyle::Regular,
+            vec![],
+            "rId2",
+        ));
         let xml = list.to_xml();
         assert_eq!(xml.matches("<p:embeddedFont>").count(), 2);
         assert!(xml.contains("Arial"));

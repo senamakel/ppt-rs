@@ -1,9 +1,9 @@
 //! Chart builder for fluent API
 
-use crate::core::{validate_chart, ElementPlacement};
-use crate::exc::Result;
 use super::data::{Chart, ChartSeries};
 use super::types::ChartType;
+use crate::core::{ElementPlacement, validate_chart};
+use crate::exc::Result;
 
 /// Chart builder for fluent API
 pub struct ChartBuilder {

@@ -8,8 +8,8 @@
 
 #![cfg(feature = "cli")]
 
-use ppt_rs::generator::create_pptx_with_content;
 use ppt_rs::cli::markdown::parse;
+use ppt_rs::generator::create_pptx_with_content;
 use std::fs;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

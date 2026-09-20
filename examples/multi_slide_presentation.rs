@@ -8,7 +8,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Creating a multi-slide presentation...\n");
 
     let output_file = "examples/output/multi_slide.pptx";
-    
+
     // Create output directory
     fs::create_dir_all("examples/output")?;
 
@@ -38,7 +38,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create presentation
     let presentation = create_presentation("Rust PowerPoint Demo", &slides);
-    
+
     // Write to file
     fs::write(output_file, presentation)?;
 
@@ -68,8 +68,14 @@ fn create_presentation(title: &str, slides: &[Slide]) -> String {
 
     for (i, slide) in slides.iter().enumerate() {
         xml.push_str(&format!("    <slide number=\"{}\">\n", i + 1));
-        xml.push_str(&format!("      <title>{}</title>\n", escape_xml(&slide.title)));
-        xml.push_str(&format!("      <content>{}</content>\n", escape_xml(&slide.content)));
+        xml.push_str(&format!(
+            "      <title>{}</title>\n",
+            escape_xml(&slide.title)
+        ));
+        xml.push_str(&format!(
+            "      <content>{}</content>\n",
+            escape_xml(&slide.content)
+        ));
         xml.push_str("    </slide>\n");
     }
 

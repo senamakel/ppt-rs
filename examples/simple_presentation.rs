@@ -2,8 +2,8 @@
 //!
 //! Run with: cargo run --example simple_presentation
 
-use std::fs;
 use ppt_rs::pptx;
+use std::fs;
 
 fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     println!("Creating a simple presentation...\n");
@@ -13,22 +13,31 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     // Create presentation using the pptx! macro
     pptx!("My First Presentation")
-        .slide("Welcome", &[
-            "This is my first presentation",
-            "Created with ppt-rs",
-            "Using the simplified prelude API",
-        ])
-        .slide("Features", &[
-            "Easy to use macros",
-            "Fluent builder pattern",
-            "Type-safe API",
-        ])
+        .slide(
+            "Welcome",
+            &[
+                "This is my first presentation",
+                "Created with ppt-rs",
+                "Using the simplified prelude API",
+            ],
+        )
+        .slide(
+            "Features",
+            &[
+                "Easy to use macros",
+                "Fluent builder pattern",
+                "Type-safe API",
+            ],
+        )
         .save("examples/output/simple.pptx")?;
 
     println!("✓ Presentation created: examples/output/simple.pptx");
     println!("  Title: My First Presentation");
     println!("  Slides: 2");
-    println!("  Size: {} bytes", fs::metadata("examples/output/simple.pptx")?.len());
+    println!(
+        "  Size: {} bytes",
+        fs::metadata("examples/output/simple.pptx")?.len()
+    );
 
     Ok(())
 }

@@ -16,7 +16,7 @@ pub enum ShapeType {
     Pentagon,
     Hexagon,
     Octagon,
-    
+
     // Arrows
     RightArrow,
     LeftArrow,
@@ -26,7 +26,7 @@ pub enum ShapeType {
     UpDownArrow,
     BentArrow,
     UTurnArrow,
-    
+
     // Stars and banners
     Star4,
     Star5,
@@ -34,12 +34,12 @@ pub enum ShapeType {
     Star8,
     Ribbon,
     Wave,
-    
+
     // Callouts
     WedgeRectCallout,
     WedgeEllipseCallout,
     CloudCallout,
-    
+
     // Flow chart
     FlowChartProcess,
     FlowChartDecision,
@@ -68,7 +68,7 @@ pub enum ShapeType {
     FlowChartMagneticDrum,
     FlowChartDisplay,
     FlowChartPreparation,
-    
+
     // More arrows
     CurvedRightArrow,
     CurvedLeftArrow,
@@ -89,7 +89,7 @@ pub enum ShapeType {
     QuadArrow,
     LeftRightUpArrow,
     CircularArrow,
-    
+
     // More geometric shapes
     Parallelogram,
     Trapezoid,
@@ -112,7 +112,7 @@ pub enum ShapeType {
     Plaque,
     MusicNote,
     PictureFrame,
-    
+
     // More decorative
     Star10,
     Star12,
@@ -136,7 +136,7 @@ pub enum ShapeType {
     ActionButtonDocument,
     ActionButtonSound,
     ActionButtonMovie,
-    
+
     // Other (original shapes)
     Heart,
     Lightning,
@@ -162,7 +162,7 @@ impl ShapeType {
             ShapeType::Pentagon => "pentagon",
             ShapeType::Hexagon => "hexagon",
             ShapeType::Octagon => "octagon",
-            
+
             ShapeType::RightArrow => "rightArrow",
             ShapeType::LeftArrow => "leftArrow",
             ShapeType::UpArrow => "upArrow",
@@ -171,18 +171,18 @@ impl ShapeType {
             ShapeType::UpDownArrow => "upDownArrow",
             ShapeType::BentArrow => "bentArrow",
             ShapeType::UTurnArrow => "uturnArrow",
-            
+
             ShapeType::Star4 => "star4",
             ShapeType::Star5 => "star5",
             ShapeType::Star6 => "star6",
             ShapeType::Star8 => "star8",
             ShapeType::Ribbon => "ribbon2",
             ShapeType::Wave => "wave",
-            
+
             ShapeType::WedgeRectCallout => "wedgeRectCallout",
             ShapeType::WedgeEllipseCallout => "wedgeEllipseCallout",
             ShapeType::CloudCallout => "cloudCallout",
-            
+
             ShapeType::FlowChartProcess => "flowChartProcess",
             ShapeType::FlowChartDecision => "flowChartDecision",
             ShapeType::FlowChartTerminator => "flowChartTerminator",
@@ -210,7 +210,7 @@ impl ShapeType {
             ShapeType::FlowChartMagneticDrum => "flowChartMagneticDrum",
             ShapeType::FlowChartDisplay => "flowChartDisplay",
             ShapeType::FlowChartPreparation => "flowChartPreparation",
-            
+
             ShapeType::CurvedRightArrow => "curvedRightArrow",
             ShapeType::CurvedLeftArrow => "curvedLeftArrow",
             ShapeType::CurvedUpArrow => "curvedUpArrow",
@@ -230,7 +230,7 @@ impl ShapeType {
             ShapeType::QuadArrow => "quadArrow",
             ShapeType::LeftRightUpArrow => "leftRightUpArrow",
             ShapeType::CircularArrow => "circularArrow",
-            
+
             ShapeType::Parallelogram => "parallelogram",
             ShapeType::Trapezoid => "trapezoid",
             ShapeType::NonIsoscelesTrapezoid => "nonIsoscelesTrapezoid",
@@ -252,7 +252,7 @@ impl ShapeType {
             ShapeType::Plaque => "plaque",
             ShapeType::MusicNote => "musicNote",
             ShapeType::PictureFrame => "frame",
-            
+
             ShapeType::Star10 => "star10",
             ShapeType::Star12 => "star12",
             ShapeType::Star16 => "star16",
@@ -275,7 +275,7 @@ impl ShapeType {
             ShapeType::ActionButtonDocument => "actionButtonDocument",
             ShapeType::ActionButtonSound => "actionButtonSound",
             ShapeType::ActionButtonMovie => "actionButtonMovie",
-            
+
             ShapeType::Heart => "heart",
             ShapeType::Lightning => "lightningBolt",
             ShapeType::Sun => "sun",
@@ -345,7 +345,7 @@ impl ShapeType {
             ShapeType::FlowChartMagneticDrum => "Magnetic Drum",
             ShapeType::FlowChartDisplay => "Display",
             ShapeType::FlowChartPreparation => "Preparation",
-            
+
             ShapeType::CurvedRightArrow => "Curved Right Arrow",
             ShapeType::CurvedLeftArrow => "Curved Left Arrow",
             ShapeType::CurvedUpArrow => "Curved Up Arrow",
@@ -365,7 +365,7 @@ impl ShapeType {
             ShapeType::QuadArrow => "Quad Arrow",
             ShapeType::LeftRightUpArrow => "Left-Right-Up Arrow",
             ShapeType::CircularArrow => "Circular Arrow",
-            
+
             ShapeType::Parallelogram => "Parallelogram",
             ShapeType::Trapezoid => "Trapezoid",
             ShapeType::NonIsoscelesTrapezoid => "Non-Isosceles Trapezoid",
@@ -387,7 +387,7 @@ impl ShapeType {
             ShapeType::Plaque => "Plaque",
             ShapeType::MusicNote => "Music Note",
             ShapeType::PictureFrame => "Picture Frame",
-            
+
             ShapeType::Star10 => "10-Point Star",
             ShapeType::Star12 => "12-Point Star",
             ShapeType::Star16 => "16-Point Star",
@@ -410,7 +410,7 @@ impl ShapeType {
             ShapeType::ActionButtonDocument => "Action Button (Document)",
             ShapeType::ActionButtonSound => "Action Button (Sound)",
             ShapeType::ActionButtonMovie => "Action Button (Movie)",
-            
+
             ShapeType::Heart => "Heart",
             ShapeType::Lightning => "Lightning Bolt",
             ShapeType::Sun => "Sun",
@@ -444,9 +444,9 @@ impl GradientDirection {
     pub fn to_angle(&self) -> u32 {
         match self {
             GradientDirection::Horizontal => 0,
-            GradientDirection::Vertical => 5400000,      // 90 * 60000
-            GradientDirection::DiagonalDown => 2700000,  // 45 * 60000
-            GradientDirection::DiagonalUp => 18900000,   // 315 * 60000
+            GradientDirection::Vertical => 5400000, // 90 * 60000
+            GradientDirection::DiagonalDown => 2700000, // 45 * 60000
+            GradientDirection::DiagonalUp => 18900000, // 315 * 60000
             GradientDirection::Angle(deg) => deg * 60000,
         }
     }
@@ -456,7 +456,7 @@ impl GradientDirection {
 #[derive(Clone, Debug)]
 pub struct GradientStop {
     pub color: String,
-    pub position: u32,  // 0-100000 (percentage * 1000)
+    pub position: u32, // 0-100000 (percentage * 1000)
     pub transparency: Option<u32>,
 }
 
@@ -469,7 +469,7 @@ impl GradientStop {
             transparency: None,
         }
     }
-    
+
     /// Set transparency (0-100 percent)
     pub fn with_transparency(mut self, percent: u32) -> Self {
         let alpha = (100 - percent.min(100)) * 1000;
@@ -496,7 +496,7 @@ impl GradientFill {
             direction,
         }
     }
-    
+
     /// Create a three-color gradient
     pub fn three_color(start: &str, middle: &str, end: &str, direction: GradientDirection) -> Self {
         GradientFill {
@@ -508,7 +508,7 @@ impl GradientFill {
             direction,
         }
     }
-    
+
     /// Add a custom stop
     pub fn with_stop(mut self, stop: GradientStop) -> Self {
         self.stops.push(stop);
@@ -528,7 +528,7 @@ pub enum FillType {
 /// Shape fill/color properties
 #[derive(Clone, Debug)]
 pub struct ShapeFill {
-    pub color: String, // RGB hex color (e.g., "FF0000")
+    pub color: String,             // RGB hex color (e.g., "FF0000")
     pub transparency: Option<u32>, // 0-100000 (100000 = fully transparent)
 }
 
@@ -547,7 +547,7 @@ impl ShapeFill {
         self.transparency = Some(alpha);
         self
     }
-    
+
     /// Set transparency (0-100 percent) - builder style (deprecated, use with_transparency)
     pub fn transparency(self, percent: u32) -> Self {
         self.with_transparency(percent)
@@ -571,7 +571,7 @@ impl ShapeLine {
     }
 }
 
-use crate::core::{Positioned, ElementSized, Dimension};
+use crate::core::{Dimension, ElementSized, Positioned};
 
 /// Shape definition
 #[derive(Clone, Debug)]
@@ -636,7 +636,7 @@ impl Shape {
         self.gradient = None; // Clear gradient if setting solid fill
         self
     }
-    
+
     /// Set gradient fill
     pub fn with_gradient(mut self, gradient: GradientFill) -> Self {
         self.gradient = Some(gradient);
@@ -669,8 +669,20 @@ impl Shape {
     ///     Dimension::Ratio(0.8), Dimension::Inches(2.0),
     /// );
     /// ```
-    pub fn from_dimensions(shape_type: ShapeType, x: Dimension, y: Dimension, width: Dimension, height: Dimension) -> Self {
-        Shape::new(shape_type, x.to_emu_x(), y.to_emu_y(), width.to_emu_x(), height.to_emu_y())
+    pub fn from_dimensions(
+        shape_type: ShapeType,
+        x: Dimension,
+        y: Dimension,
+        width: Dimension,
+        height: Dimension,
+    ) -> Self {
+        Shape::new(
+            shape_type,
+            x.to_emu_x(),
+            y.to_emu_y(),
+            width.to_emu_x(),
+            height.to_emu_y(),
+        )
     }
 
     /// Set position using flexible Dimension units (fluent).
@@ -705,8 +717,12 @@ impl Shape {
 }
 
 impl Positioned for Shape {
-    fn x(&self) -> u32 { self.x }
-    fn y(&self) -> u32 { self.y }
+    fn x(&self) -> u32 {
+        self.x
+    }
+    fn y(&self) -> u32 {
+        self.y
+    }
     fn set_position(&mut self, x: u32, y: u32) {
         self.x = x;
         self.y = y;
@@ -714,8 +730,12 @@ impl Positioned for Shape {
 }
 
 impl ElementSized for Shape {
-    fn width(&self) -> u32 { self.width }
-    fn height(&self) -> u32 { self.height }
+    fn width(&self) -> u32 {
+        self.width
+    }
+    fn height(&self) -> u32 {
+        self.height
+    }
     fn set_size(&mut self, width: u32, height: u32) {
         self.width = width;
         self.height = height;
@@ -786,8 +806,10 @@ mod tests {
     fn test_shape_from_dimensions_ratio() {
         let shape = Shape::from_dimensions(
             ShapeType::Rectangle,
-            Dimension::Ratio(0.1), Dimension::Ratio(0.2),
-            Dimension::Ratio(0.8), Dimension::Ratio(0.6),
+            Dimension::Ratio(0.1),
+            Dimension::Ratio(0.2),
+            Dimension::Ratio(0.8),
+            Dimension::Ratio(0.6),
         );
         // 10% of 9144000 = 914400
         assert_eq!(shape.x, 914400);
@@ -803,11 +825,13 @@ mod tests {
     fn test_shape_from_dimensions_mixed() {
         let shape = Shape::from_dimensions(
             ShapeType::Ellipse,
-            Dimension::Inches(1.0), Dimension::Cm(2.54),
-            Dimension::Pt(72.0), Dimension::Ratio(0.5),
+            Dimension::Inches(1.0),
+            Dimension::Cm(2.54),
+            Dimension::Pt(72.0),
+            Dimension::Ratio(0.5),
         );
-        assert_eq!(shape.x, 914400);   // 1 inch
-        assert_eq!(shape.y, 914400);   // 2.54 cm = 1 inch
+        assert_eq!(shape.x, 914400); // 1 inch
+        assert_eq!(shape.y, 914400); // 2.54 cm = 1 inch
         assert_eq!(shape.width, 914400); // 72pt = 1 inch
         assert_eq!(shape.height, 6858000 / 2); // 50% of slide height
     }

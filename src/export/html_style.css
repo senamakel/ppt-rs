@@ -79,3 +79,16 @@ pre {
     max-height: 400px;
     object-fit: contain;
 }
+
+.section-label {
+    display: inline-block;
+    font-size: 0.75em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #4a6fa5;
+    background: rgba(74, 111, 165, 0.12);
+    border-radius: 4px;
+    padding: 2px 10px;
+    margin-bottom: 8px;
+}

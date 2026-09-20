@@ -1,7 +1,7 @@
 //! Text run - a span of text with consistent formatting
 
-use super::format::TextFormat;
 use super::escape_xml;
+use super::format::TextFormat;
 use crate::core::ToXml;
 
 /// A run of text with consistent formatting
@@ -67,19 +67,35 @@ impl Run {
         let size = self.format.font_size.unwrap_or(18) * 100;
         let bold = if self.format.bold { "1" } else { "0" };
         let italic = if self.format.italic { "1" } else { "0" };
-        let underline = if self.format.underline { " u=\"sng\"" } else { "" };
-        
-        let color_xml = self.format.color.as_ref()
+        let underline = if self.format.underline {
+            " u=\"sng\""
+        } else {
+            ""
+        };
+
+        let color_xml = self
+            .format
+            .color
+            .as_ref()
             .map(|c| format!(r#"<a:solidFill><a:srgbClr val="{}"/></a:solidFill>"#, c))
             .unwrap_or_default();
-        
-        let font_xml = self.format.font_family.as_ref()
+
+        let font_xml = self
+            .format
+            .font_family
+            .as_ref()
             .map(|f| format!(r#"<a:latin typeface="{}"/>"#, escape_xml(f)))
             .unwrap_or_default();
 
         format!(
             r#"<a:r><a:rPr lang="en-US" sz="{}" b="{}" i="{}"{} dirty="0">{}{}</a:rPr><a:t>{}</a:t></a:r>"#,
-            size, bold, italic, underline, color_xml, font_xml, escape_xml(&self.text)
+            size,
+            bold,
+            italic,
+            underline,
+            color_xml,
+            font_xml,
+            escape_xml(&self.text)
         )
     }
 }
@@ -98,7 +114,7 @@ mod tests {
     fn test_run_to_xml() {
         let run = Run::new("Hello").bold().color("FF0000").size(24);
         let xml = run.to_xml();
-        
+
         assert!(xml.contains("Hello"));
         assert!(xml.contains("b=\"1\""));
         assert!(xml.contains("FF0000"));
@@ -109,7 +125,7 @@ mod tests {
     fn test_font_family() {
         let run = Run::new("Arial text").font("Arial");
         let xml = run.to_xml();
-        
+
         assert!(xml.contains("typeface=\"Arial\""));
     }
 }

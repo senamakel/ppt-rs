@@ -21,6 +21,8 @@ pub struct MarkdownOptions {
     pub include_images: bool,
     /// Add YAML frontmatter with presentation metadata
     pub include_frontmatter: bool,
+    /// Group slides under `## Section` headings (slide headers become `###`)
+    pub group_by_sections: bool,
 }
 
 impl Default for MarkdownOptions {
@@ -32,6 +34,7 @@ impl Default for MarkdownOptions {
             use_gfm_tables: true,
             include_images: true,
             include_frontmatter: true,
+            group_by_sections: false,
         }
     }
 }
@@ -77,6 +80,12 @@ impl MarkdownOptions {
         self.include_frontmatter = include;
         self
     }
+
+    /// Group slides under section headings (when the presentation has sections)
+    pub fn with_section_grouping(mut self, group: bool) -> Self {
+        self.group_by_sections = group;
+        self
+    }
 }
 
 /// Export a presentation to Markdown format
@@ -94,7 +103,10 @@ pub fn export_to_markdown_with_options(
     // YAML frontmatter
     if options.include_frontmatter {
         md.push_str("---\n");
-        md.push_str(&format!("title: \"{}\"\n", escape_yaml(presentation.get_title())));
+        md.push_str(&format!(
+            "title: \"{}\"\n",
+            escape_yaml(presentation.get_title())
+        ));
         md.push_str(&format!("slides: {}\n", presentation.slide_count()));
         md.push_str("generator: ppt-rs\n");
         md.push_str("---\n\n");
@@ -104,6 +116,8 @@ pub fn export_to_markdown_with_options(
     md.push_str(&format!("# {}\n\n", presentation.get_title()));
 
     // Export each slide
+    let sections = presentation.sections();
+    let mut current_section: Option<String> = None;
     for (i, slide) in presentation.slides().iter().enumerate() {
         let slide_num = i + 1;
 
@@ -112,11 +126,36 @@ pub fn export_to_markdown_with_options(
             md.push_str(&format!("\n{}\n\n", options.slide_separator));
         }
 
-        // Slide number header
-        if options.include_slide_numbers {
-            md.push_str(&format!("## Slide {}: {}\n\n", slide_num, escape_markdown(&slide.title)));
+        // Section heading on section change (opt-in)
+        if options.group_by_sections {
+            let section_name = sections.section_for_slide(i).map(|s| s.name.clone());
+            if section_name != current_section {
+                if let Some(name) = &section_name {
+                    md.push_str(&format!("## {}\n\n", escape_markdown(name)));
+                }
+                current_section = section_name;
+            }
+        }
+
+        // Slide number header (demoted to ### when section grouping is on)
+        let header_level = if options.group_by_sections {
+            "###"
         } else {
-            md.push_str(&format!("## {}\n\n", escape_markdown(&slide.title)));
+            "##"
+        };
+        if options.include_slide_numbers {
+            md.push_str(&format!(
+                "{} Slide {}: {}\n\n",
+                header_level,
+                slide_num,
+                escape_markdown(&slide.title)
+            ));
+        } else {
+            md.push_str(&format!(
+                "{} {}\n\n",
+                header_level,
+                escape_markdown(&slide.title)
+            ));
         }
 
         // Bullet content
@@ -128,11 +167,13 @@ pub fn export_to_markdown_with_options(
         }
 
         // Table export (GFM format)
-        if options.use_gfm_tables && slide.has_table
-            && let Some(table) = &slide.table {
-                md.push_str(&export_table_to_gfm(table));
-                md.push('\n');
-            }
+        if options.use_gfm_tables
+            && slide.has_table
+            && let Some(table) = &slide.table
+        {
+            md.push_str(&export_table_to_gfm(table));
+            md.push('\n');
+        }
 
         // Images
         if options.include_images && !slide.images.is_empty() {
@@ -144,7 +185,11 @@ pub fn export_to_markdown_with_options(
                     alt_text,
                     slide_num,
                     img_idx + 1,
-                    image.format.to_lowercase().replace("jpeg", ".jpg").replace("png", ".png")
+                    image
+                        .format
+                        .to_lowercase()
+                        .replace("jpeg", ".jpg")
+                        .replace("png", ".png")
                 ));
             }
         }
@@ -233,7 +278,7 @@ fn escape_yaml(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::generator::{SlideContent, TableBuilder, TableCell, TableRow, CodeBlock};
+    use crate::generator::{CodeBlock, SlideContent, TableBuilder, TableCell, TableRow};
 
     #[test]
     fn test_export_simple_presentation() {
@@ -292,7 +337,9 @@ mod tests {
     fn test_export_with_code_blocks() {
         let mut presentation = Presentation::with_title("Code Test");
         let mut slide = SlideContent::new("Code Slide");
-        slide.code_blocks.push(CodeBlock::new("println!(\"Hello\");", "rust"));
+        slide
+            .code_blocks
+            .push(CodeBlock::new("println!(\"Hello\");", "rust"));
         presentation = presentation.add_slide(slide);
 
         let md = export_to_markdown(&presentation).unwrap();
