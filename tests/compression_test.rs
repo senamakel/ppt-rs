@@ -294,3 +294,65 @@ fn test_compression_multiple_slides() {
     fs::remove_file(input_path).unwrap();
     fs::remove_file(output_path).unwrap();
 }
+
+#[test]
+fn test_compression_removes_comments() {
+    use std::io::{Cursor, Read};
+    use zip::ZipArchive;
+
+    let mut pres = ppt_rs::Presentation::new().title("Comments");
+    let alice = pres.add_comment_author("Alice", "A");
+    pres = pres.add_slide(
+        SlideContent::new("Slide 1")
+            .add_bullet("Point")
+            .add_comment(alice, "Fix wording", 100, 200),
+    );
+
+    let input_path = "test_comments_compress_input.pptx";
+    let output_path = "test_comments_compress_output.pptx";
+    pres.save(input_path).unwrap();
+
+    let options = CompressionOptions::new().with_comments_removal(true);
+    compress_pptx(input_path, output_path, &options).unwrap();
+
+    let bytes = fs::read(output_path).unwrap();
+    {
+        let mut archive = ZipArchive::new(Cursor::new(&bytes)).expect("valid zip");
+        for i in 0..archive.len() {
+            let name = archive.by_index(i).unwrap().name().to_string();
+            assert!(
+                !name.starts_with("ppt/comments/"),
+                "comment part left: {name}"
+            );
+            assert_ne!(name, "ppt/commentAuthors.xml");
+        }
+    }
+
+    let rels = {
+        let mut archive = ZipArchive::new(Cursor::new(&bytes)).unwrap();
+        let mut s = String::new();
+        archive
+            .by_name("ppt/slides/_rels/slide1.xml.rels")
+            .unwrap()
+            .read_to_string(&mut s)
+            .unwrap();
+        s
+    };
+    assert!(!rels.contains("relationships/comments"));
+
+    let content_types = {
+        let mut archive = ZipArchive::new(Cursor::new(&bytes)).unwrap();
+        let mut s = String::new();
+        archive
+            .by_name("[Content_Types].xml")
+            .unwrap()
+            .read_to_string(&mut s)
+            .unwrap();
+        s
+    };
+    assert!(!content_types.contains("presentationml.comments+xml"));
+    assert!(!content_types.contains("commentAuthors"));
+
+    fs::remove_file(input_path).unwrap();
+    fs::remove_file(output_path).unwrap();
+}

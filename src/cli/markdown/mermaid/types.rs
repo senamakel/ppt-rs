@@ -161,26 +161,41 @@ impl DiagramElements {
 }
 
 /// Position for label relative to shape
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum LabelPosition {
     Above,
     Right,
     Inside,
 }
 
+/// Geometry + styling for [`create_labeled_shape`].
+#[derive(Debug, Clone)]
+pub struct LabeledShapeSpec<'a> {
+    pub shape_type: ShapeType,
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
+    pub fill_color: Option<&'a str>,
+    pub line_color: Option<&'a str>,
+    pub text: &'a str,
+    pub label_pos: LabelPosition,
+}
+
 /// Helper to create a shape with a separate label
 /// Returns (background_shape, label_shape)
-pub fn create_labeled_shape(
-    shape_type: ShapeType,
-    x: u32,
-    y: u32,
-    width: u32,
-    height: u32,
-    fill_color: Option<&str>,
-    line_color: Option<&str>,
-    text: &str,
-    label_pos: LabelPosition,
-) -> Vec<Shape> {
+pub fn create_labeled_shape(spec: LabeledShapeSpec<'_>) -> Vec<Shape> {
+    let LabeledShapeSpec {
+        shape_type,
+        x,
+        y,
+        width,
+        height,
+        fill_color,
+        line_color,
+        text,
+        label_pos,
+    } = spec;
     let mut shapes = Vec::new();
 
     // Background shape (no text)

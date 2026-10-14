@@ -68,6 +68,11 @@ pub struct ParsedShape {
     pub height: i64,
     pub is_title: bool,
     pub is_body: bool,
+    /// Whether the source XML had a `<p:txBody>` — distinguishes "shape with
+    /// no text frame" (e.g. a picture, a connector) from "shape with empty
+    /// text frame" (e.g. an empty title placeholder). Both yield
+    /// `paragraphs.is_empty()`, so it's tracked separately.
+    pub has_text_frame: bool,
 }
 
 impl ParsedShape {
@@ -82,6 +87,7 @@ impl ParsedShape {
             height: 0,
             is_title: false,
             is_body: false,
+            has_text_frame: false,
         }
     }
 
@@ -92,6 +98,17 @@ impl ParsedShape {
             .map(|p| p.text())
             .collect::<Vec<_>>()
             .join("\n")
+    }
+
+    /// Whether this shape holds editable text (python-pptx parity:
+    /// `_BaseShape.has_text_frame`).
+    ///
+    /// Returns `true` only when the parser saw a `<p:txBody>` in the shape's
+    /// XML — even when the body is empty (an empty `<a:p/>` still counts, the
+    /// user can write to it). A shape that never had a `<p:txBody>` (e.g. a
+    /// picture, a connector, a placeholder graphic) returns `false`.
+    pub fn has_text_frame(&self) -> bool {
+        self.has_text_frame
     }
 }
 
@@ -241,6 +258,7 @@ impl SlideParser {
 
         // Parse text body
         if let Some(tx_body) = sp.find_descendant("txBody") {
+            shape.has_text_frame = true;
             shape.paragraphs = Self::parse_text_body(tx_body);
         }
 

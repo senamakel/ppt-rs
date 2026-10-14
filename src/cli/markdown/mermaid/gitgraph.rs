@@ -90,7 +90,7 @@ pub fn generate_shapes(code: &str) -> Vec<Shape> {
         );
 
         // Branch line (simplified as rectangle)
-        let line_length = (commit_count.max(1) as u32) * commit_spacing + 200_000;
+        let line_length = commit_count.max(1) * commit_spacing + 200_000;
         shapes.push(
             Shape::new(
                 ShapeType::Rectangle,

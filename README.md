@@ -18,7 +18,7 @@ While other Rust crates for PPTX generation are incomplete, broken, or abandoned
 
 **MCP:** Build with `--features mcp` and run **`ppt_mcp`** — a [Model Context Protocol](https://modelcontextprotocol.io) server ([rmcp](https://crates.io/crates/rmcp)) so Cursor, Claude Desktop, and other MCP clients can create, read, export, and validate `.pptx` via stdio. See [MCP server](#mcp-server-model-context-protocol).
 
-**NEW v0.2.24**: `web2md` bridge — HTML→Markdown→Slides pipeline via the `web2md` crate with a `--web2md` CLI flag on `web2ppt`. **v0.2.23**: pure-Rust PDF export via `pdfrs` (`pdf-native` feature, no LibreOffice dependency). **v0.2.19**: PowerPoint zero-repair compatibility gate — multiple slide layouts, template-based generation, chart Excel workbook embedding, handout master packaging, slide master completeness, and a structured `core::package_validation` API.
+**NEW v0.2.36**: clippy `--all-features --all-targets -D warnings` green for the first time (lib + bins + tests + examples) — 53 mechanical/structural lints fixed (`collapsible_if`, `collapsible_match`, `useless_vec`, `len_zero`, `ptr_arg`). **v0.2.35**: full review-comments round-trip — `import_pptx` preserves authors and per-slide comments. **v0.2.34**: optional REST/HTTP server (`http` feature, `ppt_http` binary). **v0.2.30**: semantic slide-level diff (`pptcli diff`, MCP `diff_pptx`). **v0.2.24**: `web2md` bridge — HTML→Markdown→Slides pipeline via the `web2md` crate with a `--web2md` CLI flag on `web2ppt`. **v0.2.23**: pure-Rust PDF export via `pdfrs` (`pdf-native` feature, no LibreOffice dependency). **v0.2.19**: PowerPoint zero-repair compatibility gate — multiple slide layouts, template-based generation, chart Excel workbook embedding, handout master packaging, slide master completeness, and a structured `core::package_validation` API.
 
 ## Why ppt-rs?
 
@@ -26,6 +26,9 @@ While other Rust crates for PPTX generation are incomplete, broken, or abandoned
 - 🚀 **Markdown to PPTX** - Write slides in Markdown, get PowerPoint files. Perfect for developers.
 - 🌐 **HTML to PPTX** - Convert HTML pages/snippets to PowerPoint with the `html2ppt` command or `Html2Ppt` API; `--web2md` routes HTML→Markdown→Slides (v0.2.24)
 - 📄 **Pure-Rust PDF export** - `pdfrs`-backed PDF generation with no LibreOffice dependency (`pdf-native` feature) (v0.2.23)
+- 📥 **PDF to PPTX conversion** - `pptcli pdf2ppt input.pdf output.pptx` — extract slides from a PDF and emit a deck (uses the `pdf-native` renderer)
+- 📝 **Text extraction** - `extract_slide_texts_from_bytes(&bytes)` returns `Vec<Vec<String>>` (per-slide paragraphs) from a PPTX byte buffer — pure content extraction with no XML leakage
+- ✏️ **TextFrame editing** - `PresentationEditor::set_shape_text()` / `add_paragraph()` / `add_paragraph_with_format()` / `set_title_text()` on imported decks (python-pptx parity: `tf.text = …`, `tf.add_paragraph()`, `p.level` / `p.font.bold`); `ParsedShape::has_text_frame()` predicate for safe editing
 - 🎨 **Embedded themes** - Brand decks with custom colors and fonts via `PresentationTheme` (v0.2.16)
 - ⚡ **Large decks** - Lazy slide loading and optimized generation for 100+ slides (v0.2.17)
 - 🧩 **Templates & layouts** - Clone masters/theme/layouts from an existing deck (`--template`) and pick from 7 slide layouts per slide (v0.2.19)
@@ -253,9 +256,9 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 - **Images** - Embed from files, bytes, base64, URL, auto-detect format, 8 visual effects
 - **Themes** - Embedded `theme1.xml` with 7 presets and custom color/font schemes (v0.2.16)
 - **Media** - Video (mp4, webm) and audio (mp3, wav) embedding
-- **Layouts** - 7 slide layouts (Title, Title+Content, Two Column, Section Header, Blank, Title Only, Big Content) with per-slide `with_layout()` (v0.2.19)
+- **Layouts** - 7 slide layouts (Title, Title+Content, Two Column, Section Header, Blank, Title Only, Big Content) with per-slide `with_layout()` (v0.2.19) — title and body shapes emit `<p:ph type="…"/>` so PowerPoint recognizes them as layout placeholders (python-pptx parity)
 - **Templates** - `--template deck.pptx` CLI flag + `PptxTemplate`/`create_pptx_with_template` API to clone masters/theme/layouts from an existing file (v0.2.19)
-- **Charts (editable)** - Charts embed an Excel workbook so they're editable in PowerPoint, not cache-only XML (v0.2.19)
+- **Charts (editable)** - Charts embed an Excel workbook so they're editable in PowerPoint, not cache-only XML (v0.2.19); tune with `ChartBuilder::legend(LegendConfig)`, `value_axis(AxisConfig)` / `category_axis(AxisConfig)` (min/max/log_scale/number_format/tick_label_rotation/font), and `data_labels(DataLabelsConfig)` (python-pptx + pptxgenjs parity)
 - **Validation** - `core::package_validation` exposes `validate_package_bytes()` returning a structured `PackageValidationReport` (v0.2.19)
 - **Reading** - Parse and modify existing PPTX files
 - **Enhanced HTML Import** - Real image downloading, extended CSS, hyperlink handling
@@ -453,6 +456,22 @@ let result = pres.compress("optimized.pptx", &options)?;
 println!("Reduced by {:.1}%", result.reduction_percent);
 ```
 
+## HTTP API (optional)
+
+Headless REST access for automation and SaaS embeds (`http` feature):
+
+```bash
+cargo run --features http --bin ppt_http
+# GET  /health
+# POST /v1/generate   — JSON slides → .pptx
+# POST /v1/markdown   — Markdown → .pptx
+# POST /v1/validate   — .pptx bytes → JSON report
+# POST /v1/export/*   — .pptx → Markdown/HTML
+# POST /v1/diff       — base64-encoded pair → JSON diff
+```
+
+See `SPEC.md` for request/response details.
+
 ## MCP server (Model Context Protocol)
 
 Use **`ppt_mcp`** to drive ppt-rs from MCP-compatible clients over **stdio** (newline-delimited JSON-RPC). The implementation tracks the MCP handshake (`initialize` with `protocolVersion`, `clientInfo`, then `notifications/initialized`).
@@ -499,6 +518,10 @@ Works with editors and assistants that support MCP (e.g. **Cursor**, **Claude De
 | `validate_pptx` | Structural / ECMA-376 validation |
 | `create_presentation_with_tables` | Deck with table slides |
 | `create_presentation_with_charts` | Deck with bar/line/pie/area charts |
+| `compress_pptx` | Shrink file size (media/props/notes/comments removal) |
+| `repair_pptx` | Validate and fix damaged decks |
+| `apply_theme` | Apply an embedded theme preset to an existing deck |
+| `diff_pptx` | Semantic slide-level diff (human or JSON report) |
 
 Enable the library integration with `features = ["mcp"]` when depending on `ppt-rs` from another crate.
 
@@ -508,10 +531,10 @@ Add to `Cargo.toml`:
 
 ```toml
 [dependencies]
-ppt-rs = "0.2.27"
+ppt-rs = "0.2.36"
 
 # Optional: MCP server types / embedding (library module `ppt_rs::mcp`)
-# ppt-rs = { version = "0.2.27", features = ["mcp"] }
+# ppt-rs = { version = "0.2.36", features = ["mcp"] }
 ```
 
 ## Examples
@@ -826,7 +849,7 @@ Unlike other Rust PPTX crates that:
 
 `ppt-rs`:
 - ✅ Generates **valid PPTX files** from day one
-- ✅ **Actively maintained** with comprehensive test coverage (1200+ tests)
+- ✅ **Actively maintained** with comprehensive test coverage (1250+ tests)
 - ✅ **Complete XML structure** following ECMA-376 standard
 - ✅ **Validation tools** - Built-in validation command + structured `PackageValidationReport` API for quality assurance
 - ✅ **PowerPoint compat gate** - Every generated deck is self-validated in debug builds
@@ -839,7 +862,7 @@ Unlike other Rust PPTX crates that:
 - Built-in validation command for ECMA-376 compliance checking
 - Structured `core::package_validation` API (`validate_package_bytes` → `PackageValidationReport`)
 - Debug builds `debug_assert!` that every generated deck passes package validation
-- Comprehensive test suite (1200+ tests, including `package_validation_test`, `powerpoint_compat_test`, `layouts_packaging_test`, `repair_compare_test`)
+- Comprehensive test suite (1250+ tests, including `package_validation_test`, `powerpoint_compat_test`, `layouts_packaging_test`, `repair_compare_test`)
 - Integration tests for end-to-end validation
 
 ### Alignment Testing
@@ -849,12 +872,12 @@ Unlike other Rust PPTX crates that:
 
 ## Technical Details
 
-- **Version**: 0.2.27
+- **Version**: 0.2.36
 - **Format**: Microsoft PowerPoint 2007+ (.pptx)
 - **Standard**: ECMA-376 Office Open XML
 - **Compatibility**: PowerPoint, LibreOffice, Google Slides, Keynote
 - **Architecture**: Modular design with clear separation of concerns
-- **Test Coverage**: 1200+ tests covering all major features
+- **Test Coverage**: 1250+ tests covering all major features
 - **Performance**: ~1000 slides/sec; lazy loading for large decks; borrow-based `build()` API
 
 ## Templates
@@ -958,6 +981,13 @@ create_pptx_lazy_to_writer(file, "Large Deck", Box::new(Deck { count: 500 }), No
 ```
 
 Profile generation with `ppt_rs::generator::memory_profile::{profile_eager_generation, profile_lazy_generation, sample_slides}`.
+
+Run Criterion benchmarks (eager/lazy generation + compression):
+
+```bash
+cargo bench
+# HTML report: target/criterion/report/index.html
+```
 
 ### Extended Color Palettes
 

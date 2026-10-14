@@ -1,6 +1,6 @@
 //! Mindmap diagram parsing and rendering
 
-use super::types::{LabelPosition, create_labeled_shape};
+use super::types::{LabelPosition, LabeledShapeSpec, create_labeled_shape};
 use crate::generator::{Shape, ShapeType};
 
 /// Generate shapes for a mindmap
@@ -19,7 +19,7 @@ pub fn generate_shapes(code: &str) -> Vec<Shape> {
 
         let spaces = line.len() - line.trim_start().len();
         let text = trimmed
-            .trim_start_matches(|c| c == '-' || c == '+' || c == '*')
+            .trim_start_matches(['-', '+', '*'])
             .trim()
             .trim_matches(|c| c == '(' || c == ')' || c == '[' || c == ']')
             .to_string();
@@ -51,17 +51,17 @@ pub fn generate_shapes(code: &str) -> Vec<Shape> {
     let radius2 = 3_200_000u32;
 
     // Root node using helper
-    shapes.extend(create_labeled_shape(
-        ShapeType::Ellipse,
-        center_x - root_width / 2,
-        center_y - root_height / 2,
-        root_width,
-        root_height,
-        Some("3949AB"),
-        Some("1A237E"),
-        &root,
-        LabelPosition::Inside,
-    ));
+    shapes.extend(create_labeled_shape(LabeledShapeSpec {
+        shape_type: ShapeType::Ellipse,
+        x: center_x - root_width / 2,
+        y: center_y - root_height / 2,
+        width: root_width,
+        height: root_height,
+        fill_color: Some("3949AB"),
+        line_color: Some("1A237E"),
+        text: &root,
+        label_pos: LabelPosition::Inside,
+    }));
 
     // Level 1 nodes (arranged in circle)
     let level1_colors = ["4472C4", "ED7D31", "70AD47", "FFC000", "5B9BD5", "9E480E"];
@@ -77,17 +77,17 @@ pub fn generate_shapes(code: &str) -> Vec<Shape> {
         let y = center_y + (radius1 as f64 * angle.sin()) as u32 - node_height / 2;
 
         let color = level1_colors[i % level1_colors.len()];
-        shapes.extend(create_labeled_shape(
-            ShapeType::RoundedRectangle,
+        shapes.extend(create_labeled_shape(LabeledShapeSpec {
+            shape_type: ShapeType::RoundedRectangle,
             x,
             y,
-            node_width,
-            node_height,
-            Some(color),
-            None,
+            width: node_width,
+            height: node_height,
+            fill_color: Some(color),
+            line_color: None,
             text,
-            LabelPosition::Inside,
-        ));
+            label_pos: LabelPosition::Inside,
+        }));
     }
 
     // Level 2 nodes
@@ -97,17 +97,17 @@ pub fn generate_shapes(code: &str) -> Vec<Shape> {
             let x = center_x + (radius2 as f64 * parent_angle.cos()) as u32 - node_width / 2;
             let y = center_y + (radius2 as f64 * parent_angle.sin()) as u32 - node_height / 2;
 
-            shapes.extend(create_labeled_shape(
-                ShapeType::RoundedRectangle,
+            shapes.extend(create_labeled_shape(LabeledShapeSpec {
+                shape_type: ShapeType::RoundedRectangle,
                 x,
                 y,
-                node_width,
-                node_height,
-                Some("E8EAF6"),
-                Some("3949AB"),
+                width: node_width,
+                height: node_height,
+                fill_color: Some("E8EAF6"),
+                line_color: Some("3949AB"),
                 text,
-                LabelPosition::Inside,
-            ));
+                label_pos: LabelPosition::Inside,
+            }));
         }
     }
 

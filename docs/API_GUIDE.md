@@ -840,9 +840,9 @@ let shape = rect(1.0, 2.0, 3.0, 1.5)
 
 ## See Also
 
-- [Examples](examples/) - Working code (`simplified_api`, `color_and_table_demo`, `dimension_demo`, `theme_customization_test`)
-- [examples/README.md](examples/README.md) - Example index
+- [Examples](../examples/) - Working code (`simplified_api`, `color_and_table_demo`, `dimension_demo`, `theme_customization_test`)
+- [examples/README.md](../examples/README.md) - Example index
 - [API Reference](https://docs.rs/ppt-rs) - Complete rustdoc
-- [SPEC.md](SPEC.md) - Technical specifications
-- [ARCHITECTURE.md](ARCHITECTURE.md) - Module layout
-- [docs/index.html](docs/index.html) - Docs landing page
+- [SPEC.md](../SPEC.md) - Technical specifications
+- [ARCHITECTURE.md](../ARCHITECTURE.md) - Module layout
+- [docs/index.html](index.html) - Docs landing page

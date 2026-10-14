@@ -33,8 +33,8 @@ The library employs a layered testing approach:
 
 | Test Type | Count | Purpose |
 |-----------|-------|---------|
-| Unit tests | 690+ | Individual module correctness |
-| Integration tests | 420+ | End-to-end workflows |
+| Unit tests | 797 | Individual module correctness |
+| Integration tests | 513 | End-to-end workflows |
 | Compatibility tests | 6 | PowerPoint/LibreOffice/Google Slides validation |
 | Doc tests | 50+ | API examples in documentation |
 
@@ -148,12 +148,12 @@ colors::CORPORATE_BLUE, colors::CORPORATE_GREEN
 ```rust
 SlideContent::new("Title")
     .add_bullet("Text")           // Add bullet point
-    .add_notes("Speaker notes")   // Add speaker notes
+    .notes("Speaker notes")       // Add speaker notes
     .layout(SlideLayout::TwoColumn) // Set layout
     .table(table)                 // Add table
     .with_shapes(shapes)          // Add shapes
-    .with_image(image)            // Add image
-    .with_chart(chart)            // Add chart
+    .add_image(image)             // Add image
+    .add_chart(chart)             // Add chart
 ```
 
 #### SlideLayout
@@ -170,7 +170,7 @@ Each variant maps to `slideLayoutN.xml` on slide master 1 (see `layout_number()`
 | `TitleOnly` | 6 | Title at top only |
 | `TitleAndBigContent` | 7 | Title at top, content fills rest |
 
-`STANDARD_LAYOUT_COUNT` (7) layouts are emitted on slide master 1.
+`STANDARD_LAYOUT_COUNT` (7) layouts are emitted on slide master 1. Each layout's title and body shapes emit `<p:ph type="..."/>` so PowerPoint recognizes them as filling the layout's intended slots (v0.2.36 follow-up; python-pptx parity — `slide.shapes.title` finds the title shape because of this XML).
 
 #### Shape
 
@@ -506,12 +506,19 @@ if result.is_valid {
 ### Reading & Editing
 
 ```rust
-use ppt_rs::oxml::{PresentationReader, PresentationEditor};
+use ppt_rs::oxml::{ParagraphEdit, PresentationReader, PresentationEditor};
 
 // Read presentation info
 let reader = PresentationReader::open("file.pptx")?;
 let info = reader.presentation_info()?;
 println!("Slides: {}", info.slide_count);
+
+// Extract per-slide text from raw bytes (no XML details leak to caller)
+let bytes: Vec<u8> = std::fs::read("file.pptx")?;
+let slides: Vec<Vec<String>> = ppt_rs::extract_slide_texts_from_bytes(&bytes)?;
+for (i, paragraphs) in slides.iter().enumerate() {
+    println!("slide {i}: {} text fragments", paragraphs.len());
+}
 
 // Edit presentation
 let mut editor = PresentationEditor::open("file.pptx")?;
@@ -519,6 +526,19 @@ editor.add_slide(SlideContent::new("New Slide"))?;
 editor.update_slide(0, SlideContent::new("Updated"))?;
 editor.remove_slide(1)?;
 editor.save("modified.pptx")?;
+
+// TextFrame runtime editing (python-pptx parity)
+assert!(editor.shape_has_text_frame(0, 0).unwrap());   // title shape has text
+editor.set_title_text(0, "Edited Title").unwrap();     // replace all paragraphs
+editor.add_paragraph(0, 1, "New bullet").unwrap();    // append
+editor.add_paragraph_with_format(
+    0, 1,
+    ParagraphEdit::new("Nested")
+        .with_level(1)
+        .with_bold(true)
+        .with_font_size(24),
+).unwrap();
+let paragraphs: Vec<String> = editor.shape_paragraphs(0, 1).unwrap();
 ```
 
 ### Export to HTML (Enhanced v0.2.14)
@@ -775,8 +795,13 @@ let md = export_to_markdown_with_options(&pres, &MarkdownOptions::new().with_sec
 let html = export_to_html_with_options(&pres, &HtmlExportOptions::new().with_section_grouping(true))?;
 ```
 
-Import-side `sectionLst` parsing is not implemented: decks imported via
-`Presentation::from_path` lose their sections.
+`Presentation::from_path` preserves sections parsed from `<p14:sectionLst>`
+in `presentation.xml`.
+
+CLI: `pptcli export deck.pptx out.html --group-by-sections`
+
+MCP `export_pptx` accepts optional `group_by_sections: true` when
+`format` is `markdown` or `html`.
 
 ### Package Validation (v0.2.19)
 
@@ -807,17 +832,35 @@ assert!(report.is_valid()); // true when no Error-severity findings
 ## CLI Commands
 
 ```bash
-pptcli create <title> [output] [--slides N] [--template deck.pptx]  # Create presentation
-pptcli md2ppt <input.md> [output.pptx] [--title]    # Convert markdown
-pptcli html2ppt <input.html> [output.pptx] [--title] # Convert HTML (also `from-html`, `from-html-file`)
-pptcli pdf2ppt <input.pdf> [output.pptx]             # Convert PDF
+pptcli create <output.pptx> [--title "T"] [--slides N] [--template deck.pptx]  # Create presentation
+pptcli md2ppt <input.md> [output.pptx] [--title]    # Convert markdown (aliases: from-md, from-markdown)
+pptcli html2ppt <input.html> [output.pptx] [--title] # Convert HTML (aliases: from-html, from-html-file)
+pptcli pdf2ppt <input.pdf> [output.pptx]             # Convert PDF (requires pdftoppm)
 pptcli validate <file.pptx> [--json]                 # Validate PPTX (structured issues)
+pptcli diff <old.pptx> <new.pptx> [--json]           # Semantic slide-level diff (CI-friendly)
+pptcli batch <input_dir> <output_dir> [--template]   # Batch MD/HTML → one .pptx per file
 pptcli info <file.pptx>                              # Show info
-pptcli repair <input.pptx> <output.pptx>            # Repair PPTX
-pptcli export <input.pptx> [output] [--format pdf|html|png]  # Export to PDF/HTML/PNG
-pptcli merge <input1.pptx> <input2.pptx> [output.pptx]       # Merge presentations
+pptcli export <input.pptx> <output> [--format pdf|html|md|png] [--group-by-sections]  # Export to PDF/HTML/Markdown/PNG
+pptcli merge [-o output.pptx] <input1.pptx> <input2.pptx> [more...]  # Merge presentations
 pptcli web2ppt <url> [-o output.pptx] [--web2md]             # Webpage→PPTX (requires --features web2ppt; --web2md requires --features web2md)
 ```
+
+Repair is available as a library API (`oxml::repair::PptxRepair`) and as the
+MCP `repair_pptx` tool; there is no dedicated `pptcli repair` subcommand.
+
+## HTTP API (`http` feature)
+
+Run: `cargo run --features http --bin ppt_http [--host HOST] [--port PORT]` (default `127.0.0.1:8080`).
+
+| Method | Path | Body | Response |
+|--------|------|------|----------|
+| GET | `/health` | — | JSON `{ status, version }` |
+| POST | `/v1/generate` | JSON `{ title, slides: [{ title, bullets }] }` | `.pptx` bytes |
+| POST | `/v1/markdown` | JSON `{ markdown, title? }` | `.pptx` bytes |
+| POST | `/v1/validate` | raw `.pptx` | JSON validation report |
+| POST | `/v1/export/markdown` | raw `.pptx` | Markdown text (`?group_by_sections=true`) |
+| POST | `/v1/export/html` | raw `.pptx` | HTML text (`?group_by_sections=true`) |
+| POST | `/v1/diff` | JSON `{ old_pptx, new_pptx }` (base64) | JSON semantic diff |
 
 ## Compatibility
 
@@ -836,7 +879,7 @@ pptcli web2ppt <url> [-o output.pptx] [--web2md]             # Webpage→PPTX (r
 | File size overhead | ~10-15 KB base |
 | Generation speed | ~1000 slides/sec |
 | Memory usage | ~2 MB + content |
-| Test coverage | 1200+ tests |
+| Test coverage | 1310 tests |
 
 ## Error Handling
 
@@ -857,6 +900,15 @@ match create_pptx("title", 5) {
 
 | Version | Features | Significance |
 |---------|----------|--------------|
+| 0.2.36 | Clippy `--all-features --all-targets -D warnings` green (lib + bins + tests + examples); `useless_vec` → array literals in CLI tests, `len_zero` → `!is_empty()` in markdown tests, `ptr_arg` (`&PathBuf` → `&Path`) in media tests; `extract_slide_texts_from_bytes(&bytes)` per-slide text helper, `PresentationReader::open_bytes(&[u8])` byte-buffer import; **layout placeholder XML** — generated slides now emit `<p:ph type="title"/>` / `<p:ph type="body" idx="N"/>` so PowerPoint recognizes the title/body as filling the layout's intended slots (python-pptx parity); **TextFrame runtime editing API** — `PresentationEditor::shape_has_text_frame` / `set_shape_text` / `add_paragraph` / `add_paragraph_with_format` / `set_title_text` / `shape_paragraphs` + `ParsedShape::has_text_frame()` predicate (python-pptx `tf.text = …` / `tf.add_paragraph()` / `p.level` / `p.font.bold` parity; **Chart customization** — `ChartBuilder::legend(LegendConfig)` (show/position), `value_axis` / `category_axis` (AxisConfig — min/max/major_unit/minor_unit/log_scale/number_format/tick_label_size_pt/tick_label_bold/tick_label_rotation_deg), `data_labels(DataLabelsConfig)` (show_value/show_category_name/show_percentage/show_series_name/position) — python-pptx + pptxgenjs parity (full axis/label/legend control) | **Chart milestone** — every chart ships tunable: legend (show/position), axes (min/max/log scale/number format/rotation), data labels (show value/percentage/category name + position); `validate_package_bytes` regression guard on top |
+| 0.2.35 | Comment import — `PresentationReader::comment_authors()` / `slide_comments()` wired through `import_pptx` for full comments round-trip | **Round-trip milestone** — review comments survive import and re-export |
+| 0.2.34 | REST/HTTP API (`http` feature, `ppt_http` binary) — `/health`, `/v1/generate`, `/v1/markdown`, `/v1/validate`, `/v1/export/*`, `/v1/diff` | **Deployment milestone** — headless HTTP access for SaaS/automation without MCP |
+| 0.2.33 | CLI markdown export (`--format md`, `.md` extension) + `--group-by-sections` for Markdown; MCP `diff_pptx` tool with optional JSON report | **Tooling parity milestone** — export/diff surfaces aligned across CLI and MCP |
+| 0.2.32 | Criterion benchmark suite (`benches/pptx_benchmarks.rs`) — eager/lazy generation + compression at 10/50/100 slides; `cargo bench` | **Performance milestone** — reproducible regression tracking for core hot paths |
+| 0.2.31 | Batch pipeline API (`pipeline::run_directory`, `run_batch`, `BatchOptions`) + `pptcli batch` — directory of MD/HTML → deck-per-file with shared theme/template | **Automation milestone** — bulk deck generation for docs/content pipelines |
+| 0.2.30 | Semantic diff (`compare_presentations`, `compare_pptx_paths`, `pptcli diff [--json]`) — slide-level title/bullets/images/charts/tables/media | **CI/review milestone** — compare decks without byte-level diff |
+| 0.2.29 | Section import (`PresentationReader::sections()` → `from_path`), CLI `export --group-by-sections` for HTML | **Round-trip milestone** — sections survive import; all export surfaces expose grouping |
+| 0.2.28 | `remove_comments` compression wired (parts + rels + content-types), MCP `export_pptx` `group_by_sections` flag, `save_as_html_with_options` API | **Gap-fill milestone** — closes documented compression/MCP/API drift from v0.2.27 |
 | 0.2.27 | Comments round-trip (`add_comment` / `add_comment_author`), video & audio embedding (`add_video` / `add_audio` with dual rels + poster frames), section-aware export (`add_section` → `<p14:sectionLst>`), lazy content-types append fix, pure-Rust image export (pdfrs + pdftoppm) | **Content & round-trip milestone** — review comments, media, and sections packaged with validation; image export without LibreOffice |
 | 0.2.26 | Chart build-time validation (`ChartBuilder::build()` → `Result<Chart>`), MCP tool expansion (+3: `compress_pptx`, `repair_pptx`, `apply_theme` = 11 total), rmcp 2.2.0 API migration, `MEMORY.md` institutional knowledge repository | **Validation & MCP milestone** — charts fail fast on bad data; MCP covers full compress/repair/theme lifecycle |
 | 0.2.25 | Dependency updates, URL validation simplification in `web2ppt/fetcher.rs` | Maintenance — keep dependency tree current and streamline fetcher validation |

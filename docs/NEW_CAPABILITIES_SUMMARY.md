@@ -1,5 +1,9 @@
 # New Capabilities Summary
 
+> Point-in-time summary of the enhanced Markdown/HTML capabilities landed in
+> v0.2.14. The 638/659/1252 test counts elsewhere in the codebase reflect the
+> current state of the repo, not this document.
+
 This document summarizes the enhanced Markdown to PowerPoint and HTML to PowerPoint functionality added to ppt-rs, including examples and test validation.
 
 ## ✅ Completed Improvements

@@ -2,7 +2,9 @@ pub mod html;
 
 use crate::api::Presentation;
 use crate::exc::Result;
-use crate::generator::{Shape, ShapeType, SlideContent, TableBuilder, TableCell, TableRow};
+use crate::generator::{
+    PresentationSettings, Shape, ShapeType, SlideContent, TableBuilder, TableCell, TableRow,
+};
 use crate::oxml::presentation::PresentationReader;
 
 pub use html::{Html2Ppt, HtmlParseOptions, parse_html, parse_html_with_options};
@@ -16,7 +18,8 @@ pub fn import_pptx(path: &str) -> Result<Presentation> {
         presentation = presentation.title(title);
     }
 
-    for parsed_slide in reader.get_all_slides()? {
+    let slides = reader.get_all_slides()?;
+    for (index, parsed_slide) in slides.into_iter().enumerate() {
         let mut content = SlideContent::new(parsed_slide.title.as_deref().unwrap_or(""));
 
         // Add body text as bullets
@@ -73,7 +76,22 @@ pub fn import_pptx(path: &str) -> Result<Presentation> {
             }
         }
 
+        let comments = reader.slide_comments(index);
+        if !comments.is_empty() {
+            content = content.with_comments(comments);
+        }
+
         presentation = presentation.add_slide(content);
+    }
+
+    let sections = reader.sections();
+    let comment_authors = reader.comment_authors();
+    if !sections.is_empty() || !comment_authors.is_empty() {
+        presentation = presentation.with_settings(PresentationSettings {
+            sections,
+            comment_authors,
+            ..PresentationSettings::default()
+        });
     }
 
     Ok(presentation)

@@ -6,6 +6,30 @@ use std::fs;
 use std::path::Path;
 
 #[test]
+fn test_html_export_with_section_grouping() {
+    use ppt_rs::export::html::HtmlExportOptions;
+
+    let pres = Presentation::new()
+        .title("Sectioned")
+        .add_section("Intro", 0, 1)
+        .unwrap()
+        .add_slide(SlideContent::new("Slide 1").add_bullet("Point"));
+
+    let output_path = "test_export_sections.html";
+    pres.save_as_html_with_options(
+        output_path,
+        &HtmlExportOptions::new().with_section_grouping(true),
+    )
+    .unwrap();
+
+    let content = fs::read_to_string(output_path).unwrap();
+    assert!(content.contains("section-label"));
+    assert!(content.contains("Intro"));
+
+    fs::remove_file(output_path).unwrap();
+}
+
+#[test]
 fn test_html_export_api() {
     let pres = Presentation::new()
         .title("HTML Export Test")

@@ -11,7 +11,8 @@ pub mod syntax;
 
 #[cfg(feature = "cli")]
 pub use commands::{
-    CreateCommand, FromHtmlCommand, FromMarkdownCommand, InfoCommand, ValidateCommand,
+    BatchCommand, CreateCommand, DiffCommand, FromHtmlCommand, FromHtmlOptions,
+    FromMarkdownCommand, InfoCommand, ValidateCommand,
 };
 #[cfg(feature = "cli")]
 pub use markdown::parse_markdown;

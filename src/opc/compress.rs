@@ -228,6 +228,11 @@ pub fn compress_pptx<P: AsRef<Path>, Q: AsRef<Path>>(
         remove_notes_slides(&mut package)?;
     }
 
+    // Remove review comments if requested
+    if options.remove_comments {
+        remove_comments(&mut package)?;
+    }
+
     // Optimize XML
     if options.optimize_xml {
         optimize_xml_content(&mut package)?;
@@ -333,6 +338,80 @@ fn remove_document_properties(package: &mut Package) {
     package.remove_part("docProps/custom.xml");
     // Remove thumbnail
     package.remove_part("docProps/thumbnail.jpeg");
+}
+
+/// Remove slide comment parts, the authors part, and dangling rels/content-types.
+fn remove_comments(package: &mut Package) -> Result<()> {
+    let comment_parts: Vec<String> = package
+        .part_paths()
+        .into_iter()
+        .filter(|p| p.starts_with("ppt/comments/") && p.ends_with(".xml"))
+        .map(str::to_owned)
+        .collect();
+
+    for path in comment_parts {
+        package.remove_part(&path);
+    }
+
+    package.remove_part("ppt/commentAuthors.xml");
+
+    let slide_rels: Vec<String> = package
+        .part_paths()
+        .into_iter()
+        .filter(|p| p.starts_with("ppt/slides/_rels/") && p.ends_with(".rels"))
+        .map(str::to_owned)
+        .collect();
+
+    for path in slide_rels {
+        if let Some(content) = package.get_part_string(&path) {
+            let stripped = strip_relationships_by_type(&content, "relationships/comments");
+            if stripped != content {
+                package.add_part(path, stripped.into_bytes());
+            }
+        }
+    }
+
+    if let Some(content) = package.get_part_string("ppt/_rels/presentation.xml.rels") {
+        let stripped = strip_relationships_by_type(&content, "relationships/commentAuthors");
+        if stripped != content {
+            package.add_part(
+                "ppt/_rels/presentation.xml.rels".to_string(),
+                stripped.into_bytes(),
+            );
+        }
+    }
+
+    if let Some(content) = package.get_part_string("[Content_Types].xml") {
+        let stripped = strip_comment_content_types(&content);
+        if stripped != content {
+            package.add_part("[Content_Types].xml".to_string(), stripped.into_bytes());
+        }
+    }
+
+    Ok(())
+}
+
+/// Drop `<Relationship …/>` entries whose `Type` contains `type_marker`.
+fn strip_relationships_by_type(rels_xml: &str, type_marker: &str) -> String {
+    rels_xml
+        .lines()
+        .filter(|line| !line.contains(type_marker))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// Drop comment-related `<Override …/>` entries from `[Content_Types].xml`.
+fn strip_comment_content_types(content_types_xml: &str) -> String {
+    content_types_xml
+        .lines()
+        .filter(|line| {
+            !line.contains("/ppt/comments/")
+                && !line.contains("commentAuthors.xml")
+                && !line.contains("presentationml.comments+xml")
+                && !line.contains("presentationml.commentAuthors+xml")
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// Remove notes slides
@@ -596,6 +675,32 @@ mod tests {
         assert_eq!(opts.target_size, 5 * 1024 * 1024);
         assert!(opts.remove_unused_media);
         assert!(opts.remove_properties);
+    }
+
+    #[test]
+    fn test_strip_relationships_by_type() {
+        let rels = r#"<?xml version="1.0"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide1.xml"/>
+<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments" Target="../comments/comment1.xml"/>
+</Relationships>"#;
+        let stripped = strip_relationships_by_type(rels, "relationships/comments");
+        assert!(stripped.contains("relationships/slide"));
+        assert!(!stripped.contains("relationships/comments"));
+    }
+
+    #[test]
+    fn test_strip_comment_content_types() {
+        let types = r#"<?xml version="1.0"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Override PartName="/ppt/slides/slide1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>
+<Override PartName="/ppt/comments/comment1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.comments+xml"/>
+<Override PartName="/ppt/commentAuthors.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.commentAuthors+xml"/>
+</Types>"#;
+        let stripped = strip_comment_content_types(types);
+        assert!(stripped.contains("/ppt/slides/slide1.xml"));
+        assert!(!stripped.contains("/ppt/comments/"));
+        assert!(!stripped.contains("commentAuthors.xml"));
     }
 
     #[test]

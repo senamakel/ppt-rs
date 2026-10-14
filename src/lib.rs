@@ -28,6 +28,9 @@
 //! - **templates** - Pre-built presentation templates
 //! - **export** - Export to Markdown, HTML, images
 //! - **import** - PPTX import, HTML-to-PPTX
+//! - **diff** - Semantic slide-level comparison for review/CI
+//! - **pipeline** - Batch Markdown/HTML → `.pptx` conversion with shared theme/template
+//! - **http** - REST API for generation, validation, export, and diff (feature = "http")
 //! - **opc** - Open Packaging Convention (ZIP) handling
 //! - **oxml** - Office XML parsing and manipulation
 //! - **exc** - Error types
@@ -36,6 +39,7 @@ pub mod api;
 #[cfg(feature = "cli")]
 pub mod cli;
 pub mod core;
+pub mod diff;
 pub mod elements;
 pub mod exc;
 pub mod export;
@@ -45,11 +49,15 @@ pub mod import;
 pub mod opc;
 pub mod oxml;
 pub mod parts;
+pub mod pipeline;
 pub mod prelude;
 pub mod templates;
 
 #[cfg(feature = "mcp")]
 pub mod mcp;
+
+#[cfg(feature = "http")]
+pub mod http;
 
 #[cfg(feature = "web2ppt")]
 pub mod web2ppt;
@@ -61,6 +69,14 @@ pub use core::{
     validate_powerpoint_structure,
 };
 pub use core::{ToXml, escape_xml};
+pub use diff::{
+    FieldChange, PresentationDiff, SlideChange, SlideSemantic, compare_pptx_paths,
+    compare_presentations, slide_semantic,
+};
+pub use pipeline::{
+    BatchJob, BatchOptions, BatchResult, InputFormat, convert_file, detect_format,
+    discover_inputs, resolve_output_path, run_batch, run_directory,
+};
 pub use elements::{Color, Position, RgbColor, SchemeColor, Size, Transform};
 pub use exc::{PptxError, Result, messages};
 pub use generator::{
@@ -88,6 +104,7 @@ pub use export::image_export::{
 pub use export::md::{MarkdownOptions, export_to_markdown, export_to_markdown_with_options};
 pub use export::slide_render::{render_to_pdf, render_to_pdf_bytes};
 pub use import::html::{Html2Ppt, HtmlParseOptions, parse_html, parse_html_with_options};
+pub use oxml::extract_slide_texts_from_bytes;
 
 #[cfg(feature = "pdf-native")]
 pub use export::pdf_export::{
@@ -115,4 +132,4 @@ pub use web2ppt::{
 #[cfg(feature = "web2md")]
 pub use web2ppt::{html_to_pptx_via_web2md, url_to_pptx_via_web2md};
 
-pub const VERSION: &str = "0.2.27";
+pub const VERSION: &str = "0.2.36";

@@ -24,6 +24,11 @@ fn count_tests_in(dir: &Path) -> usize {
             if p.is_dir() {
                 stack.push(p);
             } else if p.extension().is_some_and(|x| x == "rs") {
+                // Exclude this file from its own gate — otherwise adding a new
+                // drift-detection test would itself drift the integration count.
+                if p.ends_with("tests/docs_sync.rs") {
+                    continue;
+                }
                 count += fs::read_to_string(&p)
                     .unwrap()
                     .lines()
@@ -111,5 +116,231 @@ fn todo_md_integration_test_count_matches_code() {
     assert_eq!(
         claimed, actual,
         "TODO.md integration-test count is stale (run `cargo test`, then update the header)"
+    );
+}
+
+/// Extract the `pub const VERSION` string literal from `src/lib.rs`.
+fn lib_version() -> String {
+    let lib = read("src/lib.rs");
+    let marker = "pub const VERSION: &str = \"";
+    let start = lib
+        .find(marker)
+        .unwrap_or_else(|| panic!("src/lib.rs missing `pub const VERSION`"))
+        + marker.len();
+    let rest = &lib[start..];
+    let end = rest
+        .find('"')
+        .unwrap_or_else(|| panic!("src/lib.rs VERSION literal not terminated"));
+    rest[..end].to_owned()
+}
+
+/// Pull every `ppt-rs = "X.Y.Z"` (or `ppt-rs = { version = "X.Y.Z", … }`) from README.
+fn readme_install_versions() -> Vec<String> {
+    let readme = read("README.md");
+    let mut out = Vec::new();
+    let mut rest = readme.as_str();
+    while let Some(idx) = rest.find("ppt-rs = ") {
+        let after = &rest[idx + "ppt-rs = ".len()..];
+        let after = after.trim_start();
+        if let Some(stripped) = after.strip_prefix('"')
+            && let Some(end) = stripped.find('"')
+        {
+            out.push(stripped[..end].to_owned());
+            rest = &rest[idx + "ppt-rs = ".len() + (after.len() - stripped.len()) + end + 1..];
+            continue;
+        }
+        if let Some(stripped) = after.strip_prefix('{')
+            && let Some(v_idx) = stripped.find("version = \"")
+        {
+            let v_after = &stripped[v_idx + "version = \"".len()..];
+            if let Some(end) = v_after.find('"') {
+                out.push(v_after[..end].to_owned());
+                rest = &rest[idx + "ppt-rs = ".len() + (after.len() - stripped.len()) + end + 1..];
+                continue;
+            }
+        }
+        rest = &rest[idx + "ppt-rs = ".len()..];
+    }
+    out
+}
+
+#[test]
+fn readme_install_versions_match_lib_version() {
+    let actual = lib_version();
+    let claimed = readme_install_versions();
+    assert!(
+        !claimed.is_empty(),
+        "README.md does not document an install version (expected `ppt-rs = \"{actual}\"`)"
+    );
+    assert!(
+        claimed.iter().all(|v| v == &actual),
+        "README install snippet stale: lib = {actual}, README mentions = {claimed:?}"
+    );
+}
+
+/// Count `#[tool]`-annotated methods on `PptMcp` — i.e. methods declared as
+/// `fn <ident>(` whose immediately preceding attribute block contains
+/// `#[tool(…)]`. The MCP tool count is a recurring drift hotspot (see
+/// MEMORY.md "CI gate vs honest claim drift" / "MCP tool count: 12").
+fn mcp_tool_count() -> usize {
+    let mcp = read("src/mcp/mod.rs");
+    let mut count = 0;
+    // State we carry across lines:
+    let mut attr_depth: i32 = 0; // bracket nesting inside the current `#[…]`
+    let mut pending_tool = false; // last `#[…]` we saw started with `#[tool`
+    for raw in mcp.lines() {
+        let line = raw.trim_start();
+        // Track whether we are inside a multi-line `#[ … ]` attribute block so
+        // body lines like `name = "…"`, `description = "…"` don't reset the
+        // pending_tool flag.
+        if attr_depth > 0 {
+            for ch in line.chars() {
+                match ch {
+                    '[' => attr_depth += 1,
+                    ']' => attr_depth -= 1,
+                    _ => {}
+                }
+            }
+            continue;
+        }
+        if line.starts_with("#[tool") {
+            pending_tool = true;
+            // Count any further `[`/`]` on the same line (rare for `#[tool(`).
+            for ch in line.chars() {
+                match ch {
+                    '[' => attr_depth += 1,
+                    ']' => attr_depth -= 1,
+                    _ => {}
+                }
+            }
+            continue;
+        }
+        if line.starts_with('#') {
+            pending_tool = false;
+            continue;
+        }
+        if pending_tool && line.starts_with("fn ") && line.contains('(') && !line.contains("::") {
+            count += 1;
+            pending_tool = false;
+            continue;
+        }
+        // Anything else (statement, comment, blank) clears the flag — a tool
+        // attribute is consumed by the very next `fn`.
+        if !line.is_empty() && !line.starts_with("//") {
+            pending_tool = false;
+        }
+    }
+    count
+}
+
+#[test]
+fn mcp_tools_are_documented_consistently() {
+    let actual = mcp_tool_count();
+    assert!(
+        actual > 0,
+        "could not detect any MCP tools in src/mcp/mod.rs — tool-marking convention changed?"
+    );
+    // MEMORY records the current count as 12; bump both sides together if a
+    // tool is added/removed. The point of this gate is to make any drift
+    // between code and the MEMORY/README narrative a `cargo test` failure.
+    let mem = read("MEMORY.md");
+    // Look for the markdown section header `### MCP tool count: N (…)` —
+    // a literal digit must follow the colon, otherwise this gate will match
+    // its own description text ("MCP tool count: N" with the letter N).
+    let needle = "### MCP tool count: ";
+    if let Some(idx) = mem.find(needle) {
+        let after = &mem[idx + needle.len()..];
+        let claimed: usize = after
+            .chars()
+            .take_while(|c| c.is_ascii_digit())
+            .collect::<String>()
+            .parse()
+            .unwrap_or(0);
+        assert_eq!(
+            claimed, actual,
+            "MEMORY.md MCP tool count stale: code = {actual}, MEMORY says = {claimed}"
+        );
+    }
+}
+
+/// Extract the `pub enum Commands` variant names from `src/cli/parser.rs`.
+fn cli_command_variants() -> Vec<String> {
+    let parser = read("src/cli/parser.rs");
+    let start = parser
+        .find("pub enum Commands")
+        .unwrap_or_else(|| panic!("src/cli/parser.rs missing `pub enum Commands`"));
+    let rest = &parser[start..];
+    let mut variants = Vec::new();
+    // `depth` counts `{` minus `}` so we can detect when we are inside the
+    // enum body (depth == 1) versus inside a variant body (depth == 2).
+    let mut depth: i32 = 0;
+    let mut entered = false;
+    for raw in rest.lines() {
+        let line = raw;
+        // Decide BEFORE updating `depth` whether this line opens a variant:
+        // a variant declaration is exactly `    <Name> {` while the enum is
+        // open (depth == 1 before the `{` on this line).
+        let trimmed = line.trim_start();
+        if entered
+            && depth == 1
+            && !trimmed.is_empty()
+            && !trimmed.starts_with("//")
+            && !trimmed.starts_with('#')
+            && let Some(t) = trimmed.strip_suffix('{')
+        {
+            let ident = t.split_whitespace().next().unwrap_or("");
+            if !ident.is_empty() {
+                let first = ident.chars().next().unwrap();
+                if first.is_ascii_uppercase() {
+                    variants.push(ident.to_owned());
+                }
+            }
+        }
+        // Now update depth for braces on this line (the variant's `{` pushes
+        // us to depth == 2 for its body lines).
+        for ch in line.chars() {
+            match ch {
+                '{' => depth += 1,
+                '}' => {
+                    depth -= 1;
+                    if entered && depth == 0 {
+                        return variants;
+                    }
+                }
+                _ => {}
+            }
+        }
+        // The enum header `pub enum Commands {` opens the body. Mark
+        // `entered` once we've consumed its `{`.
+        if !entered && depth == 1 {
+            entered = true;
+        }
+    }
+    variants
+}
+
+#[test]
+fn cli_command_set_matches_module_summary() {
+    let variants = cli_command_variants();
+    assert!(
+        variants.len() >= 2,
+        "could not detect any CLI command variants in src/cli/parser.rs — parser shape changed? got {variants:?}"
+    );
+    // Cross-check: ARCHITECTURE.md / README.md must reference every CLI variant
+    // somewhere. Users invoke the lowercase form (`pptcli md2ppt`), so we
+    // match case-insensitively — drift surfaces if a variant is renamed or
+    // removed without updating either root doc.
+    let arch = read("ARCHITECTURE.md").to_lowercase();
+    let readme = read("README.md").to_lowercase();
+    let missing: Vec<&String> = variants
+        .iter()
+        .filter(|v| {
+            let needle = v.to_lowercase();
+            !arch.contains(&needle) && !readme.contains(&needle)
+        })
+        .collect();
+    assert!(
+        missing.is_empty(),
+        "CLI variants missing from ARCHITECTURE.md / README.md: {missing:?} (rename or add a doc mention)"
     );
 }

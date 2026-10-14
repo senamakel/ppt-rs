@@ -1,6 +1,6 @@
 # TODO - ppt-rs
 
-**Tests**: 754 inline / 470 integration = 1224 total | **Warnings**: 0 | **Clippy**: clean (project defaults) | **Version**: 0.2.27
+**Tests**: 797 inline / 513 integration = 1310 total | **Warnings**: 0 (lib default features) | **Clippy**: clean with `--all-features --all-targets -- -D warnings` (v0.2.36) — lib, bins, tests, examples all green; safe to promote to a CI gate | **Version**: 0.2.36
 
 ## Active
 
@@ -23,10 +23,10 @@ Items here graduate into **Backlog** when scoped for implementation.
 Extend what can flow in and out without losing meaning.
 
 - [x] **Speaker notes import** — MD/HTML speaker-note syntax → `notesSlides` parts on generation
-- [x] **Comments round-trip** — `SlideContent::add_comment` / `Presentation::add_comment_author` → `ppt/comments/commentN.xml` + `ppt/commentAuthors.xml` parts wired into eager and lazy generation, with package-validation coverage (import-side parsing still future work)
+- [x] **Comments round-trip** — generation + import: `PresentationReader::comment_authors()` / `slide_comments()` → `import_pptx` preserves authors and per-slide comments (v0.2.35)
 - [x] **Image accessibility** — alt text / description on images (`descr` / `title` on `cNvPr`)
 - [x] **Video & audio embedding** — `add_video`/`add_audio` wired through eager + lazy generation: `ppt/media/mediaN.*` parts, dual link/embed rels per element, poster frames (custom or built-in 1×1 placeholder), content-type Defaults, compression-safe; also fixed lazy-path content-type appends being silently skipped and `remove_unused_media` deleting media referenced only from rels
-- [x] **Section-aware export** — `Presentation::add_section` / `with_sections` → `<p14:sectionLst>` in `presentation.xml` (eager + lazy); opt-in section grouping in Markdown export (`with_section_grouping`) and section labels in HTML export. Import-side sectionLst parsing not yet implemented (CLI/MCP export of imported decks won't show sections)
+- [x] **Section-aware export** — `Presentation::add_section` / `with_sections` → `<p14:sectionLst>` in `presentation.xml` (eager + lazy); opt-in section grouping in Markdown/HTML export; section import via `from_path`; CLI `--group-by-sections` and MCP `group_by_sections`
 
 ### API & Tooling
 Make the library easier to adopt, debug, and automate.
@@ -34,7 +34,7 @@ Make the library easier to adopt, debug, and automate.
 - [x] **Structured validation CLI** — `pptcli validate` reports structured issues (severity/category/path) + `--json`
 - [x] **PresentationEditor enhancements** — duplicate slide, reorder slides, insert slide at index, batch replace
 - [x] **Chart build-time validation** — category/series length checks via `core::validation` at `ChartBuilder::build()`
-- [ ] **PPTX semantic diff** — slide-level compare (title, bullets, images, charts) for review/CI
+- [x] **PPTX semantic diff** — slide-level compare (title, bullets, images, charts, tables, media) for review/CI; `compare_presentations` / `compare_pptx_paths` + `pptcli diff` with `--json`
 - [x] **MCP tool expansion** — `compress_pptx`, `repair_pptx`, `apply_theme` (export_markdown/export_html already covered by `export_pptx`)
 
 ### Conversion & Platform
@@ -42,8 +42,8 @@ Longer-horizon capabilities that broaden deployment options.
 
 - [x] **PDF export without LibreOffice** — `pdfrs`-backed pure-Rust path (`pdf-native` feature, `save_as_pdf_via_pdfrs` / `to_pdf_bytes`)
 - [x] **Image export without LibreOffice** — `export_to_images` / `save_slide_as_image` / `save_thumbnail` now render via pure-Rust `pdfrs` PDF + `pdftoppm`; fixes broken multi-slide rasterization (direct `soffice --convert-to png` only ever rasterizes slide 1)
-- [ ] **WASM target** — browser-side generation for docs sites and SaaS embeds
-- [ ] **Batch / pipeline API** — directory of MD/HTML → deck-per-file with shared theme (extends `batch_generator` example)
+- [~] **WASM target** — out of scope (desktop/server CLI + library focus; not planned)
+- [x] **Batch / pipeline API** — `pipeline::run_directory` / `run_batch` + `pptcli batch`; shared theme/template via `BatchOptions`; `batch_generator` example rewritten (v0.2.31)
 
 ## Backlog (Prioritized)
 
@@ -59,14 +59,37 @@ Longer-horizon capabilities that broaden deployment options.
 - [x] Speaker notes import from MD/HTML
 - [x] Image alt text / accessibility metadata
 - [x] PresentationEditor: duplicate, reorder, insert slides
-- [ ] Benchmark suite (Criterion: generation, lazy loading, compression)
+- [x] Benchmark suite (Criterion: generation, lazy loading, compression) — `benches/pptx_benchmarks.rs`, `cargo bench` (v0.2.32)
 - [x] MCP tools: compress, repair, theme, export
 
 ### P2 — Future
 - [x] PDF export without LibreOffice
-- [ ] WASM build target
-- [ ] PPTX semantic diff tool
-- [ ] REST/HTTP service wrapper (optional feature)
+- [~] WASM build target — out of scope
+- [x] PPTX semantic diff tool
+- [x] REST/HTTP service wrapper (optional `http` feature, `ppt_http` binary) — v0.2.34
+
+### Backlog items seeded by markdown audit + competitive intel (2026-09-30)
+
+- [x] **Clippy `--all-features` cleanup** — `cargo clippy --all-features --all-targets -- -D warnings` exits 0 (lib, bins, tests, examples — v0.2.36). Fixed: 34 `collapsible_if` + 3 `collapsible_match` in src (since TODO seed); 6 `useless_vec` (CLI parser tests using `vec![String;..]` for `Cli::parse_from` — switched to `[String;..]`); 3 `len_zero` (`assert!(x.len() >= 1)` / `len() > 0` → `!x.is_empty()`); 1 `ptr_arg` (`&PathBuf` → `&Path` in `media_deck`); 1 `unused_imports` (`Position` in `image_url_test`). No `too_many_arguments` survived — the original 4 call sites either already had parameter objects, or the lint went away with the v0.2.x builder consolidation.
+- [x] **docs_sync.rs extension** — add the loose checks that the current gate doesn't enforce (README install version vs `src/lib.rs::VERSION`, MCP tool count vs `src/mcp/mod.rs` `^    fn ` methods, CLI command set vs `src/cli/parser.rs::Commands`). `tests/docs_sync.rs` excludes itself from the integration-test count (so adding gate tests does not itself drift the count) and walks `#[tool]` attributes with a bracket-depth state machine (multi-line `name = "…", description = "…"` body lines no longer reset the `pending_tool` flag). `cli_command_variants()` walks `pub enum Commands` with a `{`/`/` }` depth counter and only emits variant identifiers whose line ends with `{` (so prose inside `long_about = "…"` strings is not misread). README/ARCHITECTURE updated to mention `pdf2ppt` (previously unmentioned). Success criterion: `cargo test --test docs_sync` exits 0.
+- [x] **Placeholder API** — generated slides now emit `<p:ph type="title"/>` / `<p:ph type="body" idx="1"/>` (etc.) so PowerPoint recognizes the shape as filling the layout's intended title/body slot (python-pptx parity: `slide.shapes.title`). Active code path (`src/generator/slide_xml/layouts.rs`) was emitting bare `<p:nvPr/>` for title/body — fixed in v0.2.36 follow-up by extending `generate_title_shape` with a `ph_type` parameter and adding `<p:ph>` to the body shape XML in `create_title_and_content_slide`, `create_title_and_big_content_slide`, and `create_two_column_slide`. Layouts covered: `TitleOnly` (title), `CenteredTitle` (`ctrTitle`), `SectionHeader` (title), `TitleAndContent` (title + body idx="1"), `TitleAndBigContent` (title + body idx="1"), `TwoColumn` (title + body idx="1" + body idx="2"). Tests: 4 inline (`src/generator/slide_xml/mod.rs::tests::title_and_content_emits_title_and_body_placeholders`, `centered_title_uses_ctr_title_placeholder`, `two_column_emits_idx1_and_idx2_body_placeholders`, `title_only_layout_emits_only_title_placeholder`) + 6 integration (`tests/placeholder_api_test.rs` — title/content, title-only, two-column, presentation builder pipeline, plus `package_validation_still_passes_with_placeholders` zero-repair guard). Refactored `generate_title_shape` signature from positional `(text, props, x, y, w, h, align, ph_type)` to parameter-object `(TitleContent, TitlePlacement, align, ph_type)` per MEMORY clippy pattern (avoids `too_many_arguments`). Success criterion met: deck round-trips through `validate_package_bytes` with no errors, slides open in PowerPoint with the layout's title/body placeholders populated.
+- [x] **`TextFrame` runtime paragraph API on imported decks** — `PresentationEditor::shape_has_text_frame(slide, shape)`, `set_shape_text(slide, shape, text)`, `add_paragraph(slide, shape, text)`, `add_paragraph_with_format(slide, shape, ParagraphEdit::new(...).with_level(N).with_bold(b).with_font_size(pts))`, `set_title_text(slide, text)`, `shape_paragraphs(slide, shape) -> Vec<String>` (read-back). Plus `ParsedShape::has_text_frame()` predicate on the read side (python-pptx parity: `_BaseShape.has_text_frame`). Implementation: byte-level mutation on `<p:txBody>` via `src/oxml/text_editor.rs` (UTF-8 char-aware `nth_sp_range` / `txbody_range` walkers, depth counter so nested `<p:sp>` are skipped correctly). Tests: 9 inline (`src/oxml/text_editor.rs::tests::paragraph_edit_emits_clean_xml`, `paragraph_edit_escapes_special_chars`, `paragraph_edit_with_level_sets_lvl_attr`, `paragraph_edit_no_level_omits_lvl_attr`, `nth_sp_range_first`, `nth_sp_range_second`, `nth_sp_range_out_of_bounds`, `txbody_range_finds_inner_offsets`, `read_paragraphs_returns_each_paragraph_text`) + 12 integration (`tests/text_editor_test.rs` — `shape_has_text_frame_true_for_title_and_body`, `shape_has_text_frame_errors_for_out_of_range`, `set_shape_text_replaces_paragraphs`, `set_title_text_updates_only_first_paragraph`, `add_paragraph_appends_at_end`, `add_paragraph_with_format_emits_level_and_bold`, `shape_paragraphs_reads_back_what_was_written`, `edit_round_trips_through_save`, `edit_does_not_break_package_validation`, `has_text_frame_predicate_via_parsed_slide`, `edit_returns_error_for_shape_without_txbody`, `edit_handles_unicode_text`). Zero-repair gate confirmed: `edit_does_not_break_package_validation` saves the edited deck and asserts `validate_package_bytes()` reports zero errors. UTF-8 verified: `edit_handles_unicode_text` round-trips `🎉 Unicode round-trip` through `set_shape_text`.
+- [ ] **Fuzzing tests for PPTX parsing** — listed in ARCHITECTURE "Future Enhancements"; `cargo-fuzz` target over `oxml::PresentationReader::open`. Success criterion: `cargo +nightly fuzz run read_pptx -- -max_total_time=300` produces no panics on real-world + mutated inputs.
+- [ ] **Property-based testing for generation** — `proptest` over `SlideContent` builders to assert that randomly constructed decks always pass `validate_package_bytes` (catches shape-of-the-state regressions the hand-written tests miss). Success criterion: 1000 random deck generations all pass structural validation.
+
+### Backlog items seeded by competitive intel (2026-10-06)
+
+Fresh sweep of python-pptx (`user/quickstart.html`, `user/presentations.html`, `user/charts.html`) + pptxgenjs README/docs + Aspose.Slides Developer Guide surfaced five new gaps. Sources via webfetch (web2md MCP unavailable in this environment; per AGENTS.md Step 8 fallback is fine).
+
+- [x] **Chart data labels + legend + axis customization** — `ChartBuilder::legend(LegendConfig)` (show / position — `Right` / `Left` / `Top` / `TopRight` / `Bottom`), `value_axis(AxisConfig)` / `category_axis(AxisConfig)` (min / max / major_unit / minor_unit / log_scale / number_format / tick_label_size_pt / tick_label_bold / tick_label_rotation_deg), `data_labels(DataLabelsConfig)` (show_value / show_category_name / show_percentage / show_series_name / position — `BestFit` / `Center` / `InsideBase` / `InsideEnd` / `OutsideEnd` / `Left` / `Right` / `Top` / `Bottom`). Convenience presets: `LegendConfig::shown()` / `::hidden()` / `::shown().with_position(Bottom)`; `DataLabelsConfig::show_values()` (InsideEnd) / `::show_percentages_outside()` (OutsideEnd). Defaults preserve backwards compatibility — `ChartBuilder::new(...)` without any `.legend()` / `.data_labels()` emits the same XML as before. Tests: 11 inline (`src/generator/charts/data.rs::tests` — `test_legend_position_str`, `test_label_position_str`, `test_axis_log_scale_rejects_out_of_range`, `test_axis_tick_label_rotation_wraps`, `test_data_labels_presets`, `test_chart_default_legend_is_shown_right`; `src/generator/charts/builder.rs::tests` — `test_chart_builder`, `test_chart_builder_legend_hidden`, `test_chart_builder_axis_min_max`, `test_chart_builder_data_labels_preset`) + 14 integration (`tests/chart_customization_test.rs` — `default_chart_emits_legend_block_at_right`, `legend_hidden_emits_no_legend_block`, `legend_position_bottom_emits_correct_val`, `value_axis_min_max_emits_c_min_max`, `value_axis_log_scale_emits_c_log_scale`, `value_axis_number_format_overrides_general`, `value_axis_major_unit_emits_c_major_unit`, `data_labels_show_values_emits_c_dlbls_with_show_val`, `data_labels_show_percentages_emits_c_show_percent`, `data_labels_off_emits_no_block`, `all_customizations_together_round_trip`, `chart_customization_does_not_break_package_validation`, `label_position_str_renders_all_variants`, `legend_position_str_renders_all_variants`). `validate_package_bytes()` regression guard confirmed. Public re-exports added to `src/generator/charts/mod.rs`.
+
+- [x] **`Shape::has_text_frame()` predicate + `Shape::text()` setter** — python-pptx exposes `_BaseShape.has_text_frame` to query whether a shape can hold text, and `_BaseShape.text` as a writable shortcut that deletes all paragraphs except the first then sets text. ppt-rs has `Shape::with_text()` (builder) but no runtime predicate or short-form setter on the imported shape. Implemented as part of the TextFrame API: `ParsedShape::has_text_frame()` (new `has_text_frame: bool` field on the struct, populated by `SlideParser::parse_shape` only when `<p:txBody>` was found — distinguishes "shape with empty text frame" from "shape with no text frame" like a picture or connector) + `PresentationEditor::set_shape_text(slide, shape, text)` (drops all existing paragraphs, writes a single replacement). 9 inline + 12 integration tests cover both ends (see the TextFrame API entry above).
+
+- [x] **`Presentation::extract_text()` helper** — added `extract_slide_texts_from_bytes(&bytes) -> Result<Vec<Vec<String>>, PptxError>` plus `PresentationReader::open_bytes(&[u8])` for byte-buffer import. Returns per-slide paragraphs; no XML namespaces leak. Use case: RAG/embedding, search/indexing, content extraction for testing. Tests: 3 inline (`oxml/presentation.rs::tests::test_extract_slide_texts_per_slide`, `test_open_bytes_round_trip`, `test_extract_slide_texts_rejects_invalid_bytes`) + 5 integration (`tests/extract_text_test.rs` — returns_one_inner_vec_per_slide, preserves_title_and_bullets_per_slide, does_not_leak_xml_to_caller, reader_api_parity, invalid_bytes_produce_error_not_panic). Docs: README bullet, SPEC "Reading & Editing" snippet, SPEC version-history note.
+
+- [ ] **Table auto-paging** — pptxgenjs has `slide.addTable(rows, {autoPage: true, autoPageRepeatHeader: true, autoPageHeaderRows: 1, autoPageCharWeight, autoPageLineWeight, newSlideStartY})` (docs/api-tables). When a table overflows the slide, pptxgenjs auto-spawns slides with the header repeated. ppt-rs `TableBuilder` always fits the table to its declared size — long tables overflow or clip rather than paginating. Success criterion: `TableBuilder::new(...).auto_page(true).header_rows(1).build()` produces a deck where a 100-row table spans multiple slides, each starting with the header row.
+
+- [ ] **YouTube embeds** — pptxgenjs has `slide.addMedia({type: 'youtube', link: 'youtube-id', ...})` (README "YouTube embeds"). ppt-rs `SlideContent::add_video` accepts a local file path; there's no path for `https://youtu.be/...` → PowerPoint video frame. This is a unique pptxgenjs feature and a common user request ("show a YouTube clip in my deck"). Success criterion: `slide.add_youtube("https://youtu.be/<id>")` produces a deck where PowerPoint offers to play the linked video when the slide is opened.
 
 
 ## Performance Targets
@@ -78,6 +101,20 @@ Longer-horizon capabilities that broaden deployment options.
 | Memory (1000 slides, lazy) | ~10 MB | < 50 MB |
 | Binary size | ~500 KB | < 1 MB |
 | Test suite | < 1 sec | Maintain |
+
+## Scorecard (2026-10-06, post v0.2.36 docs_sync gate + extract_text feature)
+
+| Dimension | Score | Evidence |
+|---|---|---|
+| Correctness & coverage | 5 | `cargo test --all-features --no-fail-fast` green; 797 inline + 513 integration + 45 doctests + 5 tokio::test = 1360 functions; `cargo build --release --all-features` clean; package-validation zero-repair gate on every generated deck (debug builds). New chart customization: 11 inline + 14 integration tests cover legend (show/position), axis (min/max/major_unit/log_scale/number_format/tick_label_font/rotation), and data labels (show_value/show_percentage/position). |
+| PowerPoint fidelity | 5 | `validate_package_bytes()` exported in `lib.rs:69` and used as `debug_assert_package_valid` on every generated deck (`src/generator/builder.rs`); 7 layouts, embedded Excel workbooks, slide-master `p:txStyles`, handout master; pdfrs image/PDF export no-LibreOffice path; media + comments round-trip + sections. **Placeholder fix (v0.2.36 follow-up)**: title/body shapes now emit `<p:ph type="title"/>` / `<p:ph type="body" idx="1"/>` so PowerPoint recognizes them as filling the layout's intended slots. **Chart customization (v0.2.36 follow-up)**: every chart now tunable — legend (show/position), axes (min/max/log scale/number format/tick label font/rotation), data labels (show value/percentage/category name + position); defaults preserve prior emission. |
+| Maintainability | 5 | `cargo clippy --all-features --all-targets -- -D warnings` exits 0 (lib, bins, tests, examples) — clippy promoted to a CI gate. v0.2.36 closed the 53-warning backlog. No `#[allow(dead_code)]` or `#[allow(unused_*)]` in `src/`. `generate_title_shape` refactored to `(TitleContent, TitlePlacement, align, ph_type)` parameter-object form per MEMORY clippy pattern. `nth_sp_range` uses char-aware iteration so multi-byte UTF-8 (e.g. `•`, `🎉`) doesn't panic. Chart emitter uses parameter blocks (`scaling_block` / `unit_block` / `numfmt_block` / `tick_label_txpr_block` / `generate_data_labels_block`) so each config field is added in one place. |
+| Docs alignment | 5 | `tests/docs_sync.rs` enforces 7 drift hotspots — all green after the chart customization work (test counts bumped 1287 → 1310; README/SPEC/ARCHITECTURE/TODO all updated). Chart customization documented in README "Editable charts" bullet, SPEC v0.2.36 changelog row. |
+| Wiring & ergonomics | 5 | 18 `pub use` in `src/lib.rs` (incl. `ParagraphEdit`); +5 chart config types in `src/generator/charts/mod.rs` (`AxisConfig`, `DataLabelsConfig`, `LabelPosition`, `LegendConfig`, `LegendPosition`); 12 MCP tools, 11 CLI commands, 7 HTTP routes, 3 binaries, 6 feature flags, 41 example `.rs` files — all wired and re-exported. |
+| Footprint | 4 | 17 direct deps (4 required + 13 optional, feature-gated); 5 dev-deps (`criterion`, `http-body-util`, `serde_json`, `serial_test`, `tower`); release profile uses `lto = true` + `strip = true`. No new heavy deps since v0.2.30. Stable at 4. |
+| **Total** | **29/30** | |
+
+**Weakest dimension = Footprint (4)**. Stable: minor; revisit only if/when a heavyweight dep enters the graph. TextFrame editing API shipped on the first try against the docs_sync gate (counts + version sync + drift hot-spots all in sync on the same commit).
 
 ## Technical Debt
 
@@ -93,6 +130,115 @@ Longer-horizon capabilities that broaden deployment options.
 - [x] Consider builder pattern consolidation for Shape/Table/Chart builders
 
 ## Completed
+
+<details>
+<summary>v0.2.36 — Clippy `--all-features --all-targets -D warnings` Green + Docs Sync Hardening + Per-Slide Text Extraction</summary>
+
+- **Mechanically auto-fixed lints (since prior TODO seed)**: 34 `collapsible_if` + 3 `collapsible_match` in `src/`; 6 `useless_vec` (CLI parser tests `vec![String;..]` → `[String;..]`); 3 `len_zero` (`assert!(x.len() >= 1)` / `len() > 0` → `!x.is_empty()`); 1 `ptr_arg` (`&PathBuf` → `&Path` in `tests/media_test.rs`); 1 `unused_imports` (`Position` in `tests/image_url_test.rs`).
+- **No `too_many_arguments` survived** — either parameter objects already existed, or builder consolidation eliminated them.
+- **Quality gate**: `cargo clippy --all-features --all-targets -- -D warnings` exits 0. Safe to promote `-D warnings` to CI.
+- **Tests**: 772 inline / 480 integration = 1252 source-declared + 7 `tokio::test` = 1302 functions; all green under `--all-features`.
+
+### Follow-up — docs_sync gate hardening (2026-10-06)
+
+- `tests/docs_sync.rs` now enforces **7** drift hotspots end-to-end: AGENTS module list, ARCHITECTURE module list, TODO inline count, TODO integration count (gate self-excludes), README install version vs `src/lib.rs::VERSION`, MCP tool count vs MEMORY `### MCP tool count: N`, CLI variant set (case-insensitive) in README/ARCHITECTURE. README/ARCHITECTURE updated to mention `pdf2ppt` (gate caught real drift on first run).
+
+### Follow-up — `extract_slide_texts_from_bytes` (2026-10-06)
+
+- New helper: `ppt_rs::extract_slide_texts_from_bytes(&bytes) -> Result<Vec<Vec<String>>, PptxError>` returns per-slide paragraphs from a PPTX byte buffer without leaking OOXML details to the caller. Use case: RAG/embedding, search/indexing, content extraction for testing.
+- `PresentationReader::from_bytes(&[u8])` for byte-buffer import (parallel to the existing path-based `PresentationReader::open`).
+- Tests: 3 inline (`oxml/presentation.rs::tests`) + 5 integration (`tests/extract_text_test.rs`).
+- Tests: 775 inline / 481 integration = 1256 source-declared (after this work); `cargo test --test docs_sync` exits 0.
+- Docs sync: README bullet, SPEC "Reading & Editing" snippet, SPEC version-history note (v0.2.36 row extended).
+
+### Follow-up — Layout placeholder XML (2026-10-06)
+
+- The active slide-XML emitter (`src/generator/slide_xml/layouts.rs`) was producing bare `<p:nvPr/>` for title and body shapes — meaning PowerPoint saw them as regular shapes, not as fills of the layout's intended title/body placeholders. python-pptx's `slide.shapes.title` couldn't find them.
+- Fix: `generate_title_shape` extended with a `ph_type` parameter and used `TitleContent` / `TitlePlacement` parameter objects to avoid `too_many_arguments`. Body shape XML in `create_title_and_content_slide`, `create_title_and_big_content_slide`, and `create_two_column_slide` now emits `<p:ph type="title"/>` / `<p:ph type="body" idx="1"/>` (and `idx="2"` for the right column).
+- Layouts covered: `TitleOnly` (title), `CenteredTitle` (`ctrTitle`), `SectionHeader` (title), `TitleAndContent` (title + body idx="1"), `TitleAndBigContent` (title + body idx="1"), `TwoColumn` (title + body idx="1" + body idx="2").
+- Tests: 4 inline (`generator/slide_xml/mod.rs::tests`) + 6 integration (`tests/placeholder_api_test.rs` — covers all 6 layouts, the `Presentation::build` pipeline, and a `package_validation_still_passes_with_placeholders` zero-repair guard).
+- Tests: 779 inline / 487 integration = 1266 source-declared (after this work); `cargo test --test docs_sync` exits 0.
+- Docs sync: README layouts bullet, SPEC layout-table footnote, SPEC v0.2.36 changelog row extended.
+- Zero-repair gate confirmed: `validate_package_bytes()` still passes after the placeholder XML addition (regression test asserts no errors).
+
+### Follow-up — TextFrame runtime editing (2026-10-06)
+
+- New module `src/oxml/text_editor.rs`: `ParagraphEdit` builder (level / bold / italic / font-size), UTF-8 char-aware `nth_sp_range` / `txbody_range` byte walkers (depth counter for nested `<p:sp>`), `read_paragraphs` for diagnostics. `ParsedShape::has_text_frame: bool` distinguishes "no txBody" from "empty txBody" — `Vec::is_empty()` can't.
+- `PresentationEditor`: `shape_has_text_frame(slide, shape) -> bool`, `set_shape_text(slide, shape, text)` (drops all paragraphs, writes replacement), `add_paragraph(slide, shape, text)`, `add_paragraph_with_format(slide, shape, ParagraphEdit)` (level/bold/italic/size), `set_title_text(slide, text)`, `shape_paragraphs(slide, shape) -> Vec<String>` (read-back). python-pptx parity: `_BaseShape.has_text_frame` / `_BaseShape.text` / `TextFrame.add_paragraph()` / `Paragraph.level` / `Paragraph.font.bold`.
+- Tests: 9 inline (`src/oxml/text_editor.rs::tests`) + 12 integration (`tests/text_editor_test.rs` — covers all 6 methods, `has_text_frame` predicate, UTF-8 round-trip `🎉 Unicode round-trip`, save-then-reopen, zero-repair gate guard).
+- Tests: 788 inline / 499 integration = 1287 source-declared (after this work); `cargo test --test docs_sync` exits 0.
+- Docs sync: README bullet (TextFrame editing), SPEC "Reading & Editing" snippet extended, SPEC v0.2.36 changelog row extended.
+
+### Follow-up — Chart customization (2026-10-06)
+
+- New config types in `src/generator/charts/data.rs`: `LegendConfig` (show / position — Right / Left / Top / TopRight / Bottom), `AxisConfig` (min / max / major_unit / minor_unit / log_scale / number_format / tick_label_size_pt / tick_label_bold / tick_label_rotation_deg), `DataLabelsConfig` (show_value / show_category_name / show_percentage / show_series_name / position — BestFit / Center / InsideBase / InsideEnd / OutsideEnd / Left / Right / Top / Bottom). Convenience presets: `LegendConfig::shown()` / `::hidden()`; `DataLabelsConfig::show_values()` (InsideEnd) / `::show_percentages_outside()` (OutsideEnd). Defaults preserve prior emission — `ChartBuilder::new(...)` without `.legend()` / `.data_labels()` emits the same XML as before.
+- `ChartBuilder` now exposes `.legend(LegendConfig)` / `.value_axis(AxisConfig)` / `.category_axis(AxisConfig)` / `.data_labels(DataLabelsConfig)`. Public re-exports added to `src/generator/charts/mod.rs`.
+- `src/generator/charts/xml.rs` refactored: `chart_part_footer(chart)` takes the chart (was a static); `scaling_block` / `unit_block` / `numfmt_block` / `tick_label_txpr_block` / `generate_data_labels_block` helpers make adding new config fields one-line. Plot-level `<c:dLbls>` block emitted only when at least one data-label flag is on (preserves "all off" default). Per-series `<c:dLbls>` blocks follow the plot-level config.
+- Tests: 11 inline (`src/generator/charts/data.rs::tests` + `src/generator/charts/builder.rs::tests`) + 14 integration (`tests/chart_customization_test.rs` — covers legend show/hide/position, axis min/max/log_scale/number_format/major_unit, data labels show_values/show_percentages/all-off, all-together round-trip, `validate_package_bytes` regression guard, `LegendPosition::as_str()` / `LabelPosition::as_str()` mappings).
+- Tests: 797 inline / 513 integration = 1310 source-declared (after this work); `cargo test --test docs_sync` exits 0.
+- Docs sync: README "Editable charts" bullet, SPEC v0.2.36 changelog row extended.
+
+</details>
+
+<details>
+<summary>v0.2.35 — Comment Import Round-Trip</summary>
+
+- **`oxml/comments.rs`**: parse `commentAuthors.xml` and slide comment parts
+- **`PresentationReader::comment_authors()` / `slide_comments()`** → `import_pptx` restores authors + per-slide comments
+- **Test**: `tests/comments_test.rs::test_comments_import_round_trip`
+
+</details>
+
+<details>
+<summary>v0.2.34 — REST/HTTP API</summary>
+
+- **`http` feature** + `ppt_http` binary: axum server with `/health`, `/v1/generate`, `/v1/markdown`, `/v1/validate`, `/v1/export/markdown|html`, `/v1/diff`
+- **Tests**: inline router tests + `tests/http_test.rs`
+
+</details>
+
+<details>
+<summary>v0.2.33 — CLI Markdown Export & MCP diff_pptx</summary>
+
+- **CLI `export --format md`**: Markdown export + `.md`/`.markdown` extension detection; `--group-by-sections` works for HTML and Markdown
+- **MCP `diff_pptx`**: semantic compare with optional JSON report (12 tools total)
+- **WASM**: marked out of scope per project direction
+
+</details>
+
+<details>
+<summary>v0.2.32 — Criterion Benchmark Suite</summary>
+
+- **`benches/pptx_benchmarks.rs`**: Criterion groups for eager generation, lazy generation, and compression at 10/50/100 slides
+- **Smoke test**: `tests/benchmark_smoke_test.rs` verifies generation + compression fixture path
+- **Run**: `cargo bench` (not part of `cargo test`)
+
+</details>
+
+<details>
+<summary>v0.2.30 — PPTX Semantic Diff</summary>
+
+- **`diff` module**: `compare_presentations`, `compare_pptx_paths`, `PresentationDiff` with slide-level Added/Removed/Modified + field changes (title, bullets, images, charts, tables, media)
+- **CLI `pptcli diff old.pptx new.pptx [--json]`**: exit 0 when semantically equal, 1 when different
+
+</details>
+
+<details>
+<summary>v0.2.29 — Section Import & CLI Export Grouping</summary>
+
+- **Section import**: `PresentationReader::sections()` parses `<p14:sectionLst>` from `presentation.xml`; `import_pptx` / `from_path` preserve sections in `PresentationSettings`
+- **CLI `--group-by-sections`**: `pptcli export … --format html --group-by-sections` uses `HtmlExportOptions::with_section_grouping(true)`
+
+</details>
+
+<details>
+<summary>v0.2.28 — Compression Comments & MCP Section Export</summary>
+
+- **`remove_comments` wired**: compression now strips `ppt/comments/*.xml`, `commentAuthors.xml`, slide/presentation rels, and content-type overrides (was documented in SPEC but dead code)
+- **MCP `export_pptx`**: optional `group_by_sections` flag for markdown/html export
+- **`Presentation::save_as_html_with_options`**: API parity with markdown export options
+
+</details>
 
 <details>
 <summary>v0.2.27 — Comments, Media Embedding & Section Export</summary>

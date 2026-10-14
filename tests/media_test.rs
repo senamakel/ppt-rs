@@ -2,7 +2,7 @@
 //! through the eager and lazy generation paths, plus compression interaction.
 
 use std::io::{Cursor, Read};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use ppt_rs::core::validate_package_bytes;
 use ppt_rs::generator::media_registry::MediaRegistry;
@@ -47,7 +47,7 @@ fn media_fixture_dir(tag: &str) -> PathBuf {
     dir
 }
 
-fn media_deck(dir: &PathBuf) -> Presentation {
+fn media_deck(dir: &Path) -> Presentation {
     let video = Video::new(
         dir.join("video.mp4").to_str().unwrap(),
         VideoFormat::Mp4,

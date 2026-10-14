@@ -10,6 +10,19 @@ pub struct FromHtmlCommand;
 pub struct InfoCommand;
 pub struct ValidateCommand;
 
+/// Options for [`FromHtmlCommand::execute`].
+#[derive(Debug, Clone)]
+pub struct FromHtmlOptions<'a> {
+    pub input: &'a str,
+    pub output: &'a str,
+    pub title: Option<&'a str>,
+    pub max_slides: usize,
+    pub max_bullets: usize,
+    pub no_images: bool,
+    pub no_tables: bool,
+    pub no_code: bool,
+}
+
 impl CreateCommand {
     pub fn execute(
         output: &str,
@@ -18,12 +31,11 @@ impl CreateCommand {
         template: Option<&str>,
     ) -> Result<(), String> {
         // Create output directory if needed
-        if let Some(parent) = PathBuf::from(output).parent() {
-            if !parent.as_os_str().is_empty() {
+        if let Some(parent) = PathBuf::from(output).parent()
+            && !parent.as_os_str().is_empty() {
                 fs::create_dir_all(parent)
                     .map_err(|e| format!("Failed to create directory: {e}"))?;
             }
-        }
 
         let title = title.unwrap_or("Presentation");
 
@@ -60,12 +72,11 @@ impl FromMarkdownCommand {
         }
 
         // Create output directory if needed
-        if let Some(parent) = PathBuf::from(output).parent() {
-            if !parent.as_os_str().is_empty() {
+        if let Some(parent) = PathBuf::from(output).parent()
+            && !parent.as_os_str().is_empty() {
                 fs::create_dir_all(parent)
                     .map_err(|e| format!("Failed to create directory: {e}"))?;
             }
-        }
 
         let title = title.unwrap_or("Presentation from Markdown");
 
@@ -81,16 +92,17 @@ impl FromMarkdownCommand {
 }
 
 impl FromHtmlCommand {
-    pub fn execute(
-        input: &str,
-        output: &str,
-        title: Option<&str>,
-        max_slides: usize,
-        max_bullets: usize,
-        no_images: bool,
-        no_tables: bool,
-        no_code: bool,
-    ) -> Result<(), String> {
+    pub fn execute(opts: FromHtmlOptions<'_>) -> Result<(), String> {
+        let FromHtmlOptions {
+            input,
+            output,
+            title,
+            max_slides,
+            max_bullets,
+            no_images,
+            no_tables,
+            no_code,
+        } = opts;
         // Read HTML file
         let html_content =
             std::fs::read_to_string(input).map_err(|e| format!("Failed to read HTML file: {e}"))?;
@@ -111,12 +123,11 @@ impl FromHtmlCommand {
         }
 
         // Create output directory if needed
-        if let Some(parent) = PathBuf::from(output).parent() {
-            if !parent.as_os_str().is_empty() {
+        if let Some(parent) = PathBuf::from(output).parent()
+            && !parent.as_os_str().is_empty() {
                 fs::create_dir_all(parent)
                     .map_err(|e| format!("Failed to create directory: {e}"))?;
             }
-        }
 
         let title = title.unwrap_or("Presentation from HTML");
 
@@ -152,16 +163,15 @@ impl InfoCommand {
         println!("Is file:  {is_file}");
 
         // Try to read and parse as XML
-        if let Ok(content) = fs::read_to_string(file) {
-            if content.starts_with("<?xml") {
+        if let Ok(content) = fs::read_to_string(file)
+            && content.starts_with("<?xml") {
                 println!("\nPresentation Information");
                 println!("========================");
-                if let Some(title_start) = content.find("<title>") {
-                    if let Some(title_end) = content[title_start + 7..].find("</title>") {
+                if let Some(title_start) = content.find("<title>")
+                    && let Some(title_end) = content[title_start + 7..].find("</title>") {
                         let title = &content[title_start + 7..title_start + 7 + title_end];
                         println!("Title: {title}");
                     }
-                }
                 if let Some(slides_start) = content.find("count=\"") {
                     let search_from = slides_start + 7;
                     if let Some(slides_end) = content[search_from..].find("\"") {
@@ -170,9 +180,139 @@ impl InfoCommand {
                     }
                 }
             }
-        }
 
         Ok(())
+    }
+}
+
+pub struct DiffCommand;
+
+impl DiffCommand {
+    /// Compare two PPTX files semantically. Returns Ok when equal.
+    pub fn execute(old: &str, new: &str, json: bool) -> Result<(), String> {
+        let diff = crate::compare_pptx_paths(old, new)
+            .map_err(|e| format!("Failed to compare presentations: {e}"))?;
+
+        if json {
+            Self::print_json(old, new, &diff);
+        } else {
+            Self::print_human(old, new, &diff);
+        }
+
+        if diff.is_equal() {
+            Ok(())
+        } else {
+            Err(diff.summary())
+        }
+    }
+
+    fn print_human(old: &str, new: &str, diff: &crate::PresentationDiff) {
+        println!("Semantic diff");
+        println!("{}", "=".repeat(60));
+        println!("Old:  {old}");
+        println!("New:  {new}");
+        println!("Result: {}", diff.summary());
+
+        if let Some((before, after)) = &diff.title_changed {
+            println!("\nPresentation title: {before:?} → {after:?}");
+        }
+
+        for change in &diff.slide_changes {
+            match change {
+                crate::SlideChange::Added { index, slide } => {
+                    println!("\n+ Slide {} added: {:?}", index + 1, slide.title);
+                }
+                crate::SlideChange::Removed { index, slide } => {
+                    println!("\n- Slide {} removed: {:?}", index + 1, slide.title);
+                }
+                crate::SlideChange::Modified {
+                    index,
+                    before,
+                    after,
+                    fields,
+                } => {
+                    println!(
+                        "\n~ Slide {} modified: {:?} → {:?}",
+                        index + 1,
+                        before.title,
+                        after.title
+                    );
+                    for field in fields {
+                        println!("    {field:?}");
+                    }
+                }
+            }
+        }
+
+        if diff.is_equal() {
+            println!("\n✓ No semantic differences");
+        } else {
+            println!("\n✗ Presentations differ semantically");
+        }
+    }
+
+    fn print_json(old: &str, new: &str, diff: &crate::PresentationDiff) {
+        println!("{{");
+        println!("  \"old\": {},", json_string(old));
+        println!("  \"new\": {},", json_string(new));
+        println!("  \"equal\": {},", diff.is_equal());
+        println!("  \"summary\": {},", json_string(&diff.summary()));
+        match &diff.title_changed {
+            Some((before, after)) => {
+                println!("  \"title_changed\": {{");
+                println!("    \"before\": {},", json_string(before));
+                println!("    \"after\": {}", json_string(after));
+                println!("  }},");
+            }
+            None => println!("  \"title_changed\": null,"),
+        }
+        println!("  \"slide_changes\": [");
+        for (i, change) in diff.slide_changes.iter().enumerate() {
+            let comma = if i + 1 < diff.slide_changes.len() {
+                ","
+            } else {
+                ""
+            };
+            match change {
+                crate::SlideChange::Added { index, slide } => {
+                    println!(
+                        "    {{\"kind\": \"added\", \"index\": {index}, \"title\": {}}}{comma}",
+                        json_string(&slide.title)
+                    );
+                }
+                crate::SlideChange::Removed { index, slide } => {
+                    println!(
+                        "    {{\"kind\": \"removed\", \"index\": {index}, \"title\": {}}}{comma}",
+                        json_string(&slide.title)
+                    );
+                }
+                crate::SlideChange::Modified { index, fields, .. } => {
+                    println!(
+                        "    {{\"kind\": \"modified\", \"index\": {index}, \"fields\": {fields:?}}}{comma}"
+                    );
+                }
+            }
+        }
+        println!("  ]");
+        println!("}}");
+    }
+}
+
+pub struct BatchCommand;
+
+impl BatchCommand {
+    /// Convert every Markdown/HTML file in a directory to separate `.pptx` files.
+    pub fn execute(
+        input_dir: &str,
+        output_dir: &str,
+        template: Option<&str>,
+    ) -> Result<Vec<crate::BatchResult>, String> {
+        let mut options = crate::BatchOptions::new(output_dir);
+        if let Some(path) = template {
+            options = options.with_template(path);
+        }
+        crate::run_directory(std::path::Path::new(input_dir), &options)
+            .map_err(|e| format!("Batch conversion failed: {e}"))
     }
 }
 

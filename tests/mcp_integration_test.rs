@@ -126,7 +126,7 @@ fn test_tools_list() {
 
     assert_eq!(resp["id"], 2);
     let tools = resp["result"]["tools"].as_array().unwrap();
-    assert!(tools.len() >= 11);
+    assert!(tools.len() >= 12);
 
     let names: Vec<&str> = tools.iter().map(|t| t["name"].as_str().unwrap()).collect();
     assert!(names.contains(&"create_presentation"));
@@ -140,6 +140,7 @@ fn test_tools_list() {
     assert!(names.contains(&"compress_pptx"));
     assert!(names.contains(&"repair_pptx"));
     assert!(names.contains(&"apply_theme"));
+    assert!(names.contains(&"diff_pptx"));
 
     for tool in tools {
         assert!(tool["name"].is_string());
@@ -1126,4 +1127,90 @@ fn test_apply_theme_default() {
 
     cleanup(&src);
     cleanup(&out);
+}
+
+#[test]
+#[serial]
+fn test_diff_pptx_equal_and_different() {
+    let old_path = tmp_path("diff_old.pptx");
+    let same_path = tmp_path("diff_same.pptx");
+    let new_path = tmp_path("diff_new.pptx");
+    cleanup(&old_path);
+    cleanup(&same_path);
+    cleanup(&new_path);
+
+    let (_guard, mut stdin, mut reader) = start_server();
+    handshake(&mut stdin, &mut reader);
+
+    let slide = serde_json::json!([{ "title": "Intro", "bullets": ["One"] }]);
+    for (id, path) in [(2, &old_path), (3, &same_path)] {
+        send(
+            &mut stdin,
+            id,
+            "tools/call",
+            serde_json::json!({
+                "name": "create_presentation",
+                "arguments": {
+                    "title": "Diff Base",
+                    "output_path": path,
+                    "slides": slide
+                }
+            }),
+        );
+        let _ = recv(&mut reader);
+    }
+
+    send(
+        &mut stdin,
+        4,
+        "tools/call",
+        serde_json::json!({
+            "name": "create_presentation",
+            "arguments": {
+                "title": "Diff Base",
+                "output_path": &new_path,
+                "slides": [{ "title": "Intro", "bullets": ["Two"] }]
+            }
+        }),
+    );
+    let _ = recv(&mut reader);
+
+    send(
+        &mut stdin,
+        5,
+        "tools/call",
+        serde_json::json!({
+            "name": "diff_pptx",
+            "arguments": {
+                "old_path": &old_path,
+                "new_path": &same_path,
+                "json": true
+            }
+        }),
+    );
+    let equal_resp = recv(&mut reader);
+    assert!(!equal_resp["result"]["isError"].as_bool().unwrap_or(false));
+    let equal_text = equal_resp["result"]["content"][0]["text"].as_str().unwrap();
+    assert!(equal_text.contains("\"equal\": true"));
+
+    send(
+        &mut stdin,
+        6,
+        "tools/call",
+        serde_json::json!({
+            "name": "diff_pptx",
+            "arguments": {
+                "old_path": &old_path,
+                "new_path": &new_path
+            }
+        }),
+    );
+    let diff_resp = recv(&mut reader);
+    assert!(!diff_resp["result"]["isError"].as_bool().unwrap_or(false));
+    let diff_text = diff_resp["result"]["content"][0]["text"].as_str().unwrap();
+    assert!(diff_text.contains("modified") || diff_text.contains("~ Slide"));
+
+    cleanup(&old_path);
+    cleanup(&same_path);
+    cleanup(&new_path);
 }

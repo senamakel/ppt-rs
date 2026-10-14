@@ -231,28 +231,25 @@ impl MarkdownParser {
                 let html_str = html.to_string();
                 if html_str.contains("<mark>") || html_str.contains("<ins>") {
                     // Highlight syntax: ==text== or <ins>text</ins>
-                    if let Some(start) = html_str.find(">") {
-                        if let Some(end) = html_str.find("</") {
+                    if let Some(start) = html_str.find(">")
+                        && let Some(end) = html_str.find("</") {
                             let text = &html_str[start + 1..end];
                             self.push_text(&format!("=={}==", text));
                         }
-                    }
                 } else if html_str.contains("<sub>") {
                     // Subscript
-                    if let Some(start) = html_str.find(">") {
-                        if let Some(end) = html_str.find("</") {
+                    if let Some(start) = html_str.find(">")
+                        && let Some(end) = html_str.find("</") {
                             let text = &html_str[start + 1..end];
                             self.push_text(&format!("~{}~", text));
                         }
-                    }
                 } else if html_str.contains("<sup>") {
                     // Superscript
-                    if let Some(start) = html_str.find(">") {
-                        if let Some(end) = html_str.find("</") {
+                    if let Some(start) = html_str.find(">")
+                        && let Some(end) = html_str.find("</") {
                             let text = &html_str[start + 1..end];
                             self.push_text(&format!("^{}^", text));
                         }
-                    }
                 }
             }
 
@@ -291,14 +288,13 @@ impl MarkdownParser {
                     self.current_text.clear();
                 }
             }
-            Event::End(TagEnd::Paragraph) => {
-                if !self.in_list && !self.in_table && !self.in_blockquote && !self.in_code_block {
+            Event::End(TagEnd::Paragraph)
+                if !self.in_list && !self.in_table && !self.in_blockquote && !self.in_code_block => {
                     let text = std::mem::take(&mut self.current_text).trim().to_string();
                     if !text.is_empty() {
                         self.add_paragraph(&text);
                     }
                 }
-            }
 
             _ => {}
         }
@@ -561,15 +557,14 @@ impl MarkdownParser {
         } else {
             // Try to load from local file path
             let path = Path::new(url);
-            if path.exists() {
-                if let Ok(bytes) = std::fs::read(path) {
+            if path.exists()
+                && let Ok(bytes) = std::fs::read(path) {
                     let img = ImageBuilder::auto(bytes)
                         .at(2000000, 2000000)
                         .size(5000000, 3000000)
                         .build();
                     return Some(img);
                 }
-            }
             None
         }
     }

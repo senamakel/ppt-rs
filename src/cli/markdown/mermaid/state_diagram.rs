@@ -74,9 +74,7 @@ pub fn generate_elements(code: &str) -> DiagramElements {
             ShapeType::RoundedRectangle
         };
 
-        let fill_color = if state == "Start" {
-            "000000"
-        } else if state == "End" {
+        let fill_color = if state == "Start" || state == "End" {
             "000000"
         } else {
             "E0F7FA"

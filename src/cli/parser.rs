@@ -156,13 +156,61 @@ Use --json for machine-readable output.")]
         json: bool,
     },
 
+    /// Compare two presentations semantically (title, bullets, images, charts)
+    #[command(
+        long_about = "Compare two PPTX files at the slide level for CI and review.
+
+Reports title changes, added/removed slides, and per-slide field diffs
+(bullets, images, charts, tables, media). Exit code 0 when equal, 1 when different."
+    )]
+    Diff {
+        /// Baseline PPTX file
+        #[arg(value_name = "OLD")]
+        old: String,
+
+        /// Updated PPTX file
+        #[arg(value_name = "NEW")]
+        new: String,
+
+        /// Emit JSON report (CI-friendly)
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Batch-convert Markdown/HTML files in a directory
+    #[command(
+        long_about = "Convert every .md/.html file in INPUT_DIR to a separate .pptx in OUTPUT_DIR.
+
+Shared theme and template settings apply to every deck. Markdown parsing requires the cli feature.
+
+Examples:
+  pptcli batch slides/ output/
+  pptcli batch content/ decks/ --template corporate.pptx"
+    )]
+    Batch {
+        /// Directory containing .md, .markdown, .html, or .htm files
+        #[arg(value_name = "INPUT_DIR")]
+        input_dir: String,
+
+        /// Output directory (created if missing)
+        #[arg(value_name = "OUTPUT_DIR")]
+        output_dir: String,
+
+        /// Template PPTX applied to every generated deck
+        #[arg(long)]
+        template: Option<String>,
+    },
+
     /// Export presentation to other formats
-    #[command(long_about = "Export PPTX to PDF, HTML, or images.
+    #[command(long_about = "Export PPTX to PDF, HTML, Markdown, or images.
 
 Formats:
-- pdf:  Pure-Rust PDF engine (no external dependencies)
-- html: Self-contained HTML slideshow
-- png:  Requires pdftoppm (from poppler)")]
+- pdf:      Pure-Rust PDF engine (no external dependencies)
+- html:     Self-contained HTML slideshow
+- markdown: GitHub-flavored Markdown (GFM tables, notes, frontmatter)
+- png:      Requires pdftoppm (from poppler)
+
+Use `--group-by-sections` with html or markdown when the deck defines slide sections.")]
     Export {
         /// Input PPTX file
         #[arg(value_name = "INPUT")]
@@ -175,6 +223,10 @@ Formats:
         /// Output format (overrides extension)
         #[arg(long, value_enum)]
         format: Option<ExportFormat>,
+
+        /// Group HTML or Markdown export by presentation sections (requires sections in the deck)
+        #[arg(long)]
+        group_by_sections: bool,
     },
 
     /// Merge multiple presentations
@@ -342,6 +394,8 @@ Extracts:
 pub enum ExportFormat {
     Pdf,
     Html,
+    #[value(name = "md", alias = "markdown")]
+    Md,
     Png,
 }
 
@@ -351,7 +405,7 @@ mod tests {
 
     #[test]
     fn test_parse_create() {
-        let args = vec![
+        let args = [
             "pptcli".to_string(),
             "create".to_string(),
             "test.pptx".to_string(),
@@ -370,7 +424,7 @@ mod tests {
 
     #[test]
     fn test_parse_md2ppt_with_output() {
-        let args = vec![
+        let args = [
             "pptcli".to_string(),
             "md2ppt".to_string(),
             "input.md".to_string(),
@@ -395,7 +449,7 @@ mod tests {
 
     #[test]
     fn test_parse_md2ppt_auto_output() {
-        let args = vec![
+        let args = [
             "pptcli".to_string(),
             "md2ppt".to_string(),
             "input.md".to_string(),
@@ -418,8 +472,36 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_export_markdown_with_sections() {
+        let args = [
+            "pptcli".to_string(),
+            "export".to_string(),
+            "deck.pptx".to_string(),
+            "outline.md".to_string(),
+            "--format".to_string(),
+            "md".to_string(),
+            "--group-by-sections".to_string(),
+        ];
+        let cli = Cli::parse_from(args.iter());
+        match cli.command {
+            Commands::Export {
+                input,
+                output,
+                format,
+                group_by_sections,
+            } => {
+                assert_eq!(input, "deck.pptx");
+                assert_eq!(output, "outline.md");
+                assert!(matches!(format, Some(ExportFormat::Md)));
+                assert!(group_by_sections);
+            }
+            _ => panic!("Expected Export command"),
+        }
+    }
+
+    #[test]
     fn test_parse_from_md_alias() {
-        let args = vec![
+        let args = [
             "pptcli".to_string(),
             "from-md".to_string(),
             "input.md".to_string(),
@@ -437,7 +519,7 @@ mod tests {
 
     #[test]
     fn test_parse_info() {
-        let args = vec![
+        let args = [
             "pptcli".to_string(),
             "info".to_string(),
             "test.pptx".to_string(),

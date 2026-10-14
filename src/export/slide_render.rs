@@ -92,17 +92,24 @@ fn draw_rect(out: &mut Vec<u8>, x: f32, y: f32, w: f32, h: f32) {
     out.extend_from_slice(b"f\n");
 }
 
-fn draw_text_line(
-    out: &mut Vec<u8>,
-    text: &str,
+struct TextLine<'a> {
+    text: &'a str,
     x: f32,
     y: f32,
-    font_name: &str,
+    font_name: &'a str,
     font_size: f32,
+    color: Rgb,
+}
+
+struct Rgb {
     r: f32,
     g: f32,
     b: f32,
-) {
+}
+
+fn draw_text_line(out: &mut Vec<u8>, line: TextLine<'_>) {
+    let TextLine { text, x, y, font_name, font_size, color: Rgb { r, g, b } } = line;
+
     set_color(out, r, g, b);
     set_font(out, font_name, font_size);
     out.extend_from_slice(b"BT\n");
@@ -190,30 +197,24 @@ fn render_slide(
         SlideLayout::CenteredTitle | SlideLayout::SectionHeader => {
             let tw = approx_text_width(&slide.title, title_size);
             let tx = (page_w - tw) / 2.0;
-            draw_text_line(
-                &mut cs,
-                &slide.title,
-                tx,
-                title_y,
-                font_name(title_bold, title_italic),
-                title_size,
-                tr,
-                tg,
-                tb,
-            );
+                        draw_text_line(&mut cs, TextLine {
+                        text: &slide.title,
+                        x: tx,
+                        y: title_y,
+                        font_name: font_name(title_bold, title_italic),
+                        font_size: title_size,
+                        color: Rgb { r: tr, g: tg, b: tb },
+                });
         }
         _ => {
-            draw_text_line(
-                &mut cs,
-                &slide.title,
-                margin,
-                title_y,
-                font_name(title_bold, title_italic),
-                title_size,
-                tr,
-                tg,
-                tb,
-            );
+                        draw_text_line(&mut cs, TextLine {
+                        text: &slide.title,
+                        x: margin,
+                        y: title_y,
+                        font_name: font_name(title_bold, title_italic),
+                        font_size: title_size,
+                        color: Rgb { r: tr, g: tg, b: tb },
+                });
             // Underline
             if slide.title_underline {
                 set_color(&mut cs, tr, tg, tb);
@@ -273,32 +274,26 @@ fn render_slide(
                 .unwrap_or(content_size);
 
             if !prefix.is_empty() {
-                draw_text_line(
-                    &mut cs,
-                    &prefix,
-                    bx,
-                    y,
-                    font_name(b_bold, b_italic),
-                    b_size,
-                    btr,
-                    btg,
-                    btb,
-                );
+                                draw_text_line(&mut cs, TextLine {
+                            text: &prefix,
+                            x: bx,
+                            y,
+                            font_name: font_name(b_bold, b_italic),
+                            font_size: b_size,
+                            color: Rgb { r: btr, g: btg, b: btb },
+                    });
             }
 
             let text_x = bx + if prefix.is_empty() { 0.0 } else { 20.0 };
             let text = &bp.text;
-            draw_text_line(
-                &mut cs,
-                text,
-                text_x,
-                y,
-                font_name(b_bold, b_italic),
-                b_size,
-                btr,
-                btg,
-                btb,
-            );
+                        draw_text_line(&mut cs, TextLine {
+                        text,
+                        x: text_x,
+                        y,
+                        font_name: font_name(b_bold, b_italic),
+                        font_size: b_size,
+                        color: Rgb { r: btr, g: btg, b: btb },
+                });
 
             y -= line_height;
             if matches!(
@@ -320,29 +315,23 @@ fn render_slide(
             if is_centered {
                 let tw = approx_text_width(line, content_size);
                 let tx = (page_w - tw) / 2.0;
-                draw_text_line(
-                    &mut cs,
-                    line,
-                    tx,
-                    y,
-                    font_name(content_bold, content_italic),
-                    content_size,
-                    cr,
-                    cg,
-                    cb,
-                );
+                                draw_text_line(&mut cs, TextLine {
+                            text: line,
+                            x: tx,
+                            y,
+                            font_name: font_name(content_bold, content_italic),
+                            font_size: content_size,
+                            color: Rgb { r: cr, g: cg, b: cb },
+                    });
             } else {
-                draw_text_line(
-                    &mut cs,
-                    line,
-                    margin,
-                    y,
-                    font_name(content_bold, content_italic),
-                    content_size,
-                    cr,
-                    cg,
-                    cb,
-                );
+                                draw_text_line(&mut cs, TextLine {
+                            text: line,
+                            x: margin,
+                            y,
+                            font_name: font_name(content_bold, content_italic),
+                            font_size: content_size,
+                            color: Rgb { r: cr, g: cg, b: cb },
+                    });
             }
             y -= line_height;
         }
@@ -373,17 +362,14 @@ fn render_slide(
             if y < margin {
                 break;
             }
-            draw_text_line(
-                &mut cs,
-                line,
-                margin + 8.0,
-                y,
-                "Courier",
-                code_size,
-                0.1,
-                0.1,
-                0.1,
-            );
+                        draw_text_line(&mut cs, TextLine {
+                        text: line,
+                        x: margin + 8.0,
+                        y,
+                        font_name: "Courier",
+                        font_size: code_size,
+                        color: Rgb { r: 0.1, g: 0.1, b: 0.1 },
+                });
             y -= code_line_h;
         }
         y -= line_height * 0.5;
@@ -392,17 +378,14 @@ fn render_slide(
     // Slide number footer
     let footer = format!("{} / {}", slide_num, total);
     let fw = approx_text_width(&footer, 10.0);
-    draw_text_line(
-        &mut cs,
-        &footer,
-        (page_w - fw) / 2.0,
-        margin / 2.0,
-        FONT_HELVETICA,
-        10.0,
-        0.5,
-        0.5,
-        0.5,
-    );
+        draw_text_line(&mut cs, TextLine {
+                text: &footer,
+                x: (page_w - fw) / 2.0,
+                y: margin / 2.0,
+                font_name: FONT_HELVETICA,
+                font_size: 10.0,
+                color: Rgb { r: 0.5, g: 0.5, b: 0.5 },
+        });
 
     cs
 }

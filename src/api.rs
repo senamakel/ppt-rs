@@ -175,6 +175,18 @@ impl Presentation {
         Ok(())
     }
 
+    /// Export the presentation to HTML with custom options
+    pub fn save_as_html_with_options<P: AsRef<Path>>(
+        &self,
+        path: P,
+        options: &crate::export::html::HtmlExportOptions,
+    ) -> Result<()> {
+        use crate::export::html::export_to_html_with_options;
+        let html = export_to_html_with_options(self, options)?;
+        std::fs::write(path, html)?;
+        Ok(())
+    }
+
     /// Export the presentation to PDF using pure-Rust vector rendering.
     ///
     /// Each slide is rendered as a native PDF page with title, bullets,

@@ -164,4 +164,65 @@ mod tests {
         assert!(segments.iter().any(|s| s.bold && s.text == "bold"));
         assert!(segments.iter().any(|s| s.italic && s.text == "italic"));
     }
+
+    // ---- Placeholder XML emission (placeholder API, v0.2.36 follow-up) ----
+    //
+    // Generated slides must emit `<p:ph type="…"/>` so PowerPoint recognizes
+    // the shape as filling the layout's intended slot (python-pptx parity:
+    // `slide.shapes.title` returns the shape with `<p:ph type="title"/>`).
+    // Before this work, the active code path emitted bare `<p:nvPr/>` and the
+    // layout's title placeholder stayed empty in PowerPoint.
+
+    use super::create_slide_xml_with_content;
+    use crate::generator::SlideContent;
+
+    #[test]
+    fn title_and_content_emits_title_and_body_placeholders() {
+        let slide = SlideContent::new("Hello")
+            .add_bullet("One")
+            .add_bullet("Two");
+        let xml = create_slide_xml_with_content(1, &slide, &[], None, &[]);
+        assert!(
+            xml.contains(r#"<p:ph type="title"/>"#),
+            "title placeholder missing in:\n{xml}"
+        );
+        assert!(
+            xml.contains(r#"<p:ph type="body" idx="1"/>"#),
+            "body placeholder missing in:\n{xml}"
+        );
+    }
+
+    #[test]
+    fn centered_title_uses_ctr_title_placeholder() {
+        let slide = SlideContent::new("Big Title")
+            .layout(crate::generator::SlideLayout::CenteredTitle);
+        let xml = create_slide_xml_with_content(1, &slide, &[], None, &[]);
+        assert!(
+            xml.contains(r#"<p:ph type="ctrTitle"/>"#),
+            "ctrTitle placeholder missing in:\n{xml}"
+        );
+    }
+
+    #[test]
+    fn two_column_emits_idx1_and_idx2_body_placeholders() {
+        let slide = SlideContent::new("Compare")
+            .add_bullet("Left A")
+            .add_bullet("Left B")
+            .add_bullet("Right A")
+            .add_bullet("Right B")
+            .layout(crate::generator::SlideLayout::TwoColumn);
+        let xml = create_slide_xml_with_content(1, &slide, &[], None, &[]);
+        assert!(xml.contains(r#"<p:ph type="body" idx="1"/>"#));
+        assert!(xml.contains(r#"<p:ph type="body" idx="2"/>"#));
+    }
+
+    #[test]
+    fn title_only_layout_emits_only_title_placeholder() {
+        let slide = SlideContent::new("Just a Title")
+            .layout(crate::generator::SlideLayout::TitleOnly);
+        let xml = create_slide_xml_with_content(1, &slide, &[], None, &[]);
+        assert!(xml.contains(r#"<p:ph type="title"/>"#));
+        // No body placeholder for TitleOnly layout.
+        assert!(!xml.contains(r#"<p:ph type="body""#));
+    }
 }

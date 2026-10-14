@@ -287,6 +287,175 @@ impl PresentationEditor {
         Ok(())
     }
 
+    // ---- TextFrame runtime editing (python-pptx parity) ----
+    //
+    // These methods let callers mutate a shape's `<p:txBody>` on imported
+    // decks without rebuilding the whole slide. The byte-level mutations are
+    // safe because ppt-rs slide XML has no nested `<p:sp>` and the helper
+    // functions in `super::text_editor` walk shapes with a depth counter.
+    //
+    // python-pptx analogues:
+    // - `Shape.has_text_frame`         → `shape_has_text_frame()`
+    // - `Shape.text_frame.text = "…"`  → `set_shape_text()`
+    // - `TextFrame.add_paragraph(...)` → `add_paragraph()` /
+    //                                    `add_paragraph_with_format()`
+    // - `Paragraph.level` /
+    //   `Paragraph.font.bold`          → encoded in `ParagraphEdit`
+
+    /// Whether the `shape_idx`-th shape on `slide_idx` has a `<p:txBody>`.
+    ///
+    /// `shape_idx` counts `<p:sp>` elements in document order (0-based) —
+    /// the same order as `PresentationReader::get_slide(i)?.shapes[j]`.
+    pub fn shape_has_text_frame(
+        &self,
+        slide_idx: usize,
+        shape_idx: usize,
+    ) -> Result<bool, PptxError> {
+        let slide_xml = self
+            .slide_xml_string(slide_idx)
+            .ok_or_else(|| PptxError::NotFound(messages::slide_not_found(slide_idx)))?;
+        let (sp_start, sp_end) = super::text_editor::nth_sp_range(&slide_xml, shape_idx)
+            .ok_or_else(|| PptxError::NotFound("shape".into()))?;
+        let sp_xml = &slide_xml[sp_start..sp_end];
+        Ok(super::text_editor::txbody_range(sp_xml).is_some())
+    }
+
+    /// Replace all paragraphs in the shape's text frame with a single
+    /// paragraph containing `text`. Existing paragraphs are dropped (matches
+    /// python-pptx's `_BaseShape.text = "…"`, which deletes all but the first
+    /// paragraph before setting it).
+    ///
+    /// Returns `Err(PptxError::NotFound)` if the slide or shape is missing
+    /// or the shape has no `<p:txBody>`.
+    pub fn set_shape_text(
+        &mut self,
+        slide_idx: usize,
+        shape_idx: usize,
+        text: &str,
+    ) -> Result<(), PptxError> {
+        let p = super::text_editor::ParagraphEdit::new(text).to_xml();
+        self.mutate_shape_txbody(slide_idx, shape_idx, move |_| p)
+    }
+
+    /// Append a new paragraph at level 0 to the shape's text frame.
+    /// python-pptx analogue: `tf.add_paragraph("…")`.
+    pub fn add_paragraph(
+        &mut self,
+        slide_idx: usize,
+        shape_idx: usize,
+        text: &str,
+    ) -> Result<(), PptxError> {
+        self.add_paragraph_with_format(
+            slide_idx,
+            shape_idx,
+            super::text_editor::ParagraphEdit::new(text),
+        )
+    }
+
+    /// Append a new paragraph with full formatting control.
+    ///
+    /// ```rust,no_run
+    /// use ppt_rs::oxml::{ParagraphEdit, PresentationEditor};
+    /// # let mut editor: PresentationEditor = unimplemented!();
+    /// let _ = editor.add_paragraph_with_format(
+    ///     0, 1,
+    ///     ParagraphEdit::new("Nested bullet")
+    ///         .with_level(1)
+    ///         .with_bold(true)
+    ///         .with_font_size(24),
+    /// );
+    /// ```
+    pub fn add_paragraph_with_format(
+        &mut self,
+        slide_idx: usize,
+        shape_idx: usize,
+        paragraph: super::text_editor::ParagraphEdit<'_>,
+    ) -> Result<(), PptxError> {
+        let para_xml = paragraph.to_xml();
+        self.mutate_shape_txbody(slide_idx, shape_idx, move |inner| {
+            // Append before `</p:txBody>` (which lives at the end of the
+            // inner slice we receive). Trim trailing whitespace so the new
+            // paragraph sits cleanly against the closing tag.
+            let mut s = inner.trim_end().to_owned();
+            s.push('\n');
+            s.push_str(&para_xml);
+            s
+        })
+    }
+
+    /// Convenience: set the title text on a slide (assumes shape index 0
+    /// is the title; layouts using a centered-title placeholder fall back to
+    /// `set_shape_text(0, …)` directly).
+    pub fn set_title_text(&mut self, slide_idx: usize, text: &str) -> Result<(), PptxError> {
+        self.set_shape_text(slide_idx, 0, text)
+    }
+
+    /// Read the current paragraphs of a shape (debug / round-trip helper).
+    pub fn shape_paragraphs(
+        &self,
+        slide_idx: usize,
+        shape_idx: usize,
+    ) -> Result<Vec<String>, PptxError> {
+        let slide_xml = self
+            .slide_xml_string(slide_idx)
+            .ok_or_else(|| PptxError::NotFound(messages::slide_not_found(slide_idx)))?;
+        Ok(super::text_editor::read_paragraphs(&slide_xml, shape_idx))
+    }
+
+    // Internal: read the slide XML as a `String` (clones the bytes — pptx
+    // files are small, and a single edit reads once then mutates the part).
+    fn slide_xml_string(&self, slide_idx: usize) -> Option<String> {
+        let slide_num = slide_idx + 1;
+        let path = format!("ppt/slides/slide{slide_num}.xml");
+        self.package
+            .get_part(&path)
+            .and_then(|b| std::str::from_utf8(b).ok().map(str::to_owned))
+    }
+
+    /// Mutate the inner content of the `<p:txBody>` of the `shape_idx`-th
+    /// shape on `slide_idx`. `rewrite` receives the existing inner XML and
+    /// returns the new inner XML; the bytes are then spliced back into the
+    /// slide XML and written to the package.
+    fn mutate_shape_txbody<F>(
+        &mut self,
+        slide_idx: usize,
+        shape_idx: usize,
+        rewrite: F,
+    ) -> Result<(), PptxError>
+    where
+        F: FnOnce(&str) -> String,
+    {
+        let slide_num = slide_idx + 1;
+        let path = format!("ppt/slides/slide{slide_num}.xml");
+        let slide_bytes = self
+            .package
+            .get_part_mut(&path)
+            .ok_or_else(|| PptxError::NotFound(messages::slide_file_not_found(&path)))?;
+        let slide_xml = std::str::from_utf8_mut(slide_bytes)
+            .map_err(|e| PptxError::XmlParse(format!("slide{slide_num}.xml: {e}")))?;
+        let (sp_start, sp_end) = super::text_editor::nth_sp_range(slide_xml, shape_idx)
+            .ok_or_else(|| PptxError::NotFound("shape".into()))?;
+        let (tb_start, tb_end) = {
+            let sp_xml = &slide_xml[sp_start..sp_end];
+            super::text_editor::txbody_range(sp_xml)
+                .ok_or_else(|| PptxError::NotFound("text frame".into()))?
+        };
+        // Adjust to absolute offsets within the slide XML.
+        let abs_tb_inner_start = sp_start + tb_start;
+        let abs_tb_inner_end = sp_start + tb_end;
+        let inner = slide_xml[abs_tb_inner_start..abs_tb_inner_end].to_owned();
+        let new_inner = rewrite(&inner);
+        // Splice the new inner back into the slide XML bytes.
+        let new_xml = format!(
+            "{}{}{}",
+            &slide_xml[..abs_tb_inner_start],
+            new_inner,
+            &slide_xml[abs_tb_inner_end..]
+        );
+        *slide_bytes = new_xml.into_bytes();
+        Ok(())
+    }
+
     /// Get the underlying package for advanced operations
     pub fn package(&self) -> &Package {
         &self.package

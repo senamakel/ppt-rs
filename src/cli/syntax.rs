@@ -10,7 +10,6 @@ use syntect::highlighting::{Style, ThemeSet};
 use syntect::parsing::SyntaxSet;
 
 #[cfg(feature = "syntect")]
-
 /// A highlighted text segment with color
 #[derive(Debug, Clone)]
 pub struct HighlightedSegment {

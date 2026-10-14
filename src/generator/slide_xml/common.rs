@@ -51,22 +51,54 @@ pub fn create_slide_rels_xml_for_layout(layout_number: usize) -> String {
     )
 }
 
-/// Generate title shape XML
+/// Plain-text + style payload for the title shape.
+#[derive(Clone, Copy)]
+pub struct TitleContent<'a> {
+    pub text: &'a str,
+    pub props: &'a str,
+}
+
+impl<'a> TitleContent<'a> {
+    pub fn new(text: &'a str, props: &'a str) -> Self {
+        Self { text, props }
+    }
+}
+
+/// Title shape placement (EMU coordinates).
+#[derive(Clone, Copy)]
+pub struct TitlePlacement {
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
+}
+
+impl TitlePlacement {
+    pub fn new(x: u32, y: u32, width: u32, height: u32) -> Self {
+        Self { x, y, width, height }
+    }
+}
+
+/// Generate title shape XML.
+///
+/// `ph_type` is the OOXML placeholder type (`"title"`, `"ctrTitle"`, `"subTitle"`,
+/// or any other layout-defined value). Emitting `<p:ph type="..."/>` is what
+/// tells PowerPoint this shape fills the layout's intended title slot — without
+/// it, the slide opens with an empty title placeholder in the master.
 pub fn generate_title_shape(
-    title_text: &str,
-    title_props: &str,
-    x: u32,
-    y: u32,
-    width: u32,
-    height: u32,
+    content: TitleContent<'_>,
+    placement: TitlePlacement,
     align: &str,
+    ph_type: &str,
 ) -> String {
+    let TitleContent { text: title_text, props: title_props } = content;
+    let TitlePlacement { x, y, width, height } = placement;
     format!(
         r#"<p:sp>
 <p:nvSpPr>
 <p:cNvPr id="2" name="Title"/>
 <p:cNvSpPr txBox="1"/>
-<p:nvPr/>
+<p:nvPr><p:ph type="{ph_type}"/></p:nvPr>
 </p:nvSpPr>
 <p:spPr>
 <a:xfrm>

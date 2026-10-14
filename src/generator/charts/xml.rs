@@ -1,6 +1,6 @@
 //! Chart XML generation
 
-use super::data::Chart;
+use super::data::{AxisConfig, Chart, DataLabelsConfig};
 use super::escape_xml;
 use super::types::ChartType;
 
@@ -92,14 +92,32 @@ fn chart_part_header(chart: &Chart) -> String {
     )
 }
 
-/// Generate the chart part footer
-fn chart_part_footer() -> &'static str {
-    r#"</c:plotArea>
+/// Generate the chart part footer.
+///
+/// `legend` is the configured legend; when `legend.show == false` we emit no
+/// `<c:legend>` block at all (PowerPoint then falls back to layout/master
+/// defaults). `data_labels` controls the plot-level data labels that apply
+/// to every series unless overridden per-series.
+fn chart_part_footer(chart: &Chart) -> String {
+    let legend = if chart.legend.show {
+        format!(
+            r#"
 <c:legend>
-<c:legendPos val="r"/>
+<c:legendPos val="{}"/>
 <c:layout/>
 <c:overlay val="0"/>
-</c:legend>
+</c:legend>"#,
+            chart.legend.position.as_str()
+        )
+    } else {
+        String::new()
+    };
+
+    // Plot-level data labels. Only emit when at least one flag is on.
+    let plot_dlbls = generate_data_labels_block(&chart.data_labels);
+
+    format!(
+        r#"</c:plotArea>{legend}{plot_dlbls}
 <c:plotVisOnly val="1"/>
 <c:dispBlanksAs val="gap"/>
 <c:showDLblsOverMax val="0"/>
@@ -107,11 +125,112 @@ fn chart_part_footer() -> &'static str {
 <c:externalData r:id="rId1">
 <c:autoUpdate val="0"/>
 </c:externalData>
-</c:chartSpace>"#
+</c:chartSpace>"#,
+    )
+}
+
+/// Generate the `<c:dLbls>` block for plot-level (chart-wide) data labels.
+///
+/// Returns the empty string when all flags are off — the chart then hides
+/// labels by default (matching the previous emission). When any flag is on,
+/// emits a `<c:dLbls>` block with the requested fields plus `<c:dLblPos>`.
+fn generate_data_labels_block(cfg: &DataLabelsConfig) -> String {
+    if !cfg.show_value
+        && !cfg.show_category_name
+        && !cfg.show_percentage
+        && !cfg.show_series_name
+    {
+        return String::new();
+    }
+    format!(
+        r#"
+<c:dLbls>
+<c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr>
+<c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="900" b="0" i="0" u="none" strike="noStrike" baseline="0"><a:solidFill><a:srgbClr val="595959"/></a:solidFill><a:latin typeface="Calibri"/></a:defRPr></a:pPr><a:endParaRPr lang="en-US"/></a:p></c:txPr>
+<c:dLblPos val="{pos}"/>
+<c:showLegendKey val="0"/>
+<c:showVal val="{v}"/>
+<c:showCatName val="{c}"/>
+<c:showSerName val="{s}"/>
+<c:showPercent val="{p}"/>
+<c:showBubbleSize val="0"/>
+</c:dLbls>"#,
+        pos = cfg.position.as_str(),
+        v = bool_to_flag(cfg.show_value),
+        c = bool_to_flag(cfg.show_category_name),
+        s = bool_to_flag(cfg.show_series_name),
+        p = bool_to_flag(cfg.show_percentage),
+    )
+}
+
+fn bool_to_flag(b: bool) -> &'static str {
+    if b { "1" } else { "0" }
+}
+
+/// Build the `<c:scaling>` block for a configured axis.
+///
+/// Auto-scaled axes (no min/max/unit) get plain `<c:orientation val="minMax"/>`.
+/// Forced min/max emit `<c:min>` / `<c:max>` with the user's values. `logScale`
+/// emits `<c:logScale base="10"/>` (OOXML default base).
+fn scaling_block(cfg: &AxisConfig) -> String {
+    let mut s = String::from("<c:scaling>\n<c:orientation val=\"minMax\"/>");
+    if let Some(min) = cfg.min {
+        s.push_str(&format!("\n<c:min val=\"{min}\"/>"));
+    }
+    if let Some(max) = cfg.max {
+        s.push_str(&format!("\n<c:max val=\"{max}\"/>"));
+    }
+    if cfg.log_scale {
+        s.push_str("\n<c:logScale base=\"10\"/>");
+    }
+    s.push_str("\n</c:scaling>");
+    s
+}
+
+/// Build the unit config block — the `<c:majorUnit>` / `<c:minorUnit>` elements
+/// go after `<c:scaling>` but before `<c:numFmt>` in the OOXML order.
+fn unit_block(cfg: &AxisConfig) -> String {
+    let mut s = String::new();
+    if let Some(major) = cfg.major_unit {
+        s.push_str(&format!("\n<c:majorUnit val=\"{major}\"/>"));
+    }
+    if let Some(minor) = cfg.minor_unit {
+        s.push_str(&format!("\n<c:minorUnit val=\"{minor}\"/>"));
+    }
+    s
+}
+
+/// Build the `<c:numFmt>` block — `formatCode` overrides the default `General`.
+fn numfmt_block(cfg: &AxisConfig) -> String {
+    let fmt = cfg.number_format.as_deref().unwrap_or("General");
+    let source_linked = if cfg.number_format.is_some() { "0" } else { "1" };
+    format!(
+        "\n<c:numFmt formatCode=\"{fmt}\" sourceLinked=\"{source_linked}\"/>"
+    )
+}
+
+/// Build the `<c:txPr>` block (tick label font).
+    ///
+    /// Returns the empty string when no font overrides are set — the chart then
+    /// inherits the default tick label font from the master.
+fn tick_label_txpr_block(cfg: &AxisConfig) -> String {
+    if cfg.tick_label_size_pt.is_none() && !cfg.tick_label_bold {
+        return String::new();
+    }
+    let sz = cfg.tick_label_size_pt.unwrap_or(900);
+    let b = if cfg.tick_label_bold { "1" } else { "0" };
+    format!(
+        r#"<c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="{sz}" b="{b}" i="0" u="none" strike="noStrike" baseline="0"><a:solidFill><a:srgbClr val="595959"/></a:solidFill><a:latin typeface="Calibri"/></a:defRPr></a:pPr><a:endParaRPr lang="en-US"/></a:p></c:txPr>"#
+    )
 }
 
 /// Generate series data XML
-fn generate_series_data(_chart: &Chart, idx: usize, series_name: &str, values: &[f64]) -> String {
+fn generate_series_data(chart: &Chart, idx: usize, series_name: &str, values: &[f64]) -> String {
+    // Per-series data labels: when plot-level config has any flag on, override
+    // the per-series defaults (which were always `showVal=0`) so the series
+    // emit `<c:dLbls>` matching the user's request.
+    let per_series_dlbls = generate_data_labels_block(&chart.data_labels);
+
     let mut xml = format!(
         r#"
 <c:ser>
@@ -130,10 +249,7 @@ fn generate_series_data(_chart: &Chart, idx: usize, series_name: &str, values: &
 </a:p>
 </c:rich>
 </c:tx>
-</c:title>
-<c:dLbls>
-<c:showVal val="0"/>
-</c:dLbls>
+</c:title>{per_series_dlbls}
 <c:val>
 <c:numRef>
 <c:f>Sheet1!$B${}:$B${}</c:f>
@@ -169,25 +285,32 @@ fn generate_series_data(_chart: &Chart, idx: usize, series_name: &str, values: &
 
 /// Generate category axis XML
 fn generate_category_axis(chart: &Chart, ax_pos: &str) -> String {
+    let cfg = &chart.category_axis;
+    // When the user asks for rotated category labels, emit the trio of
+    // child elements that LibreOffice / PowerPoint need to actually rotate
+    // the labels: `<c:lblAlgn>` (center), `<c:lblOffset>`, `<c:tickLblSkip>`.
+    // They live between `<c:crosses>` and the data refs, per OOXML schema.
+    let rotation_block = if cfg.tick_label_rotation_deg.is_some() {
+        r#"<c:lblAlgn val="ctr"/><c:lblOffset val="100"/><c:tickLblSkip val="1"/>"#
+    } else {
+        ""
+    };
     let mut xml = format!(
         r#"
 <c:catAx>
-<c:axId val="1"/>
-<c:scaling>
-<c:orientation val="minMax"/>
-</c:scaling>
-<c:delete val="0"/>
-<c:axPos val="{}"/>
-<c:majorGridlines/>
-<c:numFmt formatCode="General" sourceLinked="1"/>
-<c:tickLblPos val="low"/>
-<c:crossAx val="2"/>
-<c:crosses val="autoZero"/>
+<c:axId val="1"/>{}<c:delete val="0"/>
+<c:axPos val="{}"/>{}<c:majorGridlines/>{}<c:tickLblPos val="low"/>{}<c:crossAx val="2"/>
+<c:crosses val="autoZero"/>{}
 <c:strRef>
 <c:f>Sheet1!$A$2:$A${}</c:f>
 <c:strCache>
 <c:ptCount val="{}"/>"#,
+        scaling_block(cfg),
         ax_pos,
+        unit_block(cfg),
+        numfmt_block(cfg),
+        tick_label_txpr_block(cfg),
+        rotation_block,
         1 + chart.category_count(),
         chart.category_count()
     );
@@ -214,22 +337,20 @@ fn generate_category_axis(chart: &Chart, ax_pos: &str) -> String {
 }
 
 /// Generate value axis XML
-fn generate_value_axis(ax_pos: &str) -> String {
+fn generate_value_axis(chart: &Chart, ax_pos: &str) -> String {
+    let cfg = &chart.value_axis;
     format!(
         r#"
 <c:valAx>
-<c:axId val="2"/>
-<c:scaling>
-<c:orientation val="minMax"/>
-</c:scaling>
-<c:delete val="0"/>
-<c:axPos val="{}"/>
-<c:majorGridlines/>
-<c:numFmt formatCode="General" sourceLinked="1"/>
-<c:tickLblPos val="low"/>
-<c:crossAx val="1"/>
+<c:axId val="2"/>{}<c:delete val="0"/>
+<c:axPos val="{}"/>{}<c:majorGridlines/>{}{}<c:tickLblPos val="low"/>{}<c:crossAx val="1"/>
 <c:crosses val="autoZero"/>
 </c:valAx>"#,
+        scaling_block(cfg),
+        ax_pos,
+        unit_block(cfg),
+        numfmt_block(cfg),
+        tick_label_txpr_block(cfg),
         ax_pos
     )
 }
@@ -254,9 +375,9 @@ fn generate_bar_chart_xml(chart: &Chart) -> String {
     }
 
     xml.push_str(&generate_category_axis(chart, "l"));
-    xml.push_str(&generate_value_axis("b"));
+    xml.push_str(&generate_value_axis(chart, "b"));
     xml.push_str("</c:barChart>");
-    xml.push_str(chart_part_footer());
+    xml.push_str(&chart_part_footer(chart));
 
     xml
 }
@@ -280,9 +401,9 @@ fn generate_line_chart_xml(chart: &Chart) -> String {
     }
 
     xml.push_str(&generate_category_axis(chart, "b"));
-    xml.push_str(&generate_value_axis("l"));
+    xml.push_str(&generate_value_axis(chart, "l"));
     xml.push_str("</c:lineChart>");
-    xml.push_str(chart_part_footer());
+    xml.push_str(&chart_part_footer(chart));
 
     xml
 }
@@ -375,7 +496,7 @@ fn generate_pie_chart_xml(chart: &Chart) -> String {
     }
 
     xml.push_str("</c:pieChart>");
-    xml.push_str(chart_part_footer());
+    xml.push_str(&chart_part_footer(chart));
 
     xml
 }
@@ -464,7 +585,7 @@ fn generate_doughnut_chart_xml(chart: &Chart) -> String {
     }
 
     xml.push_str("</c:doughnutChart>");
-    xml.push_str(chart_part_footer());
+    xml.push_str(&chart_part_footer(chart));
 
     xml
 }
@@ -490,9 +611,9 @@ fn generate_area_chart_xml(chart: &Chart) -> String {
     }
 
     xml.push_str(&generate_category_axis(chart, "b"));
-    xml.push_str(&generate_value_axis("l"));
+    xml.push_str(&generate_value_axis(chart, "l"));
     xml.push_str("</c:areaChart>");
-    xml.push_str(chart_part_footer());
+    xml.push_str(&chart_part_footer(chart));
 
     xml
 }
@@ -578,10 +699,10 @@ fn generate_scatter_chart_xml(chart: &Chart) -> String {
         );
     }
 
-    xml.push_str(&generate_value_axis("b"));
-    xml.push_str(&generate_value_axis("l"));
+    xml.push_str(&generate_value_axis(chart, "b"));
+    xml.push_str(&generate_value_axis(chart, "l"));
     xml.push_str("</c:scatterChart>");
-    xml.push_str(chart_part_footer());
+    xml.push_str(&chart_part_footer(chart));
 
     xml
 }
@@ -690,10 +811,10 @@ fn generate_bubble_chart_xml(chart: &Chart) -> String {
         );
     }
 
-    xml.push_str(&generate_value_axis("b"));
-    xml.push_str(&generate_value_axis("l"));
+    xml.push_str(&generate_value_axis(chart, "b"));
+    xml.push_str(&generate_value_axis(chart, "l"));
     xml.push_str("</c:bubbleChart>");
-    xml.push_str(chart_part_footer());
+    xml.push_str(&chart_part_footer(chart));
 
     xml
 }
@@ -719,9 +840,9 @@ fn generate_radar_chart_xml(chart: &Chart) -> String {
     }
 
     xml.push_str(&generate_category_axis(chart, "b"));
-    xml.push_str(&generate_value_axis("l"));
+    xml.push_str(&generate_value_axis(chart, "l"));
     xml.push_str("</c:radarChart>");
-    xml.push_str(chart_part_footer());
+    xml.push_str(&chart_part_footer(chart));
 
     xml
 }
@@ -743,9 +864,9 @@ fn generate_stock_chart_xml(chart: &Chart) -> String {
     }
 
     xml.push_str(&generate_category_axis(chart, "b"));
-    xml.push_str(&generate_value_axis("l"));
+    xml.push_str(&generate_value_axis(chart, "l"));
     xml.push_str("</c:stockChart>");
-    xml.push_str(chart_part_footer());
+    xml.push_str(&chart_part_footer(chart));
 
     xml
 }
@@ -772,7 +893,7 @@ fn generate_combo_chart_xml(chart: &Chart) -> String {
     }
 
     xml.push_str(&generate_category_axis(chart, "b"));
-    xml.push_str(&generate_value_axis("l"));
+    xml.push_str(&generate_value_axis(chart, "l"));
     xml.push_str("</c:barChart>");
 
     // Second half as lines
@@ -794,7 +915,7 @@ fn generate_combo_chart_xml(chart: &Chart) -> String {
         xml.push_str("</c:lineChart>");
     }
 
-    xml.push_str(chart_part_footer());
+    xml.push_str(&chart_part_footer(chart));
 
     xml
 }

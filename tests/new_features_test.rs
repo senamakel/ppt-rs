@@ -36,9 +36,6 @@ fn test_markdown_image_handling() {
 
     // The title slide should be created
     assert_eq!(slides[0].title, "Image Test");
-
-    // Verify slide structure is created
-    assert!(slides.len() >= 1);
 }
 
 #[test]
@@ -97,7 +94,7 @@ It also has `inline code` and combinations like ***bold italic***.
     let slides = parse(md).unwrap();
 
     assert!(!slides.is_empty());
-    assert!(slides[0].content.len() > 0);
+    assert!(!slides[0].content.is_empty());
 }
 
 #[test]
@@ -352,9 +349,6 @@ fn example() {
 
     // Should have main title slide
     assert_eq!(slides[0].title, "Combined Features Test");
-
-    // Should have additional slides for sections
-    assert!(slides.len() >= 1);
 
     // Check that different content types are present
     let total_bullets: usize = slides.iter().map(|s| s.bullets.len()).sum();

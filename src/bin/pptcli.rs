@@ -3,8 +3,8 @@
 use clap::Parser;
 use ppt_rs::api::Presentation;
 use ppt_rs::cli::{
-    Cli, Commands, CreateCommand, ExportFormat, FromHtmlCommand, FromMarkdownCommand, InfoCommand,
-    ValidateCommand,
+    BatchCommand, Cli, Commands, CreateCommand, DiffCommand, ExportFormat, FromHtmlCommand,
+    FromHtmlOptions, FromMarkdownCommand, InfoCommand, ValidateCommand,
 };
 
 fn main() {
@@ -72,6 +72,42 @@ fn main() {
                 std::process::exit(1);
             }
         },
+        Commands::Diff { old, new, json } => match DiffCommand::execute(&old, &new, json) {
+            Ok(()) => {
+                if !json {
+                    println!("\n✓ Semantic diff: no differences");
+                }
+            }
+            Err(e) => {
+                if !json {
+                    eprintln!("✗ {e}");
+                }
+                std::process::exit(1);
+            }
+        },
+        Commands::Batch {
+            input_dir,
+            output_dir,
+            template,
+        } => match BatchCommand::execute(&input_dir, &output_dir, template.as_deref()) {
+            Ok(results) => {
+                println!("Batch conversion complete\n");
+                for r in &results {
+                    println!(
+                        "✓ {} → {} ({} slides, {} bytes)",
+                        r.input.display(),
+                        r.output.display(),
+                        r.slide_count,
+                        r.bytes
+                    );
+                }
+                println!("\n✓ Generated {} presentation(s) in {output_dir}", results.len());
+            }
+            Err(e) => {
+                eprintln!("✗ Error: {e}");
+                std::process::exit(1);
+            }
+        },
         Commands::Validate { file, json } => match ValidateCommand::execute(&file, json) {
             Ok(_) => {
                 if !json {
@@ -89,6 +125,7 @@ fn main() {
             input,
             output,
             format,
+            group_by_sections,
         } => {
             println!("Exporting {}...", input);
             let pres = match Presentation::from_path(&input) {
@@ -106,6 +143,8 @@ fn main() {
                         Some(ExportFormat::Pdf)
                     } else if out_lower.ends_with(".html") {
                         Some(ExportFormat::Html)
+                    } else if out_lower.ends_with(".md") || out_lower.ends_with(".markdown") {
+                        Some(ExportFormat::Md)
                     } else if out_lower.ends_with(".png") {
                         Some(ExportFormat::Png)
                     } else {
@@ -116,7 +155,28 @@ fn main() {
 
             let result = match format {
                 ExportFormat::Pdf => pres.save_as_pdf(&output),
-                ExportFormat::Html => pres.save_as_html(&output),
+                ExportFormat::Html => {
+                    if group_by_sections {
+                        pres.save_as_html_with_options(
+                            &output,
+                            &ppt_rs::export::html::HtmlExportOptions::new()
+                                .with_section_grouping(true),
+                        )
+                    } else {
+                        pres.save_as_html(&output)
+                    }
+                }
+                ExportFormat::Md => {
+                    if group_by_sections {
+                        pres.save_as_markdown_with_options(
+                            &output,
+                            &ppt_rs::export::md::MarkdownOptions::new()
+                                .with_section_grouping(true),
+                        )
+                    } else {
+                        pres.save_as_markdown(&output)
+                    }
+                }
                 ExportFormat::Png => pres.save_as_png(&output),
             };
 
@@ -187,16 +247,16 @@ fn main() {
                 }
             });
 
-            match FromHtmlCommand::execute(
-                &input,
-                &output_path,
-                title.as_deref(),
+            match FromHtmlCommand::execute(FromHtmlOptions {
+                input: &input,
+                output: &output_path,
+                title: title.as_deref(),
                 max_slides,
                 max_bullets,
                 no_images,
                 no_tables,
                 no_code,
-            ) {
+            }) {
                 Ok(_) => {
                     println!("✓ Created presentation: {output_path}");
                     println!("  Input: {input}");
@@ -246,7 +306,7 @@ fn main() {
             #[cfg(feature = "web2md")]
             web2md,
         } => {
-            execute_web2ppt(
+            execute_web2ppt(Web2PptArgs {
                 url,
                 output,
                 title,
@@ -260,13 +320,13 @@ fn main() {
                 verbose,
                 #[cfg(feature = "web2md")]
                 web2md,
-            );
+            });
         }
     }
 }
 
 #[cfg(feature = "web2ppt")]
-fn execute_web2ppt(
+struct Web2PptArgs {
     url: String,
     output: String,
     title: Option<String>,
@@ -278,8 +338,27 @@ fn execute_web2ppt(
     no_source_url: bool,
     timeout: u64,
     verbose: bool,
-    #[cfg(feature = "web2md")] use_web2md: bool,
-) {
+    #[cfg(feature = "web2md")]
+    web2md: bool,
+}
+
+#[cfg(feature = "web2ppt")]
+fn execute_web2ppt(args: Web2PptArgs) {
+    let Web2PptArgs {
+        url,
+        output,
+        title,
+        max_slides,
+        max_bullets,
+        no_images,
+        no_tables,
+        no_code,
+        no_source_url,
+        timeout,
+        verbose,
+        #[cfg(feature = "web2md")]
+        web2md: use_web2md,
+    } = args;
     use ppt_rs::{ConversionOptions, Web2Ppt, Web2PptConfig, WebFetcher, WebParser};
 
     if verbose {

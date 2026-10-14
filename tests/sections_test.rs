@@ -36,6 +36,22 @@ fn sectioned_deck() -> Presentation {
 }
 
 #[test]
+fn test_sections_import_round_trip() {
+    let path = "test_sections_import_roundtrip.pptx";
+    sectioned_deck().save(path).unwrap();
+
+    let imported = Presentation::from_path(path).unwrap();
+    assert_eq!(imported.sections().len(), 2);
+    assert!(imported.sections().get_section("Intro").is_some());
+    assert!(imported.sections().get_section("Details").is_some());
+    let intro = imported.sections().get_section("Intro").unwrap();
+    assert_eq!(intro.first_slide, 0);
+    assert_eq!(intro.slide_count, 1);
+
+    let _ = std::fs::remove_file(path);
+}
+
+#[test]
 fn test_sections_in_presentation_xml() {
     let bytes = sectioned_deck().build().unwrap();
     let pres_xml = read_part(&bytes, "ppt/presentation.xml");

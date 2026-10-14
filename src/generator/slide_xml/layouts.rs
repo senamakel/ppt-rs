@@ -1,6 +1,8 @@
 //! Slide layout implementations
 
-use super::common::{SLIDE_FOOTER, SLIDE_HEADER, generate_title_shape};
+use super::common::{
+    SLIDE_FOOTER, SLIDE_HEADER, TitleContent, TitlePlacement, generate_title_shape,
+};
 use super::content::render_additional_content;
 use crate::core::escape_xml;
 use crate::generator::layouts::ExtendedTextProps;
@@ -96,13 +98,10 @@ pub fn create_title_only_slide(
     let title_text = escape_xml(&content.title);
 
     let title_shape = generate_title_shape(
-        &title_text,
-        &title_props,
-        457200,  // x
-        274638,  // y
-        8230200, // width
-        1143000, // height
+        TitleContent::new(&title_text, &title_props),
+        TitlePlacement::new(457_200, 274_638, 8_230_200, 1_143_000),
         "l",     // align left
+        "title", // placeholder type — fill the layout's title slot
     );
 
     let mut xml = format!("{}\n{}", SLIDE_HEADER, title_shape);
@@ -129,13 +128,10 @@ pub fn create_section_header_slide(
     let title_text = escape_xml(&content.title);
 
     let title_shape = generate_title_shape(
-        &title_text,
-        &title_props,
-        457_200,
-        1_600_200,
-        8_229_600,
-        1_828_800,
+        TitleContent::new(&title_text, &title_props),
+        TitlePlacement::new(457_200, 1_600_200, 8_229_600, 1_828_800),
         "ctr",
+        "title",
     );
 
     let mut xml = format!("{}\n{}", SLIDE_HEADER, title_shape);
@@ -162,13 +158,10 @@ pub fn create_centered_title_slide(
     let title_text = escape_xml(&content.title);
 
     let title_shape = generate_title_shape(
-        &title_text,
-        &title_props,
-        457200,  // x
-        2743200, // y (centered vertically)
-        8230200, // width
-        1371600, // height
-        "ctr",   // align center
+        TitleContent::new(&title_text, &title_props),
+        TitlePlacement::new(457_200, 2_743_200, 8_230_200, 1_371_600),
+        "ctr",     // align center
+        "ctrTitle",
     );
 
     let mut xml = format!("{}\n{}", SLIDE_HEADER, title_shape);
@@ -198,14 +191,14 @@ pub fn create_title_and_big_content_slide(
 
     let mut xml = String::from(SLIDE_HEADER);
 
-    // Title shape
+    // Title shape — fill the layout's title placeholder
     xml.push_str(&format!(
         r#"
 <p:sp>
 <p:nvSpPr>
 <p:cNvPr id="2" name="Title"/>
 <p:cNvSpPr txBox="1"/>
-<p:nvPr/>
+<p:nvPr><p:ph type="title"/></p:nvPr>
 </p:nvSpPr>
 <p:spPr>
 <a:xfrm>
@@ -229,7 +222,7 @@ pub fn create_title_and_big_content_slide(
 </p:sp>"#
     ));
 
-    // Content
+    // Content — fill the layout's body placeholder (idx="1")
     if !content.bullets.is_empty() || !content.content.is_empty() {
         xml.push_str(
             r#"
@@ -237,7 +230,7 @@ pub fn create_title_and_big_content_slide(
 <p:nvSpPr>
 <p:cNvPr id="3" name="Content"/>
 <p:cNvSpPr txBox="1"/>
-<p:nvPr/>
+<p:nvPr><p:ph type="body" idx="1"/></p:nvPr>
 </p:nvSpPr>
 <p:spPr>
 <a:xfrm>
@@ -308,14 +301,14 @@ pub fn create_two_column_slide(
 
     let mut xml = String::from(SLIDE_HEADER);
 
-    // Title
+    // Title — fill the layout's title placeholder
     xml.push_str(&format!(
         r#"
 <p:sp>
 <p:nvSpPr>
 <p:cNvPr id="2" name="Title"/>
 <p:cNvSpPr txBox="1"/>
-<p:nvPr/>
+<p:nvPr><p:ph type="title"/></p:nvPr>
 </p:nvSpPr>
 <p:spPr>
 <a:xfrm>
@@ -358,14 +351,14 @@ pub fn create_two_column_slide(
     if bullet_count > 0 {
         let mid = bullet_count.div_ceil(2);
 
-        // Left column
+        // Left column — fill the layout's body placeholder idx="1"
         xml.push_str(
             r#"
 <p:sp>
 <p:nvSpPr>
 <p:cNvPr id="3" name="Left Content"/>
 <p:cNvSpPr txBox="1"/>
-<p:nvPr/>
+<p:nvPr><p:ph type="body" idx="1"/></p:nvPr>
 </p:nvSpPr>
 <p:spPr>
 <a:xfrm>
@@ -400,7 +393,7 @@ pub fn create_two_column_slide(
 </p:sp>"#,
         );
 
-        // Right column
+        // Right column — fill the layout's body placeholder idx="2"
         if mid < bullet_count {
             xml.push_str(
                 r#"
@@ -408,7 +401,7 @@ pub fn create_two_column_slide(
 <p:nvSpPr>
 <p:cNvPr id="4" name="Right Content"/>
 <p:cNvSpPr txBox="1"/>
-<p:nvPr/>
+<p:nvPr><p:ph type="body" idx="2"/></p:nvPr>
 </p:nvSpPr>
 <p:spPr>
 <a:xfrm>
@@ -471,14 +464,14 @@ pub fn create_title_and_content_slide(
 
     let mut xml = String::from(SLIDE_HEADER);
 
-    // Title
+    // Title — fill the layout's title placeholder
     xml.push_str(&format!(
         r#"
 <p:sp>
 <p:nvSpPr>
 <p:cNvPr id="2" name="Title"/>
 <p:cNvSpPr txBox="1"/>
-<p:nvPr/>
+<p:nvPr><p:ph type="title"/></p:nvPr>
 </p:nvSpPr>
 <p:spPr>
 <a:xfrm>
@@ -507,14 +500,14 @@ pub fn create_title_and_content_slide(
         xml.push('\n');
         xml.push_str(&crate::generator::table::generate_table_xml(table, 3));
     } else if !content.bullets.is_empty() || !content.content.is_empty() {
-        // Render bullets if no table
+        // Render bullets if no table — fill the layout's body placeholder idx="1"
         xml.push_str(
             r#"
 <p:sp>
 <p:nvSpPr>
 <p:cNvPr id="3" name="Content"/>
 <p:cNvSpPr txBox="1"/>
-<p:nvPr/>
+<p:nvPr><p:ph type="body" idx="1"/></p:nvPr>
 </p:nvSpPr>
 <p:spPr>
 <a:xfrm>

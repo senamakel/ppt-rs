@@ -52,6 +52,10 @@ pub struct ExportPptxArgs {
     pub input_path: String,
     pub output_path: String,
     pub format: String,
+    /// When exporting markdown or html, emit section headers/labels for
+    /// presentations that define slide sections.
+    #[serde(default)]
+    pub group_by_sections: bool,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -108,6 +112,15 @@ pub struct CompressPptxArgs {
 pub struct RepairPptxArgs {
     pub input_path: String,
     pub output_path: String,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct DiffPptxArgs {
+    pub old_path: String,
+    pub new_path: String,
+    /// When true, return a JSON report instead of human-readable text.
+    #[serde(default)]
+    pub json: bool,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -295,6 +308,17 @@ impl PptMcp {
     ) -> Result<CallToolResult, McpError> {
         Ok(handle_apply_theme(args))
     }
+
+    #[tool(
+        name = "diff_pptx",
+        description = "Compare two PowerPoint files semantically (slide titles, bullets, images, charts, tables, media). Set json=true for a structured report."
+    )]
+    fn diff_pptx(
+        &self,
+        Parameters(args): Parameters<DiffPptxArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        Ok(handle_diff_pptx(args))
+    }
 }
 
 #[tool_handler]
@@ -427,6 +451,7 @@ fn handle_export_pptx(args: ExportPptxArgs) -> CallToolResult {
         input_path,
         output_path,
         format: fmt,
+        group_by_sections,
     } = args;
 
     match fmt.as_str() {
@@ -445,9 +470,27 @@ fn handle_export_pptx(args: ExportPptxArgs) -> CallToolResult {
     };
 
     let result = match fmt.as_str() {
-        "html" => pres.save_as_html(&output_path),
+        "html" => {
+            if group_by_sections {
+                pres.save_as_html_with_options(
+                    &output_path,
+                    &crate::export::html::HtmlExportOptions::new().with_section_grouping(true),
+                )
+            } else {
+                pres.save_as_html(&output_path)
+            }
+        }
         "pdf" => pres.save_as_pdf(&output_path),
-        "markdown" => pres.save_as_markdown(&output_path),
+        "markdown" => {
+            if group_by_sections {
+                pres.save_as_markdown_with_options(
+                    &output_path,
+                    &crate::export::md::MarkdownOptions::new().with_section_grouping(true),
+                )
+            } else {
+                pres.save_as_markdown(&output_path)
+            }
+        }
         "png" => pres.save_as_png(&output_path),
         _ => unreachable!(),
     };
@@ -717,6 +760,86 @@ fn handle_apply_theme(args: ApplyThemeArgs) -> CallToolResult {
             input_path, output_path
         )),
         Err(e) => tool_error(format!("Failed to save: {}", e)),
+    }
+}
+
+fn handle_diff_pptx(args: DiffPptxArgs) -> CallToolResult {
+    let DiffPptxArgs {
+        old_path,
+        new_path,
+        json,
+    } = args;
+
+    match crate::compare_pptx_paths(&old_path, &new_path) {
+        Ok(diff) => {
+            if json {
+                let slide_changes: Vec<_> = diff
+                    .slide_changes
+                    .iter()
+                    .map(|change| match change {
+                        crate::SlideChange::Added { index, slide } => json!({
+                            "kind": "added",
+                            "index": index,
+                            "title": slide.title,
+                        }),
+                        crate::SlideChange::Removed { index, slide } => json!({
+                            "kind": "removed",
+                            "index": index,
+                            "title": slide.title,
+                        }),
+                        crate::SlideChange::Modified { index, fields, .. } => json!({
+                            "kind": "modified",
+                            "index": index,
+                            "fields": format!("{fields:?}"),
+                        }),
+                    })
+                    .collect();
+                let report = json!({
+                    "old": old_path,
+                    "new": new_path,
+                    "equal": diff.is_equal(),
+                    "summary": diff.summary(),
+                    "title_changed": diff.title_changed.as_ref().map(|(before, after)| json!({
+                        "before": before,
+                        "after": after,
+                    })),
+                    "slide_changes": slide_changes,
+                });
+                tool_text(serde_json::to_string_pretty(&report).unwrap_or_default())
+            } else {
+                let mut lines = vec![
+                    format!("Semantic diff: {}", diff.summary()),
+                    format!("Old: {old_path}"),
+                    format!("New: {new_path}"),
+                ];
+                if let Some((before, after)) = &diff.title_changed {
+                    lines.push(format!("Title: {before:?} → {after:?}"));
+                }
+                for change in &diff.slide_changes {
+                    match change {
+                        crate::SlideChange::Added { index, slide } => {
+                            lines.push(format!("+ Slide {}: {:?}", index + 1, slide.title));
+                        }
+                        crate::SlideChange::Removed { index, slide } => {
+                            lines.push(format!("- Slide {}: {:?}", index + 1, slide.title));
+                        }
+                        crate::SlideChange::Modified { index, before, after, fields } => {
+                            lines.push(format!(
+                                "~ Slide {}: {:?} → {:?}",
+                                index + 1,
+                                before.title,
+                                after.title
+                            ));
+                            for field in fields {
+                                lines.push(format!("    {field:?}"));
+                            }
+                        }
+                    }
+                }
+                tool_text(lines.join("\n"))
+            }
+        }
+        Err(e) => tool_error(format!("Failed to compare presentations: {e}")),
     }
 }
 

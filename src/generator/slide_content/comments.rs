@@ -144,6 +144,18 @@ impl CommentAuthorList {
         self.authors.is_empty()
     }
 
+    /// Register an author parsed from an imported deck, preserving its id.
+    pub fn import_author(&mut self, author: CommentAuthor) {
+        if !self.authors.iter().any(|a| a.id == author.id) {
+            self.authors.push(author.clone());
+            self.authors.sort_by_key(|a| a.id);
+        }
+        self.name_to_id
+            .entry(author.name.clone())
+            .or_insert(author.id);
+        self.next_id = self.next_id.max(author.id.saturating_add(1));
+    }
+
     /// Generate `commentAuthors.xml` content
     pub fn to_xml(&self) -> String {
         let mut xml = String::from(r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>"#);
@@ -303,6 +315,14 @@ mod tests {
         assert_eq!(id1, 0);
         assert_eq!(id2, 1);
         assert_eq!(list.len(), 2);
+    }
+
+    #[test]
+    fn test_comment_author_list_import_author_preserves_id() {
+        let mut list = CommentAuthorList::new();
+        list.import_author(CommentAuthor::new(5, "Imported", "IM"));
+        assert_eq!(list.get_by_id(5).unwrap().name, "Imported");
+        assert_eq!(list.len(), 1);
     }
 
     #[test]

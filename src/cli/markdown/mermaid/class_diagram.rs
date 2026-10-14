@@ -60,7 +60,7 @@ pub fn generate_elements(code: &str) -> DiagramElements {
             };
 
             let parts: Vec<&str> = line
-                .split(|c| c == '<' || c == '|' || c == '-' || c == '>')
+                .split(['<', '|', '-', '>'])
                 .collect();
             let parts: Vec<&str> = parts.into_iter().filter(|s| !s.is_empty()).collect();
             if parts.len() >= 2 {

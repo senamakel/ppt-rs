@@ -49,7 +49,7 @@ The project has completed several major phases:
    - Pure-Rust PDF export via `pdfrs` (`pdf-native` feature) — no LibreOffice dependency
    - `web2md` bridge — HTML→Markdown→Slides pipeline with `--web2md` CLI flag
 
-Future work focuses on the open items in `TODO.md` (PPTX semantic diff, WASM target, batch/pipeline API) and performance optimization. Comments round-trip, video/audio embedding, and section-aware export shipped in v0.2.27.
+Future work focuses on performance optimization and competitive intelligence seeding. WASM is out of scope. REST/HTTP API, semantic diff, batch/pipeline API, Criterion benchmarks, CLI/MCP export parity, comments round-trip, video/audio embedding, and section-aware export shipped in v0.2.27–v0.2.34.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -92,7 +92,7 @@ Future work focuses on the open items in `TODO.md` (PPTX semantic diff, WASM tar
 
 1. **DRY**: Single source of truth — e.g. `escape_xml` lives only in `core::xml_utils`, image format helpers in `generator::images`
 2. **SoC**: Clear boundaries between layers — XML generation in `generator/`, parsing in `oxml/`, packaging in `opc/`
-3. **KISS**: Minimal dependencies (12 direct), lightweight header parsing instead of heavy crates, no unnecessary abstractions
+3. **KISS**: Minimal dependencies (17 direct, all optional where it makes sense), lightweight header parsing instead of heavy crates, no unnecessary abstractions
 4. **Trait-Facing**: Core traits (`ToXml`, `Positioned`, `ElementSized`) implemented on key types for generic dispatch, testability, and polymorphism. Types keep inherent methods for direct callers; trait impls delegate via `Type::method(self)`.
 5. **Builder Pattern**: Fluent APIs for constructing complex objects
 6. **Flexible Dimensions**: `Dimension` enum supports EMU, inches, cm, points, and ratio (0.0–1.0 of slide). Shapes and images accept `Dimension` via `.at()`, `.with_dimensions()`, and `from_dimensions()` for mixed-unit positioning.
@@ -210,12 +210,13 @@ shape.fill(red()).stroke(black(), 12700).text("Hello");
   - `md` - Markdown export with GFM tables and frontmatter
   - `image_export` - Image export (PNG, JPEG) via pure-Rust PDF render + `pdftoppm` rasterization
   - `slide_render` - Pure-Rust slide-to-PDF vector rendering via `pdfrs`
-  - `pdf_export` - Pure-Rust PDF export via `pdfrs` (`pdf-native` feature, no LibreOffice)
+- `pdf_export` - Pure-Rust PDF export via `pdfrs` (`pdf-native` feature, no LibreOffice)
 - **Key Types**:
   - `MarkdownOptions` - Configure markdown output
   - `ImageExportOptions` / `ImageFormat` - Configure image export
   - `PdfExportOptions` / `PdfOrientation` - Configure native PDF export
   - `export_to_markdown()`, `export_to_images()`, `export_to_pdf()` - Direct export functions
+- **CLI surface**: `pptcli pdf2ppt` (`Pdf2Ppt` variant in `src/cli/parser.rs`) renders a PDF to slides and emits a deck — uses the same `pdfrs` renderer as `export_to_pdf`.
 
 ### Import Layer (`import/`)
 - **Purpose**: Import from external formats
@@ -277,19 +278,19 @@ shape.fill(red()).stroke(black(), 12700).text("Hello");
 
 ## Testing Architecture
 
-The project employs a layered testing strategy with 1200+ tests:
+The project employs a layered testing strategy with 1310 tests:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Integration Tests                        │
 │         (tests/ directory — full workflows)                 │
-│              420+ tests, end-to-end validation              │
+│              513 tests, end-to-end validation               │
 └─────────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────────┐
 │                    Unit Tests                               │
 │         (inline in src/ modules — per-component)            │
-│              690+ tests, fast feedback                      │
+│              772 tests, fast feedback                       │
 └─────────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────────┐
@@ -475,7 +476,7 @@ src/
 │   └── notes_xml.rs       # Notes XML
 ├── parts/                 # Package parts (SlidePart, ImagePart, etc.)
 ├── opc/                   # Open Packaging Convention (ZIP handling)
-├── oxml/                  # Office XML parsing (reader, editor, parser, repair)
+├── oxml/                  # Office XML parsing (reader, editor, parser, repair, comments import)
 ├── helpers/               # Simplified helpers
 │   ├── mod.rs
 │   ├── colors.rs          # 40+ color aliases, ColorValue
@@ -484,11 +485,16 @@ src/
 │   └── ext.rs             # ShapeExt extension methods
 ├── export/                # Export to HTML, Markdown, images
 ├── import/                # PPTX import, HTML-to-PPTX
+├── diff/                  # Semantic slide-level comparison (`compare_presentations`, v0.2.30)
+├── pipeline/              # Batch MD/HTML → deck-per-file (`run_directory`, `BatchOptions`, v0.2.31)
+├── http/                  # REST API (`/v1/generate`, validate, export, diff; feature = "http", v0.2.34)
 ├── cli/                   # CLI commands + Markdown parser + Mermaid renderers
 ├── mcp/                   # (Optional) MCP server (feature-gated)
 ├── web2ppt/               # (Optional) Web-to-PPTX conversion
 └── bin/
-    └── pptcli.rs          # CLI binary entry point
+    ├── pptcli.rs         # CLI binary entry point
+    ├── ppt_mcp.rs        # MCP server binary (`mcp` feature)
+    └── ppt_http.rs       # REST/HTTP server binary (`http` feature)
 ```
 
 ## PPTX Generation Approach
@@ -843,10 +849,10 @@ Effects are rendered in `<a:effectLst>` within `<p:spPr>`:
 - [x] Template-based generation (v0.2.19)
 - [x] Chart Excel workbook embedding (v0.2.19)
 - [x] Handout master packaging + slide master completeness + rel ordering (v0.2.19)
-- [ ] Complete digital signature wiring (XML done, needs Content_Types + _rels)
-- [ ] Ink annotations wiring (XML done, needs ink part + relationship)
-- [ ] Embedded fonts in output (XML done, needs font data parts + rId wiring)
+- [x] Digital signature wiring (Content_Types + _rels) (v0.2.20)
+- [x] Ink annotations wiring (ink part + relationship) (v0.2.20)
+- [x] Embedded fonts in output (font data parts + rId wiring) (v0.2.20)
+- [x] Benchmark suite — Criterion suites for eager/lazy/compression (v0.2.32)
 - [ ] Fuzzing tests for PPTX parsing
 - [ ] Property-based testing
-- [ ] Benchmark suite
 - [ ] Cross-platform testing (Windows, macOS, Linux)

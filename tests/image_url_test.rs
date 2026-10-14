@@ -1,7 +1,6 @@
 #[cfg(feature = "web2ppt")]
 #[test]
 fn test_image_from_url() {
-    use ppt_rs::elements::Position;
     use ppt_rs::generator::Image;
 
     // Use a reliable placeholder image service

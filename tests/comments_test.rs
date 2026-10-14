@@ -8,6 +8,7 @@
 use std::io::{Cursor, Read};
 
 use ppt_rs::Presentation;
+use ppt_rs::import::import_pptx;
 use ppt_rs::core::validate_package_bytes;
 use ppt_rs::generator::{
     CommentAuthorList, LazySlideSource, PresentationSettings, SlideContent,
@@ -177,6 +178,32 @@ fn test_comments_lazy_path_packages_comment_parts() {
         validate_package_bytes(&bytes).is_valid(),
         "lazy comments deck failed validation"
     );
+}
+
+#[test]
+fn test_comments_import_round_trip() {
+    let path = std::env::temp_dir().join(format!(
+        "ppt_rs_comments_import_{}.pptx",
+        std::process::id()
+    ));
+    commented_deck().save(&path).unwrap();
+
+    let imported = import_pptx(path.to_str().unwrap()).unwrap();
+    assert_eq!(imported.slides()[0].comments.len(), 2);
+    assert_eq!(imported.slides()[0].comments.comments()[0].text, "Fix wording");
+    assert_eq!(imported.slides()[0].comments.comments()[1].text, "Add a source");
+    assert_eq!(imported.slides()[0].comments.comments()[0].x, 100);
+    assert_eq!(imported.slides()[1].comments.len(), 0);
+
+    let bytes = imported.build().unwrap();
+    assert!(has_part(&bytes, "ppt/commentAuthors.xml"));
+    assert!(has_part(&bytes, "ppt/comments/comment1.xml"));
+    let comments = read_part(&bytes, "ppt/comments/comment1.xml");
+    assert!(comments.contains("Fix wording"));
+    assert!(comments.contains("Add a source"));
+    assert!(validate_package_bytes(&bytes).is_valid());
+
+    let _ = std::fs::remove_file(path);
 }
 
 #[test]
