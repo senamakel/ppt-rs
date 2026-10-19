@@ -6,8 +6,8 @@ use std::fs;
 use std::io::{Cursor, Read};
 
 use ppt_rs::generator::{
-    PptxTemplate, PresentationSettings, PrintSettings, STANDARD_LAYOUT_COUNT, SlideContent,
-    SlideLayout, create_pptx, create_pptx_with_content, create_pptx_with_settings,
+    PptxTemplate, PresentationSettings, PresentationTheme, PrintSettings, STANDARD_LAYOUT_COUNT,
+    SlideContent, SlideLayout, create_pptx, create_pptx_with_content, create_pptx_with_settings,
     create_pptx_with_template,
 };
 use ppt_rs::opc::Package;
@@ -174,6 +174,36 @@ fn template_generation_clones_master_and_layouts() {
     assert!(part_exists(&bytes, "ppt/slideMasters/slideMaster1.xml"));
     assert!(part_exists(&bytes, "ppt/slideLayouts/slideLayout2.xml"));
     assert!(part_exists(&bytes, "ppt/slides/slide1.xml"));
+
+    fs::remove_file(base_path).ok();
+}
+
+#[test]
+fn template_theme_override_replaces_template_theme_once() {
+    let base = create_pptx("Theme Template", 1).unwrap();
+    let mut package = Package::open_reader(Cursor::new(base)).unwrap();
+    package.add_part(
+        "ppt/theme/theme1.xml".to_string(),
+        b"<template-theme-sentinel/>".to_vec(),
+    );
+    let mut cursor = Cursor::new(Vec::new());
+    package.save_writer(&mut cursor).unwrap();
+
+    let base_path = std::env::temp_dir().join("ppt_rs_template_theme_override.pptx");
+    fs::write(&base_path, cursor.into_inner()).unwrap();
+    let settings = PresentationSettings::new().theme(PresentationTheme::corporate());
+    let bytes = create_pptx_with_template(
+        "Configured Theme",
+        &[SlideContent::new("New")],
+        base_path.to_str().unwrap(),
+        Some(settings),
+    )
+    .unwrap();
+
+    assert_unique_part_names(&bytes);
+    let theme = read_part(&bytes, "ppt/theme/theme1.xml");
+    assert!(theme.contains(r#"name="Corporate""#));
+    assert!(!theme.contains("template-theme-sentinel"));
 
     fs::remove_file(base_path).ok();
 }
