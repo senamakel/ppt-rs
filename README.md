@@ -12,6 +12,8 @@
 
 **The Rust library for generating PowerPoint presentations that actually works.**
 
+Requires Rust 1.88 or newer.
+
 While other Rust crates for PPTX generation are incomplete, broken, or abandoned, `ppt-rs` generates **valid, production-ready PowerPoint files** that open correctly in PowerPoint, LibreOffice, Google Slides, and other Office applications.
 
 **Related:** For Excel, see [`xls-rs`](https://crates.io/crates/xls-rs).

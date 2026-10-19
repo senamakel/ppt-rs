@@ -10,6 +10,7 @@ use ppt_rs::generator::{
     SlideLayout, create_pptx, create_pptx_with_content, create_pptx_with_settings,
     create_pptx_with_template,
 };
+use ppt_rs::opc::Package;
 use zip::ZipArchive;
 
 const ALL_LAYOUTS: [(SlideLayout, &str); 7] = [
@@ -38,6 +39,15 @@ fn part_exists(bytes: &[u8], path: &str) -> bool {
     let cursor = Cursor::new(bytes);
     let mut archive = ZipArchive::new(cursor).unwrap();
     archive.by_name(path).is_ok()
+}
+
+fn assert_unique_part_names(bytes: &[u8]) {
+    let archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
+    let mut names = std::collections::HashSet::new();
+    for name in archive.file_names() {
+        let name = name.unwrap();
+        assert!(names.insert(name.to_string()), "duplicate ZIP part: {name}");
+    }
 }
 
 #[test]
@@ -136,6 +146,14 @@ fn slide_master_footer_placeholders_when_configured() {
 #[test]
 fn template_generation_clones_master_and_layouts() {
     let base = create_pptx("Base", 1).unwrap();
+    let mut package = Package::open_reader(Cursor::new(base)).unwrap();
+    package.add_part(
+        "ppt/tableStyles.xml".to_string(),
+        b"<template-table-styles/>".to_vec(),
+    );
+    let mut cursor = Cursor::new(Vec::new());
+    package.save_writer(&mut cursor).unwrap();
+    let base = cursor.into_inner();
     let base_path = std::env::temp_dir().join("ppt_rs_layout_template_base.pptx");
     fs::write(&base_path, &base).unwrap();
 
@@ -150,6 +168,9 @@ fn template_generation_clones_master_and_layouts() {
     )
     .unwrap();
 
+    assert_unique_part_names(&bytes);
+    let table_styles = read_part(&bytes, "ppt/tableStyles.xml");
+    assert!(!table_styles.contains("template-table-styles"));
     assert!(part_exists(&bytes, "ppt/slideMasters/slideMaster1.xml"));
     assert!(part_exists(&bytes, "ppt/slideLayouts/slideLayout2.xml"));
     assert!(part_exists(&bytes, "ppt/slides/slide1.xml"));
@@ -298,6 +319,7 @@ fn template_with_footers_and_mixed_layouts() {
     )
     .unwrap();
 
+    assert_unique_part_names(&bytes);
     assert!(part_exists(&bytes, "ppt/slides/slide1.xml"));
     assert!(part_exists(&bytes, "ppt/slides/slide2.xml"));
 
