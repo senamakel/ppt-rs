@@ -172,15 +172,6 @@ pub(crate) struct InlineStyle {
     pub(crate) font_style: Option<String>,
     pub(crate) text_decoration: Option<String>,
     pub(crate) font_family: Option<String>,
-    pub(crate) text_align: Option<String>,
-    pub(crate) margin_top: Option<String>,
-    pub(crate) margin_bottom: Option<String>,
-    pub(crate) margin_left: Option<String>,
-    pub(crate) margin_right: Option<String>,
-    pub(crate) padding: Option<String>,
-    pub(crate) border: Option<String>,
-    pub(crate) line_height: Option<String>,
-    pub(crate) letter_spacing: Option<String>,
 }
 
 impl InlineStyle {
@@ -205,15 +196,6 @@ impl InlineStyle {
                         style.font_family =
                             Some(value.trim_matches('"').trim_matches('\'').to_string());
                     }
-                    "text-align" => style.text_align = Some(value.to_string()),
-                    "margin-top" => style.margin_top = Some(value.to_string()),
-                    "margin-bottom" => style.margin_bottom = Some(value.to_string()),
-                    "margin-left" => style.margin_left = Some(value.to_string()),
-                    "margin-right" => style.margin_right = Some(value.to_string()),
-                    "padding" => style.padding = Some(value.to_string()),
-                    "border" => style.border = Some(value.to_string()),
-                    "line-height" => style.line_height = Some(value.to_string()),
-                    "letter-spacing" => style.letter_spacing = Some(value.to_string()),
                     _ => {}
                 }
             }
@@ -243,30 +225,6 @@ impl InlineStyle {
                 .font_family
                 .clone()
                 .or_else(|| self.font_family.clone()),
-            text_align: other.text_align.clone().or_else(|| self.text_align.clone()),
-            margin_top: other.margin_top.clone().or_else(|| self.margin_top.clone()),
-            margin_bottom: other
-                .margin_bottom
-                .clone()
-                .or_else(|| self.margin_bottom.clone()),
-            margin_left: other
-                .margin_left
-                .clone()
-                .or_else(|| self.margin_left.clone()),
-            margin_right: other
-                .margin_right
-                .clone()
-                .or_else(|| self.margin_right.clone()),
-            padding: other.padding.clone().or_else(|| self.padding.clone()),
-            border: other.border.clone().or_else(|| self.border.clone()),
-            line_height: other
-                .line_height
-                .clone()
-                .or_else(|| self.line_height.clone()),
-            letter_spacing: other
-                .letter_spacing
-                .clone()
-                .or_else(|| self.letter_spacing.clone()),
         }
     }
 
@@ -279,15 +237,6 @@ impl InlineStyle {
             && self.font_style.is_none()
             && self.text_decoration.is_none()
             && self.font_family.is_none()
-            && self.text_align.is_none()
-            && self.margin_top.is_none()
-            && self.margin_bottom.is_none()
-            && self.margin_left.is_none()
-            && self.margin_right.is_none()
-            && self.padding.is_none()
-            && self.border.is_none()
-            && self.line_height.is_none()
-            && self.letter_spacing.is_none()
     }
 
     /// Convert to a BulletTextFormat for PPTX output. Returns None if no relevant properties set.
@@ -327,5 +276,140 @@ impl InlineStyle {
             fmt = fmt.font_family(ff);
         }
         Some(fmt)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_css_color_hex() {
+        assert_eq!(parse_css_color("#ff0000"), Some("FF0000".to_string()));
+        assert_eq!(parse_css_color("#FF0000"), Some("FF0000".to_string()));
+        assert_eq!(parse_css_color("#f00"), Some("FF0000".to_string()));
+        assert_eq!(parse_css_color("#abc"), Some("AABBCC".to_string()));
+    }
+
+    #[test]
+    fn test_parse_css_color_named() {
+        assert_eq!(parse_css_color("red"), Some("FF0000".to_string()));
+        assert_eq!(parse_css_color("blue"), Some("0000FF".to_string()));
+        assert_eq!(parse_css_color("green"), Some("008000".to_string()));
+        assert_eq!(parse_css_color("white"), Some("FFFFFF".to_string()));
+        assert_eq!(parse_css_color("black"), Some("000000".to_string()));
+    }
+
+    #[test]
+    fn test_parse_css_color_rgb() {
+        assert_eq!(parse_css_color("rgb(255,0,0)"), Some("FF0000".to_string()));
+        assert_eq!(
+            parse_css_color("rgb(0, 128, 0)"),
+            Some("008000".to_string())
+        );
+        assert_eq!(
+            parse_css_color("rgba(0, 0, 255, 0.5)"),
+            Some("0000FF".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_css_color_invalid() {
+        assert_eq!(parse_css_color("notacolor"), None);
+        assert_eq!(parse_css_color("transparent"), None);
+        assert_eq!(parse_css_color("#ggggg"), None);
+    }
+
+    #[test]
+    fn test_parse_font_size() {
+        assert_eq!(parse_font_size("20px"), Some(15));
+        assert_eq!(parse_font_size("16px"), Some(12));
+        assert_eq!(parse_font_size("18pt"), Some(18));
+        assert_eq!(parse_font_size("12pt"), Some(12));
+        assert_eq!(parse_font_size("44"), Some(44));
+    }
+
+    #[test]
+    fn test_is_font_weight_bold() {
+        assert!(is_font_weight_bold("bold"));
+        assert!(is_font_weight_bold("700"));
+        assert!(!is_font_weight_bold("normal"));
+    }
+
+    #[test]
+    fn test_is_font_style_italic() {
+        assert!(is_font_style_italic("italic"));
+        assert!(!is_font_style_italic("normal"));
+    }
+
+    #[test]
+    fn test_inline_style_parse_single() {
+        let fmt = InlineStyle::parse("color: red")
+            .to_bullet_format()
+            .expect("color should produce format");
+        assert_eq!(fmt.color, Some("FF0000".to_string()));
+    }
+
+    #[test]
+    fn test_inline_style_parse_multiple() {
+        let fmt = InlineStyle::parse("color: #0000FF; font-size: 20px; font-weight: bold")
+            .to_bullet_format()
+            .expect("format");
+        assert_eq!(fmt.color, Some("0000FF".to_string()));
+        assert_eq!(fmt.font_size, Some(15));
+        assert!(fmt.bold);
+    }
+
+    #[test]
+    fn test_inline_style_parse_background() {
+        let fmt = InlineStyle::parse("background-color: yellow")
+            .to_bullet_format()
+            .expect("format");
+        assert_eq!(fmt.highlight, Some("FFFF00".to_string()));
+    }
+
+    #[test]
+    fn test_inline_style_parse_text_decoration() {
+        let underline = InlineStyle::parse("text-decoration: underline")
+            .to_bullet_format()
+            .expect("format");
+        assert!(underline.underline);
+        let strike = InlineStyle::parse("text-decoration: line-through")
+            .to_bullet_format()
+            .expect("format");
+        assert!(strike.strikethrough);
+    }
+
+    #[test]
+    fn test_inline_style_parse_font_family() {
+        let fmt = InlineStyle::parse("font-family: Arial")
+            .to_bullet_format()
+            .expect("format");
+        assert_eq!(fmt.font_family.as_deref(), Some("Arial"));
+    }
+
+    #[test]
+    fn test_inline_style_merge_child_overrides() {
+        let parent = InlineStyle::parse("color: #FF0000; font-size: 20px");
+        let child = InlineStyle::parse("color: #0000FF");
+        let fmt = parent.merge(&child).to_bullet_format().expect("format");
+        assert_eq!(fmt.color, Some("0000FF".to_string()));
+        assert_eq!(fmt.font_size, Some(15));
+    }
+
+    #[test]
+    fn test_inline_style_merge_empty_child() {
+        let parent = InlineStyle::parse("color: red");
+        let merged = parent.merge(&InlineStyle::default());
+        let fmt = merged.to_bullet_format().expect("format");
+        assert_eq!(fmt.color, Some("FF0000".to_string()));
+    }
+
+    #[test]
+    fn test_inline_style_merge_no_parent() {
+        let merged = InlineStyle::default().merge(&InlineStyle::parse("color: red; font-size: 18pt"));
+        let fmt = merged.to_bullet_format().expect("format");
+        assert_eq!(fmt.color, Some("FF0000".to_string()));
+        assert_eq!(fmt.font_size, Some(18));
     }
 }

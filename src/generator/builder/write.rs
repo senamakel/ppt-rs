@@ -15,7 +15,7 @@ use super::super::notes_xml::*;
 use super::super::package_cache::{self, print_affects_theme_parts};
 use super::super::package_xml::{
     append_digital_signature_content_type, append_embedded_font_content_type,
-    content_types_opening, create_content_types_xml_with_notes_and_charts,
+    create_content_types_xml_with_notes_and_charts,
     create_handout_master_rels_xml, create_pres_props_xml, create_presentation_rels_xml_full,
     create_presentation_rels_xml_full_with_fonts, create_presentation_xml,
     create_presentation_xml_with_fonts, create_rels_xml_with_signature, create_table_styles_xml,
@@ -40,27 +40,28 @@ use std::io::{Seek, Write};
 use zip::write::FileOptions;
 use zip::ZipWriter;
 
-/// Write content types XML
+/// Write `[Content_Types].xml` (eager slice or lazy counts + shared registry).
+#[allow(clippy::too_many_arguments)] // ponytail: one writer beats two copy-paste paths
 fn write_content_types<W: Write + Seek>(
     zip: &mut ZipWriter<W>,
     options: &FileOptions,
     slide_count: usize,
     custom_slides: Option<&[SlideContent]>,
+    notes_count: usize,
+    ink_count: usize,
+    comment_count: usize,
     chart_info: &ChartInfo,
     has_handout: bool,
     settings: Option<&PresentationSettings>,
+    media_registry: &MediaRegistry,
 ) -> Result<()> {
-    let media_registry = custom_slides.map(build_media_registry);
-    let image_exts = media_registry
-        .as_ref()
-        .map(|registry| registry.extensions())
-        .unwrap_or_default();
     let mut content_types = create_content_types_xml_with_notes_and_charts(
         slide_count,
         custom_slides,
+        notes_count,
         chart_info.total_charts,
         has_handout,
-        &image_exts,
+        &media_registry.extensions(),
     );
 
     if has_digital_signature(settings) {
@@ -70,31 +71,16 @@ fn write_content_types<W: Write + Seek>(
         append_embedded_font_content_type(&mut content_types);
     }
 
-    let ink_count = custom_slides
-        .map(|slides| {
-            slides
-                .iter()
-                .filter(|s| s.ink_annotations.is_some())
-                .count()
-        })
-        .unwrap_or(0);
     super::super::package_xml::append_ink_content_types(&mut content_types, ink_count);
-
-    let comment_count = custom_slides
-        .map(|slides| slides.iter().filter(|s| !s.comments.is_empty()).count())
-        .unwrap_or(0);
-    let authors_present = has_comment_authors(settings);
     super::super::package_xml::append_comment_content_types(
         &mut content_types,
         comment_count,
-        authors_present,
+        has_comment_authors(settings),
     );
-
-    let media_exts = media_registry
-        .as_ref()
-        .map(|registry| registry.media_extensions())
-        .unwrap_or_default();
-    super::super::package_xml::append_media_content_type_defaults(&mut content_types, &media_exts);
+    super::super::package_xml::append_media_content_type_defaults(
+        &mut content_types,
+        &media_registry.media_extensions(),
+    );
 
     zip.start_file("[Content_Types].xml", *options)?;
     zip.write_all(content_types.as_bytes())?;
@@ -281,6 +267,96 @@ fn write_document_properties<W: Write + Seek>(
     Ok(())
 }
 
+struct PackageCoreParams<'a> {
+    title: &'a str,
+    slide_count: usize,
+    has_notes: bool,
+    has_handout: bool,
+    has_signature: bool,
+    settings: Option<&'a PresentationSettings>,
+}
+
+/// Steps 2–4: `_rels/.rels`, presentation relationships, and `presentation.xml`.
+fn write_package_core<W: Write + Seek>(
+    zip: &mut ZipWriter<W>,
+    options: &FileOptions,
+    params: PackageCoreParams<'_>,
+) -> Result<()> {
+    let rels = create_rels_xml_with_signature(params.has_signature);
+    zip.start_file("_rels/.rels", *options)?;
+    zip.write_all(rels.as_bytes())?;
+
+    write_presentation_relationships(
+        zip,
+        options,
+        params.slide_count,
+        params.has_notes,
+        params.has_handout,
+        params.settings,
+    )?;
+
+    let mut presentation = if let Some(fonts) = embedded_fonts(params.settings) {
+        create_presentation_xml_with_fonts(
+            params.title,
+            params.slide_count,
+            params.has_notes,
+            params.has_handout,
+            fonts,
+        )
+    } else {
+        create_presentation_xml(
+            params.title,
+            params.slide_count,
+            params.has_notes,
+            params.has_handout,
+        )
+    };
+    if let Some(s) = params.settings {
+        super::super::package_xml::append_section_lst_ext(
+            &mut presentation,
+            &s.sections,
+            params.slide_count,
+        );
+    }
+    zip.start_file("ppt/presentation.xml", *options)?;
+    zip.write_all(presentation.as_bytes())?;
+    Ok(())
+}
+
+/// Steps 5–6: presProps/viewProps/tableStyles and optional handout master.
+fn write_package_masters<W: Write + Seek>(
+    zip: &mut ZipWriter<W>,
+    options: &FileOptions,
+    has_handout: bool,
+    settings: Option<&PresentationSettings>,
+) -> Result<()> {
+    write_standard_package_parts(zip, options, settings)?;
+    if has_handout {
+        write_handout_master(zip, options, settings)?;
+    }
+    Ok(())
+}
+
+/// Steps 14–16: embedded fonts, digital signature, comment authors.
+fn write_package_optional_parts<W: Write + Seek>(
+    zip: &mut ZipWriter<W>,
+    options: &FileOptions,
+    has_signature: bool,
+    settings: Option<&PresentationSettings>,
+) -> Result<()> {
+    if let Some(fonts) = embedded_fonts(settings) {
+        write_embedded_font_parts(zip, options, fonts)?;
+    }
+    if has_signature {
+        write_digital_signature_parts(zip, options, settings)?;
+    }
+    if let Some(s) = settings.filter(|s| !s.comment_authors.is_empty()) {
+        zip.start_file("ppt/commentAuthors.xml", *options)?;
+        zip.write_all(s.comment_authors.to_xml().as_bytes())?;
+    }
+    Ok(())
+}
+
 /// Write all package files to the ZIP archive (eager version with Vec<SlideContent>)
 pub(crate) fn write_package_files<W: Write + Seek>(
     zip: &mut ZipWriter<W>,
@@ -299,52 +375,43 @@ pub(crate) fn write_package_files<W: Write + Seek>(
     let template = load_template(settings.as_ref())?;
 
     let chart_info = collect_chart_info(custom_slides);
+    let media_registry = custom_slides
+        .map(build_media_registry)
+        .unwrap_or_default();
+    let ink_count = custom_slides
+        .map(|slides| slides.iter().filter(|s| s.ink_annotations.is_some()).count())
+        .unwrap_or(0);
+    let comment_count = custom_slides
+        .map(|slides| slides.iter().filter(|s| !s.comments.is_empty()).count())
+        .unwrap_or(0);
 
-    // 1. Content types
     write_content_types(
         zip,
         options,
         slide_count,
         custom_slides,
+        0,
+        ink_count,
+        comment_count,
         &chart_info,
         has_handout,
         settings.as_ref(),
+        &media_registry,
     )?;
 
-    // 2. Package relationships
-    let rels = create_rels_xml_with_signature(has_signature);
-    zip.start_file("_rels/.rels", *options)?;
-    zip.write_all(rels.as_bytes())?;
-
-    // 3. Presentation relationships
-    write_presentation_relationships(
+    write_package_core(
         zip,
         options,
-        slide_count,
-        has_notes,
-        has_handout,
-        settings.as_ref(),
+        PackageCoreParams {
+            title,
+            slide_count,
+            has_notes,
+            has_handout,
+            has_signature,
+            settings: settings.as_ref(),
+        },
     )?;
-
-    // 4. Presentation document
-    let mut presentation = if let Some(fonts) = embedded_fonts(settings.as_ref()) {
-        create_presentation_xml_with_fonts(title, slide_count, has_notes, has_handout, fonts)
-    } else {
-        create_presentation_xml(title, slide_count, has_notes, has_handout)
-    };
-    if let Some(s) = settings.as_ref() {
-        super::super::package_xml::append_section_lst_ext(&mut presentation, &s.sections, slide_count);
-    }
-    zip.start_file("ppt/presentation.xml", *options)?;
-    zip.write_all(presentation.as_bytes())?;
-
-    // 5. Standard package parts (presProps, viewProps, tableStyles)
-    write_standard_package_parts(zip, options, settings.as_ref())?;
-
-    // 6. Handout master (when printing handouts)
-    if has_handout {
-        write_handout_master(zip, options, settings.as_ref())?;
-    }
+    write_package_masters(zip, options, has_handout, settings.as_ref())?;
 
     // 7. Slides
     write_slides(zip, options, slide_count, custom_slides)?;
@@ -383,21 +450,7 @@ pub(crate) fn write_package_files<W: Write + Seek>(
     // 13. Images
     write_images(zip, options, custom_slides)?;
 
-    // 14. Embedded font data parts
-    if let Some(fonts) = embedded_fonts(settings.as_ref()) {
-        write_embedded_font_parts(zip, options, fonts)?;
-    }
-
-    // 15. Digital signature package parts
-    if has_signature {
-        write_digital_signature_parts(zip, options, settings.as_ref())?;
-    }
-
-    // 16. Comment authors part
-    if let Some(s) = settings.as_ref().filter(|s| !s.comment_authors.is_empty()) {
-        zip.start_file("ppt/commentAuthors.xml", *options)?;
-        zip.write_all(s.comment_authors.to_xml().as_bytes())?;
-    }
+    write_package_optional_parts(zip, options, has_signature, settings.as_ref())?;
 
     Ok(())
 }
@@ -423,52 +476,59 @@ pub(crate) fn write_package_files_lazy<W: Write + Seek>(
     let template = load_template(settings.as_ref())?;
 
     let chart_info = collect_chart_info_lazy(slides);
+    let media_registry = build_media_registry_lazy(slides);
+    let notes_count = (0..slide_count)
+        .filter(|i| {
+            slides
+                .slide_features(*i)
+                .map(|(notes, _)| notes)
+                .unwrap_or(false)
+        })
+        .count();
+    let ink_count = (0..slide_count)
+        .filter(|i| {
+            slides
+                .generate_slide(*i)
+                .map(|s| s.ink_annotations.is_some())
+                .unwrap_or(false)
+        })
+        .count();
+    let comment_count = (0..slide_count)
+        .filter(|i| {
+            slides
+                .generate_slide(*i)
+                .map(|s| !s.comments.is_empty())
+                .unwrap_or(false)
+        })
+        .count();
 
-    // 1. Content types (lazy version)
-    write_content_types_lazy(
+    write_content_types(
         zip,
         options,
         slide_count,
-        slides,
+        None,
+        notes_count,
+        ink_count,
+        comment_count,
         &chart_info,
         has_handout,
         settings.as_ref(),
+        &media_registry,
     )?;
 
-    // 2. Package relationships
-    let rels = create_rels_xml_with_signature(has_signature);
-    zip.start_file("_rels/.rels", *options)?;
-    zip.write_all(rels.as_bytes())?;
-
-    // 3. Presentation relationships
-    write_presentation_relationships(
+    write_package_core(
         zip,
         options,
-        slide_count,
-        has_notes,
-        has_handout,
-        settings.as_ref(),
+        PackageCoreParams {
+            title,
+            slide_count,
+            has_notes,
+            has_handout,
+            has_signature,
+            settings: settings.as_ref(),
+        },
     )?;
-
-    // 4. Presentation document
-    let mut presentation = if let Some(fonts) = embedded_fonts(settings.as_ref()) {
-        create_presentation_xml_with_fonts(title, slide_count, has_notes, has_handout, fonts)
-    } else {
-        create_presentation_xml(title, slide_count, has_notes, has_handout)
-    };
-    if let Some(s) = settings.as_ref() {
-        super::super::package_xml::append_section_lst_ext(&mut presentation, &s.sections, slide_count);
-    }
-    zip.start_file("ppt/presentation.xml", *options)?;
-    zip.write_all(presentation.as_bytes())?;
-
-    // 5. Standard package parts
-    write_standard_package_parts(zip, options, settings.as_ref())?;
-
-    // 6. Handout master
-    if has_handout {
-        write_handout_master(zip, options, settings.as_ref())?;
-    }
+    write_package_masters(zip, options, has_handout, settings.as_ref())?;
 
     // 7–8–12. Slides, relationships, and charts (single pass per slide)
     write_slide_packages_lazy(
@@ -503,148 +563,8 @@ pub(crate) fn write_package_files_lazy<W: Write + Seek>(
     // 12. Images
     write_images_lazy(zip, options, slides)?;
 
-    // 13. Embedded font data parts
-    if let Some(fonts) = embedded_fonts(settings.as_ref()) {
-        write_embedded_font_parts(zip, options, fonts)?;
-    }
+    write_package_optional_parts(zip, options, has_signature, settings.as_ref())?;
 
-    // 14. Digital signature package parts
-    if has_signature {
-        write_digital_signature_parts(zip, options, settings.as_ref())?;
-    }
-
-    // 15. Comment authors part
-    if let Some(s) = settings.as_ref().filter(|s| !s.comment_authors.is_empty()) {
-        zip.start_file("ppt/commentAuthors.xml", *options)?;
-        zip.write_all(s.comment_authors.to_xml().as_bytes())?;
-    }
-
-    Ok(())
-}
-
-/// Write content types for lazy slides
-fn write_content_types_lazy<W: Write + Seek>(
-    zip: &mut ZipWriter<W>,
-    options: &FileOptions,
-    slide_count: usize,
-    slides: &dyn LazySlideSource,
-    chart_info: &ChartInfo,
-    has_handout: bool,
-    settings: Option<&PresentationSettings>,
-) -> Result<()> {
-    let notes_count = (0..slide_count)
-        .filter(|i| {
-            slides
-                .slide_features(*i)
-                .map(|(notes, _)| notes)
-                .unwrap_or(false)
-        })
-        .count();
-
-    let ink_count = (0..slide_count)
-        .filter(|i| {
-            slides
-                .generate_slide(*i)
-                .map(|s| s.ink_annotations.is_some())
-                .unwrap_or(false)
-        })
-        .count();
-
-    let media_registry = build_media_registry_lazy(slides);
-    let media_exts = media_registry.extensions();
-
-    let mut content_types = content_types_opening(&media_exts, chart_info.total_charts);
-
-    for i in 1..=slide_count {
-        content_types.push_str(&format!(
-            "\n<Override PartName=\"/ppt/slides/slide{i}.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.slide+xml\"/>"
-        ));
-    }
-
-    if notes_count > 0 {
-        let mut notes_index = 0usize;
-        for i in 0..slide_count {
-            if slides
-                .slide_features(i)
-                .map(|(notes, _)| notes)
-                .unwrap_or(false)
-            {
-                notes_index += 1;
-                content_types.push_str(&format!(
-                    "\n<Override PartName=\"/ppt/notesSlides/notesSlide{notes_index}.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.notesSlide+xml\"/>"
-                ));
-            }
-        }
-        content_types.push_str("\n<Override PartName=\"/ppt/notesMasters/notesMaster1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.notesMaster+xml\"/>");
-        content_types.push_str("\n<Override PartName=\"/ppt/theme/theme2.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.theme+xml\"/>");
-    }
-
-    if has_handout {
-        content_types.push_str("\n<Override PartName=\"/ppt/handoutMasters/handoutMaster1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.handoutMaster+xml\"/>");
-        content_types.push_str("\n<Override PartName=\"/ppt/theme/theme3.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.theme+xml\"/>");
-    }
-
-    for i in 1..=chart_info.total_charts {
-        content_types.push_str(&format!(
-            "\n<Override PartName=\"/ppt/charts/chart{i}.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.drawingml.chart+xml\"/>"
-        ));
-        content_types.push_str(&format!(
-            "\n<Override PartName=\"/ppt/embeddings/{}\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\"/>",
-            chart_embedding_filename(i)
-        ));
-    }
-
-    content_types.push_str(
-        r#"
-<Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>
-<Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>
-<Override PartName="/ppt/tableStyles.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.tableStyles+xml"/>
-<Override PartName="/ppt/viewProps.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.viewProps+xml"/>
-<Override PartName="/ppt/presProps.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presProps+xml"/>
-<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
-<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>"#,
-    );
-    super::super::layout_parts::append_layout_content_type_overrides(
-        &mut content_types,
-        STANDARD_LAYOUT_COUNT,
-    );
-
-    // Close the Types element BEFORE the append_* helpers run — they insert
-    // their entries at rfind("</Types>"). Pushing the close tag after them
-    // (the old order) made every append a silent no-op in the lazy path.
-    content_types.push_str("\n</Types>");
-
-    if has_digital_signature(settings) {
-        append_digital_signature_content_type(&mut content_types);
-    }
-    if has_embedded_fonts(settings) {
-        append_embedded_font_content_type(&mut content_types);
-    }
-
-    super::super::package_xml::append_ink_content_types(&mut content_types, ink_count);
-
-    let comment_count = (0..slide_count)
-        .filter(|i| {
-            slides
-                .generate_slide(*i)
-                .map(|s| !s.comments.is_empty())
-                .unwrap_or(false)
-        })
-        .count();
-    let has_authors = has_comment_authors(settings);
-    super::super::package_xml::append_comment_content_types(
-        &mut content_types,
-        comment_count,
-        has_authors,
-    );
-
-    super::super::package_xml::append_media_content_type_defaults(
-        &mut content_types,
-        &media_registry.media_extensions(),
-    );
-
-    zip.start_file("[Content_Types].xml", *options)?;
-    zip.write_all(content_types.as_bytes())?;
     Ok(())
 }
 

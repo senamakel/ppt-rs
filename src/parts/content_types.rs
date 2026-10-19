@@ -4,6 +4,7 @@
 
 use super::base::{ContentType, Part, PartType};
 use crate::exc::PptxError;
+use crate::oxml::XmlParser;
 
 /// Default content type mapping (by extension)
 #[derive(Debug, Clone)]
@@ -212,9 +213,30 @@ impl Part for ContentTypesPart {
         Ok(self.generate_xml())
     }
 
-    fn from_xml(_xml: &str) -> Result<Self, PptxError> {
-        // TODO: Parse XML
-        Ok(ContentTypesPart::new())
+    fn from_xml(xml: &str) -> Result<Self, PptxError> {
+        let root = XmlParser::parse_str(xml)?;
+        let mut part = ContentTypesPart {
+            defaults: Vec::new(),
+            overrides: Vec::new(),
+        };
+
+        for elem in root.find_all_descendants("Default") {
+            if let (Some(extension), Some(content_type)) =
+                (elem.attr("Extension"), elem.attr("ContentType"))
+            {
+                part.add_default(extension, content_type);
+            }
+        }
+
+        for elem in root.find_all_descendants("Override") {
+            if let (Some(part_name), Some(content_type)) =
+                (elem.attr("PartName"), elem.attr("ContentType"))
+            {
+                part.add_override(part_name, content_type);
+            }
+        }
+
+        Ok(part)
     }
 }
 
@@ -251,6 +273,24 @@ mod tests {
     fn test_content_types_path() {
         let ct = ContentTypesPart::new();
         assert_eq!(ct.path(), "[Content_Types].xml");
+    }
+
+    #[test]
+    fn test_content_types_from_xml() {
+        let xml = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>
+  <Override PartName="/ppt/slides/slide1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>
+</Types>"#;
+        let part = ContentTypesPart::from_xml(xml).unwrap();
+        assert_eq!(part.defaults.len(), 1);
+        assert_eq!(part.defaults[0].extension, "rels");
+        assert_eq!(part.overrides.len(), 2);
+        assert!(part
+            .overrides
+            .iter()
+            .any(|o| o.part_name == "/ppt/slides/slide1.xml"));
     }
 
     #[test]

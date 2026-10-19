@@ -397,6 +397,7 @@ pub fn create_presentation_xml_with_fonts(
 pub fn create_content_types_xml_with_notes_and_charts(
     slides: usize,
     custom_slides: Option<&[super::slide_content::SlideContent]>,
+    notes_count_without_slides: usize,
     chart_count: usize,
     has_handout: bool,
     media_exts: &[String],
@@ -408,7 +409,7 @@ pub fn create_content_types_xml_with_notes_and_charts(
                 .filter(|slide| slide.notes.is_some())
                 .count()
         })
-        .unwrap_or(0);
+        .unwrap_or(notes_count_without_slides);
     let mut xml =
         String::with_capacity(2048 + slides * 140 + notes_count * 140 + chart_count * 120);
     xml.push_str(&content_types_opening(media_exts, chart_count));
@@ -424,10 +425,16 @@ pub fn create_content_types_xml_with_notes_and_charts(
                 xml.push_str(".xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.notesSlide+xml\"/>");
             }
         }
-        if notes_count > 0 {
-            xml.push_str("\n<Override PartName=\"/ppt/notesMasters/notesMaster1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.notesMaster+xml\"/>");
-            xml.push_str("\n<Override PartName=\"/ppt/theme/theme2.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.theme+xml\"/>");
+    } else {
+        for notes_index in 1..=notes_count {
+            xml.push_str("\n<Override PartName=\"/ppt/notesSlides/notesSlide");
+            append_usize(&mut xml, notes_index);
+            xml.push_str(".xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.notesSlide+xml\"/>");
         }
+    }
+    if notes_count > 0 {
+        xml.push_str("\n<Override PartName=\"/ppt/notesMasters/notesMaster1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.notesMaster+xml\"/>");
+        xml.push_str("\n<Override PartName=\"/ppt/theme/theme2.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.theme+xml\"/>");
     }
 
     if has_handout {

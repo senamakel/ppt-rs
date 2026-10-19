@@ -304,7 +304,7 @@ fn test_content_types_with_notes_and_charts() {
     slide_with_notes.notes = Some("Speaker note".into());
 
     let slides = vec![SlideContent::new("Plain"), slide_with_notes];
-    let xml = create_content_types_xml_with_notes_and_charts(2, Some(&slides), 1, false, &[]);
+    let xml = create_content_types_xml_with_notes_and_charts(2, Some(&slides), 0, 1, false, &[]);
 
     assert!(xml.contains("/ppt/notesSlides/notesSlide1.xml"));
     assert!(!xml.contains("/ppt/notesSlides/notesSlide2.xml"));

@@ -212,3 +212,114 @@ pub(crate) fn tokenize_html(html: &str) -> Vec<HtmlEvent> {
 
     events
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_tokenize_basic() {
+        let events = tokenize_html("<h1>Hello</h1>");
+        assert_eq!(events.len(), 3);
+        match &events[0] {
+            HtmlEvent::OpenTag { name, .. } => assert_eq!(name, "h1"),
+            _ => panic!("expected OpenTag"),
+        }
+        match &events[1] {
+            HtmlEvent::Text(t) => assert_eq!(t.trim(), "Hello"),
+            _ => panic!("expected Text"),
+        }
+        match &events[2] {
+            HtmlEvent::CloseTag(n) => assert_eq!(n, "h1"),
+            _ => panic!("expected CloseTag"),
+        }
+    }
+
+    #[test]
+    fn test_attrs_with_single_quotes() {
+        let events = tokenize_html(r#"<img src='pic.jpg' alt='hello'>"#);
+        assert_eq!(events.len(), 1);
+        match &events[0] {
+            HtmlEvent::OpenTag { name, attrs } => {
+                assert_eq!(name, "img");
+                assert_eq!(
+                    attrs
+                        .iter()
+                        .find(|(k, _)| k == "src")
+                        .map(|(_, v)| v.as_str()),
+                    Some("pic.jpg")
+                );
+                assert_eq!(
+                    attrs
+                        .iter()
+                        .find(|(k, _)| k == "alt")
+                        .map(|(_, v)| v.as_str()),
+                    Some("hello")
+                );
+            }
+            _ => panic!("expected OpenTag"),
+        }
+    }
+
+    #[test]
+    fn test_tokenizer_complex() {
+        let events = tokenize_html(r#"<div class="main"><h1 id="title">Hello</h1></div>"#);
+        assert_eq!(events.len(), 5);
+        match &events[0] {
+            HtmlEvent::OpenTag { name, attrs } => {
+                assert_eq!(name, "div");
+                assert_eq!(attrs[0].0, "class");
+                assert_eq!(attrs[0].1, "main");
+            }
+            _ => panic!("expected OpenTag div"),
+        }
+    }
+
+    #[test]
+    fn test_self_closing_void_tags() {
+        let events = tokenize_html(r#"<br><hr><img src="x.jpg">"#);
+        assert_eq!(events.len(), 3);
+        for event in &events {
+            match event {
+                HtmlEvent::OpenTag { name, .. } => {
+                    assert!(["br", "hr", "img"].contains(&name.as_str()));
+                }
+                _ => panic!("expected OpenTag for void elements"),
+            }
+        }
+    }
+
+    #[test]
+    fn test_comments_skipped() {
+        let events = tokenize_html(r#"<h1>A</h1><!-- comment --><p>B</p>"#);
+        // Events: OpenTag(h1), Text(A), CloseTag(h1), OpenTag(p), Text(B), CloseTag(p)
+        assert_eq!(events.len(), 6);
+        match &events[3] {
+            HtmlEvent::OpenTag { name, .. } => assert_eq!(name, "p"),
+            _ => panic!("expected p"),
+        }
+    }
+
+    #[test]
+    fn test_doctype_skipped() {
+        let events = tokenize_html("<!DOCTYPE html><h1>Title</h1>");
+        assert_eq!(events.len(), 3);
+        match &events[0] {
+            HtmlEvent::OpenTag { name, .. } => assert_eq!(name, "h1"),
+            _ => panic!("expected h1"),
+        }
+    }
+
+    #[test]
+    fn test_multiple_attributes() {
+        let events = tokenize_html(r#"<a href="https://x.com" class="link" id="main">text</a>"#);
+        assert_eq!(events.len(), 3);
+        match &events[0] {
+            HtmlEvent::OpenTag { name, attrs } => {
+                assert_eq!(name, "a");
+                assert_eq!(attrs.len(), 3);
+            }
+            _ => panic!("expected OpenTag"),
+        }
+    }
+}

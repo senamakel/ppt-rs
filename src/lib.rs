@@ -132,4 +132,4 @@ pub use web2ppt::{
 #[cfg(feature = "web2md")]
 pub use web2ppt::{html_to_pptx_via_web2md, url_to_pptx_via_web2md};
 
-pub const VERSION: &str = "0.2.36";
+pub const VERSION: &str = "0.2.37";

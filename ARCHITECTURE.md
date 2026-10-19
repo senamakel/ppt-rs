@@ -67,6 +67,13 @@ Future work focuses on performance optimization and competitive intelligence see
 
 **Rule of thumb:** new generation features extend `slide_content` + `*_xml` emitters; do not grow `generator/builder/write.rs` — add planning helpers in `builder/plan.rs` instead.
 
+### `parts/` vs `generator/` (lean policy)
+
+- **Write path (production):** `generator/builder/` + `generator/*_xml.rs` emit ZIP parts as UTF-8 XML strings. This is what `create_pptx*` uses.
+- **`parts/` module:** Typed `Part` + `ToXml` / `from_xml` models for **validation, repair, tests, and future structured tooling** — not the primary deck generator pipeline.
+- **Do not** add a second parallel emitter in `parts/` without a migration plan and golden ZIP tests. Prefer extending the existing string emitters for new slide features.
+- **`ContentTypesPart::from_xml`** is implemented for round-trip/read tooling (parses `Default` / `Override` entries); generation still uses `generator/package_xml.rs`.
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Prelude (prelude.rs)                     │
