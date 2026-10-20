@@ -31,10 +31,10 @@ use crate::generator::slide_content::presentation_settings::PresentationSettings
 use crate::generator::slide_content::print_settings::PrintWhat;
 use std::io::{Cursor, Seek, Write};
 use zip::ZipWriter;
-use zip::write::FileOptions;
+use zip::write::SimpleFileOptions;
 
-fn zip_options() -> FileOptions {
-    FileOptions::default()
+fn zip_options() -> SimpleFileOptions {
+    SimpleFileOptions::default()
 }
 
 /// First relationship id after layout (rId1) and optional notes slide.
@@ -369,7 +369,7 @@ pub fn create_pptx_with_settings(
 /// ```
 pub fn create_pptx_to_writer<W: Write + Seek>(writer: W, title: &str, slides: usize) -> Result<W> {
     let mut zip = ZipWriter::new(writer);
-    let options = FileOptions::default();
+    let options = SimpleFileOptions::default();
 
     write_package_files(&mut zip, &options, title, slides, None, None)?;
 
@@ -399,7 +399,7 @@ pub fn create_pptx_with_content_to_writer<W: Write + Seek>(
     settings: Option<PresentationSettings>,
 ) -> Result<W> {
     let mut zip = ZipWriter::new(writer);
-    let options = FileOptions::default();
+    let options = SimpleFileOptions::default();
 
     write_package_files(
         &mut zip,
@@ -514,7 +514,7 @@ pub fn create_pptx_lazy_to_writer<W: Write + Seek>(
     settings: Option<PresentationSettings>,
 ) -> Result<W> {
     let mut zip = ZipWriter::new(writer);
-    let options = FileOptions::default();
+    let options = SimpleFileOptions::default();
 
     write_package_files_lazy(&mut zip, &options, title, slides.as_ref(), settings)?;
 
@@ -677,7 +677,7 @@ fn collect_slide_titles_lazy(slides: &dyn LazySlideSource, slide_count: usize) -
 /// Write content types XML
 fn write_content_types<W: Write + Seek>(
     zip: &mut ZipWriter<W>,
-    options: &FileOptions,
+    options: &SimpleFileOptions,
     slide_count: usize,
     custom_slides: Option<&[SlideContent]>,
     chart_info: &ChartInfo,
@@ -743,7 +743,7 @@ fn has_comment_authors(settings: Option<&PresentationSettings>) -> bool {
 /// Write presentation relationships in PowerPoint order.
 fn write_presentation_relationships<W: Write + Seek>(
     zip: &mut ZipWriter<W>,
-    options: &FileOptions,
+    options: &SimpleFileOptions,
     slide_count: usize,
     has_notes: bool,
     has_handout: bool,
@@ -770,7 +770,7 @@ fn write_presentation_relationships<W: Write + Seek>(
 /// Write presProps, viewProps, and tableStyles (always emitted).
 fn write_standard_package_parts<W: Write + Seek>(
     zip: &mut ZipWriter<W>,
-    options: &FileOptions,
+    options: &SimpleFileOptions,
     settings: Option<&PresentationSettings>,
 ) -> Result<()> {
     let pres_props = create_pres_props_xml(settings);
@@ -790,7 +790,7 @@ fn write_standard_package_parts<W: Write + Seek>(
 /// Write handout master when print settings use handouts.
 fn write_handout_master<W: Write + Seek>(
     zip: &mut ZipWriter<W>,
-    options: &FileOptions,
+    options: &SimpleFileOptions,
     settings: Option<&PresentationSettings>,
 ) -> Result<()> {
     use crate::generator::slide_content::print_settings::PrintSettings;
@@ -815,7 +815,7 @@ fn write_handout_master<W: Write + Seek>(
 /// Write notes master files if needed
 fn write_notes_master<W: Write + Seek>(
     zip: &mut ZipWriter<W>,
-    options: &FileOptions,
+    options: &SimpleFileOptions,
 ) -> Result<()> {
     let notes_master = create_notes_master_xml();
     zip.start_file("ppt/notesMasters/notesMaster1.xml", *options)?;
@@ -833,14 +833,24 @@ fn write_notes_master<W: Write + Seek>(
 /// Write theme and layout files
 fn write_theme_and_layouts<W: Write + Seek>(
     zip: &mut ZipWriter<W>,
-    options: &FileOptions,
+    options: &SimpleFileOptions,
     settings: Option<&PresentationSettings>,
     template: Option<&PptxTemplate>,
 ) -> Result<()> {
     let print = settings.and_then(|s| s.print.as_ref());
 
     if let Some(tmpl) = template {
+        let replace_template_theme = settings.and_then(|s| s.theme.as_ref()).is_some();
         for (path, data) in tmpl.parts() {
+            // The standard package writer already emitted tableStyles.xml. Preserve that
+            // generated part instead of adding a duplicate from the template.
+            if path == "ppt/tableStyles.xml" {
+                continue;
+            }
+            // A configured theme replaces the template's default theme part.
+            if replace_template_theme && path == "ppt/theme/theme1.xml" {
+                continue;
+            }
             zip.start_file(path, *options)?;
             zip.write_all(data)?;
         }
@@ -901,7 +911,7 @@ fn write_theme_and_layouts<W: Write + Seek>(
 /// Write document properties
 fn write_document_properties<W: Write + Seek>(
     zip: &mut ZipWriter<W>,
-    options: &FileOptions,
+    options: &SimpleFileOptions,
     title: &str,
     slide_count: usize,
     notes_count: usize,
@@ -923,7 +933,7 @@ fn write_document_properties<W: Write + Seek>(
 /// Write all package files to the ZIP archive (eager version with Vec<SlideContent>)
 fn write_package_files<W: Write + Seek>(
     zip: &mut ZipWriter<W>,
-    options: &FileOptions,
+    options: &SimpleFileOptions,
     title: &str,
     slide_count: usize,
     custom_slides: Option<&[SlideContent]>,
@@ -1044,7 +1054,7 @@ fn write_package_files<W: Write + Seek>(
 /// Write all package files to the ZIP archive (lazy version with LazySlideSource)
 fn write_package_files_lazy<W: Write + Seek>(
     zip: &mut ZipWriter<W>,
-    options: &FileOptions,
+    options: &SimpleFileOptions,
     title: &str,
     slides: &dyn LazySlideSource,
     mut settings: Option<PresentationSettings>,
@@ -1164,7 +1174,7 @@ fn write_package_files_lazy<W: Write + Seek>(
 /// Write content types for lazy slides
 fn write_content_types_lazy<W: Write + Seek>(
     zip: &mut ZipWriter<W>,
-    options: &FileOptions,
+    options: &SimpleFileOptions,
     slide_count: usize,
     slides: &dyn LazySlideSource,
     chart_info: &ChartInfo,
@@ -1290,7 +1300,7 @@ fn write_content_types_lazy<W: Write + Seek>(
 /// Write a chart part with rels and embedded Excel workbook.
 fn write_chart_package<W: Write + Seek>(
     zip: &mut ZipWriter<W>,
-    options: &FileOptions,
+    options: &SimpleFileOptions,
     chart_idx: usize,
     chart: &crate::generator::charts::Chart,
 ) -> Result<()> {
@@ -1314,7 +1324,7 @@ fn write_chart_package<W: Write + Seek>(
 /// Write slide XML, relationships, and chart parts in one pass (lazy version).
 fn write_slide_packages_lazy<W: Write + Seek>(
     zip: &mut ZipWriter<W>,
-    options: &FileOptions,
+    options: &SimpleFileOptions,
     slides: &dyn LazySlideSource,
     slide_chart_start_indices: &[usize],
     template: Option<&PptxTemplate>,
@@ -1453,7 +1463,7 @@ fn write_slide_packages_lazy<W: Write + Seek>(
 /// Write notes relationship files (lazy version)
 fn write_notes_relationships_lazy<W: Write + Seek>(
     zip: &mut ZipWriter<W>,
-    options: &FileOptions,
+    options: &SimpleFileOptions,
     slides: &dyn LazySlideSource,
 ) -> Result<()> {
     let mut notes_part_num = 0usize;
@@ -1479,7 +1489,7 @@ fn write_notes_relationships_lazy<W: Write + Seek>(
 /// Write slide XML files (eager version)
 fn write_slides<W: Write + Seek>(
     zip: &mut ZipWriter<W>,
-    options: &FileOptions,
+    options: &SimpleFileOptions,
     slide_count: usize,
     custom_slides: Option<&[SlideContent]>,
 ) -> Result<()> {
@@ -1575,7 +1585,7 @@ fn write_slides<W: Write + Seek>(
 /// Write slide relationship files with notes and charts (eager version)
 fn write_slide_relationships_extended<W: Write + Seek>(
     zip: &mut ZipWriter<W>,
-    options: &FileOptions,
+    options: &SimpleFileOptions,
     custom_slides: Option<&[SlideContent]>,
     slide_chart_start_indices: &[usize],
     slide_count: usize,
@@ -1687,7 +1697,7 @@ fn write_slide_relationships_extended<W: Write + Seek>(
 /// Write chart files (eager version)
 fn write_charts<W: Write + Seek>(
     zip: &mut ZipWriter<W>,
-    options: &FileOptions,
+    options: &SimpleFileOptions,
     custom_slides: Option<&[SlideContent]>,
     slide_chart_start_indices: &[usize],
 ) -> Result<()> {
@@ -1706,7 +1716,7 @@ fn write_charts<W: Write + Seek>(
 /// Write notes relationship files (eager version)
 fn write_notes_relationships<W: Write + Seek>(
     zip: &mut ZipWriter<W>,
-    options: &FileOptions,
+    options: &SimpleFileOptions,
     custom_slides: Option<&[SlideContent]>,
 ) -> Result<()> {
     if let Some(slides) = custom_slides {
@@ -1730,7 +1740,7 @@ fn write_notes_relationships<W: Write + Seek>(
 /// Write embedded font data parts to `ppt/fonts/`.
 fn write_embedded_font_parts<W: Write + Seek>(
     zip: &mut ZipWriter<W>,
-    options: &FileOptions,
+    options: &SimpleFileOptions,
     fonts: &super::slide_content::embedded_fonts::EmbeddedFontList,
 ) -> Result<()> {
     for font in fonts.fonts() {
@@ -1743,7 +1753,7 @@ fn write_embedded_font_parts<W: Write + Seek>(
 /// Write image files to ppt/media/
 fn write_images<W: Write + Seek>(
     zip: &mut ZipWriter<W>,
-    options: &FileOptions,
+    options: &SimpleFileOptions,
     custom_slides: Option<&[SlideContent]>,
 ) -> Result<()> {
     if let Some(slides) = custom_slides {
@@ -1761,7 +1771,7 @@ fn write_images<W: Write + Seek>(
 /// Write digital signature parts (`_xmlsignatures/`).
 fn write_digital_signature_parts<W: Write + Seek>(
     zip: &mut ZipWriter<W>,
-    options: &FileOptions,
+    options: &SimpleFileOptions,
     settings: Option<&PresentationSettings>,
 ) -> Result<()> {
     let signature = settings
@@ -1781,7 +1791,7 @@ fn write_digital_signature_parts<W: Write + Seek>(
 /// Write image files from a lazy slide source.
 fn write_images_lazy<W: Write + Seek>(
     zip: &mut ZipWriter<W>,
-    options: &FileOptions,
+    options: &SimpleFileOptions,
     slides: &dyn LazySlideSource,
 ) -> Result<()> {
     let registry = build_media_registry_lazy(slides);
@@ -1797,7 +1807,7 @@ fn write_images_lazy<W: Write + Seek>(
 /// Write video/audio parts (`ppt/media/mediaN.{ext}`).
 fn write_media_files<W: Write + Seek>(
     zip: &mut ZipWriter<W>,
-    options: &FileOptions,
+    options: &SimpleFileOptions,
     registry: &MediaRegistry,
 ) -> Result<()> {
     for (i, (bytes, ext)) in registry.media_files().iter().enumerate() {
@@ -1879,7 +1889,7 @@ mod tests {
         let cursor = Cursor::new(bytes);
         let mut archive = zip::ZipArchive::new(cursor).unwrap();
         let names: std::collections::HashSet<String> = (0..archive.len())
-            .map(|i| archive.by_index(i).unwrap().name().to_string())
+            .map(|i| archive.by_index(i).unwrap().name().unwrap().to_string())
             .collect();
         assert!(names.contains("_xmlsignatures/origin.sigs"));
         assert!(names.contains("_xmlsignatures/sig1.xml"));
@@ -1916,7 +1926,7 @@ mod tests {
         let cursor = Cursor::new(bytes);
         let mut archive = zip::ZipArchive::new(cursor).unwrap();
         let names: std::collections::HashSet<String> = (0..archive.len())
-            .map(|i| archive.by_index(i).unwrap().name().to_string())
+            .map(|i| archive.by_index(i).unwrap().name().unwrap().to_string())
             .collect();
         assert!(names.contains("ppt/fonts/Arial-regular.fntdata"));
 
@@ -1970,7 +1980,7 @@ mod tests {
         let cursor = Cursor::new(bytes);
         let mut archive = zip::ZipArchive::new(cursor).unwrap();
         let names: std::collections::HashSet<String> = (0..archive.len())
-            .map(|i| archive.by_index(i).unwrap().name().to_string())
+            .map(|i| archive.by_index(i).unwrap().name().unwrap().to_string())
             .collect();
         assert!(names.contains("ppt/ink/ink1.xml"));
 
