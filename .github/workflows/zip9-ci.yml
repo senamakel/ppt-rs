@@ -54,4 +54,4 @@ jobs:
           git fetch origin epic/8056-modules-wiring
           base="$(git merge-base origin/epic/8056-modules-wiring HEAD)"
           git diff --name-only -z --diff-filter=ACMRT "$base" HEAD -- '*.rs' \
-            | xargs -0 -r rustfmt --check --edition 2024
+            | xargs -0 -r rustfmt --check --edition 2024 --config skip_children=true

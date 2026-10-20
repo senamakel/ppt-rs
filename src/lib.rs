@@ -76,10 +76,6 @@ pub use diff::{
     FieldChange, PresentationDiff, SlideChange, SlideSemantic, compare_pptx_paths,
     compare_presentations, slide_semantic,
 };
-pub use pipeline::{
-    BatchJob, BatchOptions, BatchResult, InputFormat, convert_file, detect_format,
-    discover_inputs, resolve_output_path, run_batch, run_directory,
-};
 pub use elements::{Color, Position, RgbColor, SchemeColor, Size, Transform};
 pub use exc::{PptxError, Result, messages};
 pub use generator::{
@@ -98,6 +94,10 @@ pub use generator::{
     ThemeFonts, Video, VideoFormat, VideoOptions, create_pptx, create_pptx_lazy_to_writer,
     create_pptx_to_writer, create_pptx_with_content, create_pptx_with_content_to_writer,
     create_pptx_with_settings, create_pptx_with_template,
+};
+pub use pipeline::{
+    BatchJob, BatchOptions, BatchResult, InputFormat, convert_file, detect_format, discover_inputs,
+    resolve_output_path, run_batch, run_directory,
 };
 
 // Export convenience types for new capabilities
