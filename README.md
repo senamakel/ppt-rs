@@ -535,10 +535,10 @@ Add to `Cargo.toml`:
 
 ```toml
 [dependencies]
-ppt-rs = "0.3"
+ppt-rs = "0.3.0"
 
 # Optional: MCP server types / embedding (library module `ppt_rs::mcp`)
-# ppt-rs = { version = "0.3", features = ["mcp"] }
+# ppt-rs = { version = "0.3.0", features = ["mcp"] }
 ```
 
 ## Examples

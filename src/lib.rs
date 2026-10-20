@@ -26,11 +26,14 @@
 //! - **prelude** - Simplified API: macros, unit helpers, shapes, colors, themes
 //! - **helpers** - Color / table / shape / extension helpers
 //! - **templates** - Pre-built presentation templates
+//! - **cli** - Feature-gated command-line interface (feature = "cli")
 //! - **export** - Export to Markdown, HTML, images
 //! - **import** - PPTX import, HTML-to-PPTX
 //! - **diff** - Semantic slide-level comparison for review/CI
 //! - **pipeline** - Batch Markdown/HTML → `.pptx` conversion with shared theme/template
 //! - **http** - REST API for generation, validation, export, and diff (feature = "http")
+//! - **mcp** - Model Context Protocol server and tool router (feature = "mcp")
+//! - **web2ppt** - Feature-gated HTML/URL-to-PPTX conversion (feature = "web2ppt")
 //! - **opc** - Open Packaging Convention (ZIP) handling
 //! - **oxml** - Office XML parsing and manipulation
 //! - **exc** - Error types
@@ -132,4 +135,4 @@ pub use web2ppt::{
 #[cfg(feature = "web2md")]
 pub use web2ppt::{html_to_pptx_via_web2md, url_to_pptx_via_web2md};
 
-pub const VERSION: &str = "0.2.36";
+pub const VERSION: &str = "0.3.0";
