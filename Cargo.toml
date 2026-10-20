@@ -1,6 +1,6 @@
 [package]
 name = "ppt-rs"
-version = "0.2.36"
+version = "0.3.0"
 edition = "2024"
 rust-version = "1.88"
 authors = ["Ying Kit WONG"]

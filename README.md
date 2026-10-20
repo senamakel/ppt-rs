@@ -20,6 +20,8 @@ While other Rust crates for PPTX generation are incomplete, broken, or abandoned
 
 **MCP:** Build with `--features mcp` and run **`ppt_mcp`** — a [Model Context Protocol](https://modelcontextprotocol.io) server ([rmcp](https://crates.io/crates/rmcp)) so Cursor, Claude Desktop, and other MCP clients can create, read, export, and validate `.pptx` via stdio. See [MCP server](#mcp-server-model-context-protocol).
 
+**NEW v0.3.0 (breaking)**: migrates PPTX package I/O to ZIP 9.0.4 and requires Rust 1.88 or newer. Public `ZipArchive` and `PptxError::Zip` types now use ZIP 9 type identities; downstream code using ZIP 0.6 types must migrate.
+
 **NEW v0.2.36**: clippy `--all-features --all-targets -D warnings` green for the first time (lib + bins + tests + examples) — 53 mechanical/structural lints fixed (`collapsible_if`, `collapsible_match`, `useless_vec`, `len_zero`, `ptr_arg`). **v0.2.35**: full review-comments round-trip — `import_pptx` preserves authors and per-slide comments. **v0.2.34**: optional REST/HTTP server (`http` feature, `ppt_http` binary). **v0.2.30**: semantic slide-level diff (`pptcli diff`, MCP `diff_pptx`). **v0.2.24**: `web2md` bridge — HTML→Markdown→Slides pipeline via the `web2md` crate with a `--web2md` CLI flag on `web2ppt`. **v0.2.23**: pure-Rust PDF export via `pdfrs` (`pdf-native` feature, no LibreOffice dependency). **v0.2.19**: PowerPoint zero-repair compatibility gate — multiple slide layouts, template-based generation, chart Excel workbook embedding, handout master packaging, slide master completeness, and a structured `core::package_validation` API.
 
 ## Why ppt-rs?
@@ -533,10 +535,10 @@ Add to `Cargo.toml`:
 
 ```toml
 [dependencies]
-ppt-rs = "0.2.36"
+ppt-rs = "0.3"
 
 # Optional: MCP server types / embedding (library module `ppt_rs::mcp`)
-# ppt-rs = { version = "0.2.36", features = ["mcp"] }
+# ppt-rs = { version = "0.3", features = ["mcp"] }
 ```
 
 ## Examples
@@ -874,7 +876,7 @@ Unlike other Rust PPTX crates that:
 
 ## Technical Details
 
-- **Version**: 0.2.36
+- **Version**: 0.3.0
 - **Format**: Microsoft PowerPoint 2007+ (.pptx)
 - **Standard**: ECMA-376 Office Open XML
 - **Compatibility**: PowerPoint, LibreOffice, Google Slides, Keynote
