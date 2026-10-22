@@ -37,6 +37,9 @@ jobs:
       - name: Run all-feature tests
         if: matrix.feature_set == 'all-features'
         run: cargo test --locked --all-features
+      - name: Check without default features
+        if: matrix.feature_set == 'default' && matrix.toolchain == 'stable'
+        run: cargo check --locked --no-default-features --lib
 
   changed-rust-format:
     name: Format changed Rust files

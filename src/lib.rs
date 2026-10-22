@@ -101,10 +101,12 @@ pub use pipeline::{
 };
 
 // Export convenience types for new capabilities
+#[cfg(feature = "pdf-native")]
 pub use export::image_export::{
     ImageExportOptions, ImageFormat, export_slide_to_image, export_to_images, render_thumbnail,
 };
 pub use export::md::{MarkdownOptions, export_to_markdown, export_to_markdown_with_options};
+#[cfg(feature = "pdf-native")]
 pub use export::slide_render::{render_to_pdf, render_to_pdf_bytes};
 pub use import::html::{Html2Ppt, HtmlParseOptions, parse_html, parse_html_with_options};
 pub use oxml::extract_slide_texts_from_bytes;
