@@ -54,7 +54,7 @@ jobs:
           components: rustfmt
       - name: Check only changed Rust files
         run: |
-          git fetch origin main
-          base="$(git merge-base origin/main HEAD)"
+          git fetch https://github.com/yingkitw/ppt-rs.git main
+          base="$(git merge-base FETCH_HEAD HEAD)"
           git diff --name-only -z --diff-filter=ACMRT "$base" HEAD -- '*.rs' \
             | xargs -0 -r rustfmt --check --edition 2024 --config skip_children=true
